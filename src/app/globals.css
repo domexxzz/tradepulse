@@ -1,26 +1,86 @@
 @import "tailwindcss";
 
+/* ============================================================
+   TradePulse — Design tokens (calm dark-green, premium)
+   ============================================================ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #08100b;
+  --surface: #101a12;
+  --surface-2: #142018;   /* surface-soft */
+  --border: #1e2c22;
+  --foreground: #f3f7f1;
+  --muted: #91a095;
+
+  --brand: #65e62c;
+  --brand-strong: #7df04a;
+  --brand-deep: #3eae20;
+
+  --up: #65e62c;
+  --down: #d85b5b;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-muted: var(--muted);
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-deep: var(--brand-deep);
+  --color-up: var(--up);
+  --color-down: var(--down);
+
+  --font-sans: var(--font-sans-thai);
+  --font-display: var(--font-display);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+* { border-color: var(--border); }
+html { scroll-behavior: smooth; }
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 1rem;          /* 16px base */
+  line-height: 1.7;         /* readable Thai */
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* keyboard focus */
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::selection { background: rgba(101, 230, 44, 0.25); color: var(--foreground); }
+
+.container-x { width: 100%; max-width: 1200px; margin-inline: auto; padding-inline: 1.25rem; }
+
+.text-gradient-brand {
+  background: linear-gradient(96deg, var(--brand-strong), var(--brand));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+
+.card-surface { background: var(--surface); border: 1px solid var(--border); }
+.card-soft { background: var(--surface-2); border: 1px solid var(--border); }
+
+/* subtle backdrop (no heavy glow) */
+.hero-backdrop {
+  background: radial-gradient(70% 60% at 50% -10%, rgba(101, 230, 44, 0.07), transparent 70%);
+}
+
+/* ticker marquee (kept, honors reduced-motion) */
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.animate-marquee { animation: marquee 30s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }
