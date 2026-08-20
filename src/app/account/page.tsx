@@ -1,20 +1,46 @@
 import Link from "next/link";
 import { auth } from "@/auth";
 import { getUserSubscription } from "@/lib/subscription";
+import { syncCheckoutSession } from "@/lib/stripe-sync";
 import { prisma } from "@/lib/prisma";
 import { plans } from "@/config/plans";
 import { formatTHB } from "@/lib/utils";
-import { CheckCircle2, AlertCircle, LineChart } from "lucide-react";
+import { CheckCircle2, AlertCircle, LineChart, PartyPopper } from "lucide-react";
 
-export default async function AccountOverview() {
+export default async function AccountOverview({
+  searchParams,
+}: {
+  searchParams: Promise<{ checkout?: string; session_id?: string }>;
+}) {
+  const { checkout, session_id } = await searchParams;
   const session = await auth();
   const userId = session!.user.id;
+
+  // ซิงก์ทันทีเมื่อกลับจาก Stripe (safety-net เมื่อ webhook ยังไม่ถึง)
+  if (checkout === "success" && session_id) {
+    await syncCheckoutSession(session_id, userId);
+  }
+
   const { sub, isActive } = await getUserSubscription(userId);
   const user = await prisma.user.findUnique({ where: { id: userId } });
   const plan = plans.find((p) => p.id === sub?.planCode);
 
   return (
     <div className="space-y-6">
+      {checkout === "success" && (
+        <div className="flex items-start gap-3 rounded-2xl border border-up/30 bg-up/10 p-4">
+          <PartyPopper className="mt-0.5 h-5 w-5 shrink-0 text-up" />
+          <div className="text-sm">
+            <div className="font-semibold text-up">ชำระเงินสำเร็จ ขอบคุณครับ</div>
+            <p className="mt-0.5 text-muted">
+              ขั้นต่อไป: ไปที่หน้า{" "}
+              <Link href="/account/tradingview" className="text-brand hover:underline">TradingView</Link>{" "}
+              เพื่อกรอก username รับสิทธิ์ใช้งานอินดิเคเตอร์
+            </p>
+          </div>
+        </div>
+      )}
+
       <h1 className="font-display text-2xl font-bold">
         สวัสดี, {session!.user.name ?? "สมาชิก"} 👋
       </h1>

@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     mode: "subscription",
     customer: customerId,
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${base}/account?checkout=success`,
+    success_url: `${base}/account?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${base}/#pricing`,
     allow_promotion_codes: true,
     metadata: { userId: session.user.id, planCode: planCode! },

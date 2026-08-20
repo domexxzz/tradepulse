@@ -1,7 +1,9 @@
+import { Background3D } from "@/components/common/Background3D";
 import { Navbar } from "@/components/common/Navbar";
 import { Footer } from "@/components/common/Footer";
 import { Hero } from "@/components/marketing/Hero";
 import { MarketTicker } from "@/components/marketing/MarketTicker";
+import { GraphCarousel } from "@/components/marketing/GraphCarousel";
 import { LiveChart } from "@/components/marketing/LiveChart";
 import { TrustStrip } from "@/components/marketing/TrustStrip";
 import { ProblemSolution } from "@/components/marketing/ProblemSolution";
@@ -18,10 +20,12 @@ import { MobileStickyCTA } from "@/components/marketing/MobileStickyCTA";
 export default function Home() {
   return (
     <>
+      <Background3D />
       <Navbar />
       <main>
         <Hero />
         <MarketTicker />
+        <GraphCarousel />
         <LiveChart />
         <TrustStrip />
         <ProblemSolution />

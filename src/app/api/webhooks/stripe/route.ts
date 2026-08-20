@@ -1,49 +1,8 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
-import { stripe, mapStatus } from "@/lib/stripe";
+import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
-
-async function upsertSubscription(
-  userId: string,
-  planCode: string | undefined,
-  sub: Stripe.Subscription
-) {
-  const status = mapStatus(sub.status);
-  // Stripe API ใหม่: current_period_end อยู่ที่ระดับ subscription item
-  const item = sub.items.data[0];
-  const periodEnd = item?.current_period_end
-    ? new Date(item.current_period_end * 1000)
-    : null;
-  const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
-
-  const existing = await prisma.subscription.findUnique({
-    where: { stripeSubscriptionId: sub.id },
-  });
-
-  if (existing) {
-    await prisma.subscription.update({
-      where: { stripeSubscriptionId: sub.id },
-      data: {
-        status,
-        currentPeriodEnd: periodEnd,
-        cancelAtPeriodEnd: sub.cancel_at_period_end,
-        planCode: planCode ?? existing.planCode,
-      },
-    });
-  } else {
-    await prisma.subscription.create({
-      data: {
-        userId,
-        planCode: planCode ?? "MONTH",
-        stripeSubscriptionId: sub.id,
-        stripeCustomerId: customerId,
-        status,
-        currentPeriodEnd: periodEnd,
-        cancelAtPeriodEnd: sub.cancel_at_period_end,
-      },
-    });
-  }
-}
+import { upsertSubscription, recordPayment, ensureAccessGrant } from "@/lib/fulfillment";
 
 export async function POST(req: Request) {
   if (!stripe) return NextResponse.json({ error: "stripe disabled" }, { status: 503 });
@@ -69,28 +28,23 @@ export async function POST(req: Request) {
       if (userId && subId) {
         const sub = await stripe.subscriptions.retrieve(subId);
         await upsertSubscription(userId, planCode, sub);
-        if (s.amount_total) {
-          await prisma.payment.create({
-            data: {
-              userId,
-              amountTHB: Math.round(s.amount_total / 100),
-              provider: "stripe",
-              providerRef: s.id,
-              status: "paid",
-            },
-          });
-        }
-        const user = await prisma.user.findUnique({ where: { id: userId } });
-        await prisma.accessGrant.create({
-          data: {
-            userId,
-            status: "PENDING",
-            tradingViewUsername: user?.tradingViewUsername ?? null,
-          },
-        });
+        if (s.amount_total) await recordPayment(userId, Math.round(s.amount_total / 100), s.id);
+        await ensureAccessGrant(userId);
       }
       break;
     }
+
+    case "invoice.paid": {
+      const inv = event.data.object as Stripe.Invoice;
+      if (inv.billing_reason === "subscription_create") break;
+      const customerId = typeof inv.customer === "string" ? inv.customer : inv.customer?.id;
+      if (customerId && inv.amount_paid) {
+        const user = await prisma.user.findUnique({ where: { stripeCustomerId: customerId } });
+        if (user) await recordPayment(user.id, Math.round(inv.amount_paid / 100), inv.id ?? `inv_${inv.created}`);
+      }
+      break;
+    }
+
     case "customer.subscription.updated":
     case "customer.subscription.deleted": {
       const sub = event.data.object as Stripe.Subscription;
