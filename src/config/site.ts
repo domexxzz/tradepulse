@@ -32,3 +32,18 @@ export const paymentsEnabled = Boolean(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABL
 
 /** มีช่องทางติดต่อจริงหรือยัง */
 export const hasLineContact = Boolean(site.contact.lineUrl);
+
+/**
+ * กราฟ TradingView ที่เว็บนี้เชื่อมต่อ
+ * - chartUrl: ลิงก์ layout จริงที่โหลดอินดิเคเตอร์ TradePulse ไว้แล้ว (เปิดในแท็บใหม่)
+ *   หมายเหตุ: TradingView ตั้ง CSP `frame-ancestors 'none'` บนหน้า /chart/ จึง iframe ไม่ได้
+ *   บนเว็บเราจึงฝัง Advanced Chart widget แทน แล้วลิงก์ออกไปหน้ากราฟจริง
+ * - symbol/interval: ตั้งให้ตรงกับ layout ด้านบน เพื่อให้ผู้ใช้เห็นภาพเดียวกัน
+ */
+export const tradingView = {
+  chartUrl:
+    process.env.NEXT_PUBLIC_TRADINGVIEW_CHART_URL ||
+    "https://th.tradingview.com/chart/AOJ68CcI/",
+  symbol: process.env.NEXT_PUBLIC_TRADINGVIEW_SYMBOL || "FOREXCOM:XAUUSD",
+  interval: process.env.NEXT_PUBLIC_TRADINGVIEW_INTERVAL || "30",
+} as const;

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useId, useRef } from "react";
+import { tradingView } from "@/config/site";
 
 /** โหลด tv.js ครั้งเดียว (ใช้ constructor แทน embed script เพื่อเลี่ยง console error) */
 let tvPromise: Promise<void> | null = null;
@@ -19,8 +20,8 @@ function loadTradingView(): Promise<void> {
 }
 
 export function TradingViewChart({
-  symbol = "OANDA:XAUUSD",
-  interval = "60",
+  symbol = tradingView.symbol,
+  interval = tradingView.interval,
 }: {
   symbol?: string;
   interval?: string;
@@ -47,6 +48,7 @@ export function TradingViewChart({
         hide_side_toolbar: false,
         allow_symbol_change: true,
         withdateranges: true,
+        details: true,
       });
     });
     return () => {
