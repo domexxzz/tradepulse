@@ -66,3 +66,35 @@ export const tradingView = {
 
 /** มีภาพ snapshot กราฟจริงให้แสดงหรือยัง */
 export const hasChartSnapshot = Boolean(tradingView.snapshotUrl);
+
+export interface ChartExample {
+  /** ป้ายบนแท็บ */
+  label: string;
+  /** ไทม์เฟรมที่แคปมา */
+  tf: string;
+  /** ลิงก์ไฟล์ภาพ (s3.tradingview.com/snapshots/<ตัวแรกพิมพ์เล็ก>/<id>.png) */
+  url: string;
+  /** อัตราส่วนภาพ "กว้าง / สูง" — กันภาพกระโดดตอนโหลด */
+  aspect: string;
+  /** หน้า snapshot บน TradingView (ให้เครดิตที่มา + กดดูเต็มได้) */
+  pageUrl: string;
+  /** อธิบายว่าภาพนี้โชว์อะไร */
+  caption: string;
+}
+
+/**
+ * ตัวอย่างผลลัพธ์จริงจากอินดิเคเตอร์ — ทุกภาพมาจากกราฟที่รันสคริปต์จริง
+ * เพิ่มตัวอย่างใหม่: กดกล้อง 📷 บน TradingView -> คัดลอกลิงก์ภาพ -> เพิ่มรายการที่นี่
+ * (มีมากกว่า 1 รายการเมื่อไหร่ หน้าเดโมจะขึ้นแท็บให้สลับดูเอง)
+ */
+export const chartExamples: ChartExample[] = [
+  {
+    label: "Trend + Plan",
+    tf: "1D",
+    url: "https://s3.tradingview.com/snapshots/e/EI34kpKu.png",
+    aspect: "1814 / 436",
+    pageUrl: "https://www.tradingview.com/x/EI34kpKu/",
+    caption:
+      "โซน FVG และ Order Block ที่ระบบตีให้ พร้อมสัญญาณ LONG / SELL, ระดับ NEXT SUPPLY / NEXT DEMAND และกล่องสถานะแผนเทรด",
+  },
+];

@@ -16,6 +16,9 @@
 # next.js
 /.next/
 /out/
+# โฟลเดอร์ build cache ที่ถูกเปลี่ยนชื่อไว้ — ถ้าไม่ ignore Tailwind v4 จะสแกน
+# แล้วดูด class เพี้ยนจาก CSS/source-map เก่ามาสร้าง selector พังทั้งไฟล์
+/.next-*/
 
 # production
 /build

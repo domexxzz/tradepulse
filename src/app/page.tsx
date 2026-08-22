@@ -5,7 +5,6 @@ import { Hero } from "@/components/marketing/Hero";
 import { MarketTicker } from "@/components/marketing/MarketTicker";
 import { GraphCarousel } from "@/components/marketing/GraphCarousel";
 import { LiveChart } from "@/components/marketing/LiveChart";
-import { LiveSignals } from "@/components/marketing/LiveSignals";
 import { TrustStrip } from "@/components/marketing/TrustStrip";
 import { ProblemSolution } from "@/components/marketing/ProblemSolution";
 import { HowItWorks } from "@/components/marketing/HowItWorks";
@@ -28,7 +27,6 @@ export default function Home() {
         <MarketTicker />
         <GraphCarousel />
         <LiveChart />
-        <LiveSignals />
         <TrustStrip />
         <ProblemSolution />
         <HowItWorks />

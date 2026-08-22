@@ -134,21 +134,3 @@ model Review {
   isApproved Boolean  @default(false)
   createdAt  DateTime @default(now())
 }
-
-/// สัญญาณจากอินดิเคเตอร์บน TradingView (ยิงเข้ามาทาง webhook)
-model Signal {
-  id        String   @id @default(cuid())
-  symbol    String
-  side      String // BUY | SELL
-  price     Float
-  tf        String // ไทม์เฟรมของกราฟที่ยิงมา เช่น "30", "240", "D"
-  sl        Float?
-  tp1       Float?
-  tp2       Float?
-  source    String   @default("tradingview")
-  createdAt DateTime @default(now())
-
-  // ดึงสัญญาณล่าสุดต่อ symbol/tf ให้เร็ว และกันซ้ำในหน้า feed
-  @@index([createdAt])
-  @@index([symbol, tf, createdAt])
-}
