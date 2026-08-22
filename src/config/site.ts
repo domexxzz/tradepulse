@@ -46,4 +46,13 @@ export const tradingView = {
     "https://th.tradingview.com/chart/AOJ68CcI/",
   symbol: process.env.NEXT_PUBLIC_TRADINGVIEW_SYMBOL || "FOREXCOM:XAUUSD",
   interval: process.env.NEXT_PUBLIC_TRADINGVIEW_INTERVAL || "30",
+  /**
+   * ภาพ snapshot ของกราฟจริง (กดปุ่มกล้อง 📷 บน TradingView -> "คัดลอกลิงก์ภาพ")
+   * เป็นวิธีเดียวที่แสดงเส้นอินดิเคเตอร์ TradePulse บนเว็บได้ เพราะ layout เป็น private
+   * ตัวอย่าง: https://s3.tradingview.com/snapshots/x/XXXXXXXX.png
+   */
+  snapshotUrl: process.env.NEXT_PUBLIC_TRADINGVIEW_SNAPSHOT_URL || "",
 } as const;
+
+/** มีภาพ snapshot กราฟจริงให้แสดงหรือยัง */
+export const hasChartSnapshot = Boolean(tradingView.snapshotUrl);
