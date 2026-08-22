@@ -47,3 +47,11 @@ next-env.d.ts
 
 # keep env template committed (was excluded by .env*)
 !.env.example
+
+# ---- Pine Script source ของสินค้า (ห้าม commit เด็ดขาด) ----
+# เป็นซอร์สอินดิเคเตอร์ที่ขายอยู่ ถ้าเข้า git แล้วลบยาก และหลุดได้ถ้า repo เปลี่ยนเป็น public
+/SMC Unified.txt
+/SMC suit strategy.txt
+/Change SL.txt
+/*.pine
+/pine/
