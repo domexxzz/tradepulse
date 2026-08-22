@@ -51,7 +51,15 @@ export const tradingView = {
    * เป็นวิธีเดียวที่แสดงเส้นอินดิเคเตอร์ TradePulse บนเว็บได้ เพราะ layout เป็น private
    * ตัวอย่าง: https://s3.tradingview.com/snapshots/x/XXXXXXXX.png
    */
-  snapshotUrl: process.env.NEXT_PUBLIC_TRADINGVIEW_SNAPSHOT_URL || "",
+  snapshotUrl:
+    process.env.NEXT_PUBLIC_TRADINGVIEW_SNAPSHOT_URL ||
+    "https://s3.tradingview.com/snapshots/e/EI34kpKu.png",
+  /** อัตราส่วนภาพ snapshot — กันภาพกระโดด (CLS) ตอนโหลด ต้องแก้ตามภาพใหม่ที่เปลี่ยน */
+  snapshotAspect: process.env.NEXT_PUBLIC_TRADINGVIEW_SNAPSHOT_ASPECT || "1814 / 436",
+  /** หน้า snapshot บน TradingView (ให้เครดิตที่มาของภาพ) */
+  snapshotPageUrl:
+    process.env.NEXT_PUBLIC_TRADINGVIEW_SNAPSHOT_PAGE_URL ||
+    "https://www.tradingview.com/x/EI34kpKu/",
 } as const;
 
 /** มีภาพ snapshot กราฟจริงให้แสดงหรือยัง */

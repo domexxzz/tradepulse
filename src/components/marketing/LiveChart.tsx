@@ -91,33 +91,43 @@ export function LiveChart() {
         )}
 
         <div className="mt-4 overflow-hidden rounded-2xl border border-border card-surface p-1.5">
-          <div className="h-[420px] w-full sm:h-[500px]">
-            {mode === "snapshot" && hasChartSnapshot ? (
-              <a
-                href={tradingView.chartUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="relative block h-full w-full overflow-hidden rounded-xl"
-                aria-label="เปิดกราฟจริงบน TradingView"
-              >
-                <Image
-                  src={tradingView.snapshotUrl}
-                  alt="กราฟ XAUUSD ที่ติดตั้งอินดิเคเตอร์ TradePulse แสดง Entry, TP, SL และโซน Supply/Demand"
-                  fill
-                  sizes="(max-width: 1024px) 100vw, 1024px"
-                  className="object-contain"
-                  priority
-                />
-              </a>
-            ) : (
+          {mode === "snapshot" && hasChartSnapshot ? (
+            // ภาพกราฟแบนมาก (~4:1) — บนมือถือจึงตรึงความสูงแล้วให้เลื่อนแนวนอนแทนการย่อจนอ่านไม่ออก
+            <div className="overflow-x-auto sm:overflow-x-visible">
+            <a
+              href={tradingView.snapshotPageUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group relative block h-[240px] w-auto overflow-hidden rounded-xl sm:h-auto sm:w-full"
+              style={{ aspectRatio: tradingView.snapshotAspect }}
+              aria-label="เปิดภาพกราฟเต็มบน TradingView"
+            >
+              <Image
+                src={tradingView.snapshotUrl}
+                alt="กราฟ XAUUSD ที่ติดตั้งอินดิเคเตอร์ TradePulse แสดงสัญญาณ Long/Sell, โซน FVG และ Order Block"
+                fill
+                sizes="(max-width: 1280px) 100vw, 1200px"
+                className="object-contain transition-transform duration-500 group-hover:scale-[1.02]"
+                priority
+              />
+            </a>
+            </div>
+          ) : (
+            <div className="h-[420px] w-full sm:h-[500px]">
               <TradingViewChart symbol={tradingView.symbol} interval={activeInterval} />
-            )}
-          </div>
+            </div>
+          )}
         </div>
+
+        {mode === "snapshot" && hasChartSnapshot && (
+          <p className="mt-2 text-center text-[11px] text-muted sm:hidden">
+            เลื่อนซ้าย–ขวาเพื่อดูกราฟทั้งหมด
+          </p>
+        )}
 
         <p className="mt-3 text-center text-xs text-muted">
           {mode === "snapshot" && hasChartSnapshot
-            ? "ภาพจากกราฟจริงที่รันอินดิเคเตอร์ TradePulse • ผลในอดีตไม่ใช่การรับประกันผลในอนาคต"
+            ? "ภาพจากกราฟจริงที่รันอินดิเคเตอร์ TradePulse • ตัวเลข Win Rate / Profit Factor / Net PnL บนภาพเป็นผลทดสอบย้อนหลัง (backtest) ของช่วงเวลาที่แสดง ไม่ใช่ผลเทรดจริง และไม่ใช่การรับประกันผลในอนาคต"
             : "ข้อมูลราคาเป็นของตลาดจริงจาก TradingView"}{" "}
           • TradePulse ไม่มีส่วนเกี่ยวข้องกับ TradingView
         </p>
