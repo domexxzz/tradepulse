@@ -1,11 +1,16 @@
-// Dev ใช้ SQLite เพื่อรันได้ทันที — production เปลี่ยน provider เป็น postgresql + แปลง String status เป็น enum
+// PostgreSQL ทั้ง dev และ production เพื่อให้พฤติกรรมตรงกัน
+// dev รันด้วย docker (ดู docs/SETUP.md) — production ใช้ Neon/Supabase/Vercel Postgres
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // ใช้ผ่าน connection pooler — serverless เปิด connection เยอะ ถ้าต่อตรงจะเต็ม limit
+  url       = env("DATABASE_URL")
+  // ต่อตรงไม่ผ่าน pooler สำหรับ migrate/introspect (pooler ไม่รองรับ)
+  // ถ้า provider ไม่มี pooler แยก ใส่ค่าเดียวกับ DATABASE_URL ได้
+  directUrl = env("DIRECT_URL")
 }
 
 // ---------- Auth.js ----------
