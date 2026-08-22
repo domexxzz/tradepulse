@@ -1,18 +1,16 @@
 import {
   Layers, TrendingUp, Target, Table, Activity, GitBranch, Boxes,
-  LayoutGrid, Minus, SeparatorHorizontal, Ruler, PenLine, Waves,
+  LayoutGrid, Minus, SeparatorHorizontal, Waves,
   BellRing, Scale, Clock, BarChart3, CandlestickChart, Palette,
-  Calculator, Bell, Spline, AudioWaveform, MoveHorizontal,
-  ShieldCheck, LineChart, BookOpen,
+  Calculator, Bell, LineChart, BookOpen,
   type LucideIcon,
 } from "lucide-react";
 
 const map: Record<string, LucideIcon> = {
   Layers, TrendingUp, Target, Table, Activity, GitBranch, Boxes,
-  LayoutGrid, Minus, SeparatorHorizontal, Ruler, PenLine, Waves,
+  LayoutGrid, Minus, SeparatorHorizontal, Waves,
   BellRing, Scale, Clock, BarChart3, CandlestickChart, Palette,
-  Calculator, Bell, Spline, AudioWaveform, MoveHorizontal,
-  ShieldCheck, LineChart, BookOpen,
+  Calculator, Bell, LineChart, BookOpen,
 };
 
 export function Icon({ name, className }: { name: string; className?: string }) {
