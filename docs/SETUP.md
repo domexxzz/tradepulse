@@ -59,9 +59,14 @@ STRIPE_PRICE_YEAR=price_...
      serverless เปิด connection เยอะ ถ้าต่อตรงจะชน connection limit
    - `DIRECT_URL` — connection string แบบ **ต่อตรง** ใช้ตอน migrate เท่านั้น
      (pooler ไม่รองรับคำสั่ง DDL บางตัว) ถ้าผู้ให้บริการไม่มี pooler แยก ใส่ค่าเดียวกันได้
-3. รัน migration: `npx prisma migrate deploy`
-4. รัน seed ครั้งแรก: `node prisma/seed.mjs`
+3. migration รันเองตอน deploy แล้ว — สคริปต์ `vercel-build` ทำ
+   `prisma generate && prisma migrate deploy && next build` ให้อัตโนมัติ
+   (ถ้า migrate ล้ม build จะล้มด้วย ตั้งใจให้รู้ตัวทันทีดีกว่าปล่อยขึ้นไปพัง)
+4. รัน seed ครั้งแรก: `npm run db:seed` (ต้องมี DATABASE_URL ของ production ใน shell)
 5. ตั้ง `ADMIN_EMAILS` แล้วสมัครสมาชิกด้วยอีเมลนั้น จากนั้นรัน seed ซ้ำเพื่อเลื่อนเป็น ADMIN
+
+> ⚠️ ถ้าเปิดใช้ Preview Deployment ของ Vercel ให้ตั้ง `DATABASE_URL` ของ preview
+> ไปที่ฐานข้อมูลคนละตัว (Neon สร้าง branch ได้) ไม่งั้น preview จะ migrate ทับ production
 
 > ให้ build บน Vercel รัน `prisma generate` อัตโนมัติแล้ว (postinstall)
 > ถ้าเจอ error เรื่อง Prisma Client ตอน build ให้เช็กว่า `DIRECT_URL` ตั้งครบ
