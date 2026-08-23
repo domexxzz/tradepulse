@@ -1,5 +1,5 @@
 import { stripe } from "@/lib/stripe";
-import { upsertSubscription, recordPayment, ensureAccessGrant } from "@/lib/fulfillment";
+import { upsertSubscription, recordPayment, ensureAccessGrant, ensureTelegramGrant } from "@/lib/fulfillment";
 
 /**
  * ซิงก์สถานะจาก Stripe Checkout Session (เรียกบนหน้า success)
@@ -20,6 +20,7 @@ export async function syncCheckoutSession(sessionId: string, userId: string): Pr
     await upsertSubscription(userId, s.metadata?.planCode, sub);
     if (s.amount_total) await recordPayment(userId, Math.round(s.amount_total / 100), s.id);
     await ensureAccessGrant(userId);
+    await ensureTelegramGrant(userId);
     return true;
   } catch {
     return false;

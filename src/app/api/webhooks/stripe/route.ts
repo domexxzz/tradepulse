@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
-import { upsertSubscription, recordPayment, ensureAccessGrant } from "@/lib/fulfillment";
+import { upsertSubscription, recordPayment, ensureAccessGrant, ensureTelegramGrant } from "@/lib/fulfillment";
 
 export async function POST(req: Request) {
   if (!stripe) return NextResponse.json({ error: "stripe disabled" }, { status: 503 });
@@ -30,6 +30,7 @@ export async function POST(req: Request) {
         await upsertSubscription(userId, planCode, sub);
         if (s.amount_total) await recordPayment(userId, Math.round(s.amount_total / 100), s.id);
         await ensureAccessGrant(userId);
+        await ensureTelegramGrant(userId);
       }
       break;
     }

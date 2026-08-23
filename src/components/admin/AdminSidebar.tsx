@@ -1,13 +1,14 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, ClipboardCheck, Star, CreditCard, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, ClipboardCheck, Star, CreditCard, Send, LogOut } from "lucide-react";
 import { signOutAction } from "@/lib/actions/account";
 import { cn } from "@/lib/utils";
 
 const links = [
   { href: "/admin", label: "แดชบอร์ด", icon: LayoutDashboard },
   { href: "/admin/access-queue", label: "คิวอนุมัติสิทธิ์", icon: ClipboardCheck },
+  { href: "/admin/telegram", label: "คิว Telegram", icon: Send },
   { href: "/admin/members", label: "สมาชิก", icon: Users },
   { href: "/admin/reviews", label: "รีวิว", icon: Star },
   { href: "/admin/plans", label: "แพ็คเกจ", icon: CreditCard },

@@ -50,3 +50,27 @@ export async function deleteReview(formData: FormData) {
   await prisma.review.delete({ where: { id } });
   revalidatePath("/admin/reviews");
 }
+
+export async function grantTelegram(formData: FormData) {
+  await requireAdmin();
+  const id = String(formData.get("grantId") ?? "");
+  if (!id) return;
+  await prisma.telegramGrant.update({
+    where: { id },
+    data: { status: "ADDED", addedAt: new Date(), removedAt: null },
+  });
+  revalidatePath("/admin/telegram");
+  revalidatePath("/admin");
+}
+
+export async function revokeTelegram(formData: FormData) {
+  await requireAdmin();
+  const id = String(formData.get("grantId") ?? "");
+  if (!id) return;
+  await prisma.telegramGrant.update({
+    where: { id },
+    data: { status: "REMOVED", removedAt: new Date() },
+  });
+  revalidatePath("/admin/telegram");
+  revalidatePath("/admin");
+}

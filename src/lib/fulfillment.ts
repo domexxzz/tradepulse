@@ -62,3 +62,12 @@ export async function ensureAccessGrant(userId: string) {
     data: { userId, status: "PENDING", tradingViewUsername: user?.tradingViewUsername ?? null },
   });
 }
+
+/** สร้างคิวขอสิทธิ์กลุ่ม Telegram เมื่อจ่ายเงิน (กันซ้ำ) */
+export async function ensureTelegramGrant(userId: string) {
+  const existing = await prisma.telegramGrant.findFirst({
+    where: { userId, status: { in: ["PENDING", "ADDED"] } },
+  });
+  if (existing) return;
+  await prisma.telegramGrant.create({ data: { userId, status: "PENDING" } });
+}

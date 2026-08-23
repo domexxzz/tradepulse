@@ -32,6 +32,7 @@ model User {
   subscriptions Subscription[]
   accessGrants  AccessGrant[]
   payments      Payment[]
+  telegramGrants TelegramGrant[]
 }
 
 model Account {
@@ -147,4 +148,17 @@ model Signal {
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+}
+
+model TelegramGrant {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status    String    @default("PENDING") // PENDING | ADDED | REMOVED
+  note      String?
+  addedAt   DateTime?
+  removedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([status])
 }
