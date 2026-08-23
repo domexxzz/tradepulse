@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin";
 import { plans } from "@/config/plans";
 import { recordPayment, ensureAccessGrant, ensureTelegramGrant } from "@/lib/fulfillment";
+import { formatTHB } from "@/lib/utils";
+import { sendAdminAlert } from "@/lib/telegram";
 
 /** สร้างออเดอร์ QR แล้วพาไปหน้าชำระเงิน */
 export async function createQrOrder(formData: FormData) {
@@ -41,6 +43,15 @@ export async function submitSlip(_prev: SlipState, formData: FormData): Promise<
     where: { id: orderId },
     data: { slipData: slip, status: "SUBMITTED" },
   });
+
+  const plan = plans.find((p) => p.id === order.planCode);
+  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+  await sendAdminAlert(
+    `🧾 สลิปใหม่รอตรวจ
+สมาชิก: ${session.user.name ?? session.user.email}
+แพ็ก: ${plan?.name ?? order.planCode} · ${formatTHB(order.amountTHB)}
+ตรวจที่: ${base}/admin/orders`
+  );
   revalidatePath(`/account/pay/${orderId}`);
   return { ok: true };
 }

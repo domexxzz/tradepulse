@@ -65,3 +65,24 @@ export async function sendToTopic(timeframe: Timeframe, text: string) {
   if (!data.ok) throw new Error(`Telegram error: ${data.description ?? "unknown"}`);
   return data;
 }
+
+/** แจ้งเตือนแอดมิน (ข้อความธรรมดา) — ตั้ง TELEGRAM_ADMIN_CHAT_ID */
+export async function sendAdminAlert(text: string) {
+  const adminChat = process.env.TELEGRAM_ADMIN_CHAT_ID;
+  const adminTopic = process.env.TELEGRAM_ADMIN_TOPIC_ID;
+  if (!TOKEN || !adminChat) return;
+  try {
+    await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        chat_id: adminChat,
+        message_thread_id: adminTopic ? Number(adminTopic) : undefined,
+        text,
+        disable_web_page_preview: true,
+      }),
+    });
+  } catch {
+    /* best-effort */
+  }
+}
