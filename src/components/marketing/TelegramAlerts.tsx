@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/Button";
-import { telegramCommunityUrl } from "@/config/site";
-import { Check, Send } from "lucide-react";
+import { Check, Lock } from "lucide-react";
 
 const points = [
   "สัญญาณ Buy / Sell พร้อม Entry, TP และ SL ครบในข้อความเดียว",
@@ -10,16 +9,17 @@ const points = [
 ];
 
 export function TelegramAlerts() {
-  const tgHref = telegramCommunityUrl || "#pricing";
   return (
     <section id="telegram" className="border-y border-border bg-surface py-20">
       <div className="container-x grid items-center gap-12 lg:grid-cols-2">
         <div>
-          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-brand">Telegram Alerts</p>
+          <p className="mb-3 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-brand">
+            <Lock className="h-3.5 w-3.5" /> Telegram Alerts · เฉพาะสมาชิก
+          </p>
           <h2 className="font-display text-3xl font-bold sm:text-4xl">สัญญาณส่งเข้า Telegram แบบเรียลไทม์</h2>
           <p className="mt-3 max-w-xl text-muted">
-            เชื่อมสัญญาณจากอินดิเคเตอร์เข้ากลุ่ม Telegram อัตโนมัติ — แยกห้องตามไทม์เฟรม
-            ให้คุณรับจังหวะเข้าเทรดได้ทันทีทุกที่
+            สมาชิกจะได้รับสิทธิ์เข้ากลุ่ม Telegram ที่เชื่อมสัญญาณจากอินดิเคเตอร์อัตโนมัติ —
+            แยกห้องตามไทม์เฟรม รับจังหวะเข้าเทรดได้ทันทีทุกที่
           </p>
           <ul className="mt-6 space-y-3">
             {points.map((p) => (
@@ -30,13 +30,11 @@ export function TelegramAlerts() {
             ))}
           </ul>
           <div className="mt-8">
-            <Button href={tgHref} size="lg">
-              <Send className="h-4 w-4" /> เข้ากลุ่ม Telegram
-            </Button>
+            <Button href="#pricing" size="lg">สมัครเพื่อเข้ากลุ่ม Telegram</Button>
           </div>
+          <p className="mt-3 text-xs text-muted">🔒 เข้ากลุ่มได้เฉพาะสมาชิก — ทีมงานจะส่งลิงก์เชิญกลุ่มให้หลังสมัคร</p>
         </div>
 
-        {/* mock telegram message */}
         <div className="mx-auto w-full max-w-sm">
           <div className="rounded-2xl border border-border bg-background p-4 shadow-[0_20px_60px_-30px_rgba(0,0,0,0.6)]">
             <div className="flex items-center gap-2.5">

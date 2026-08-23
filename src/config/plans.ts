@@ -36,6 +36,7 @@ export const plans: Plan[] = [
 ];
 
 export const planIncludes: string[] = [
+  "เข้ากลุ่ม Telegram รับสัญญาณสด (เฉพาะสมาชิก)",
   "อินดิเคเตอร์ครบทุกฟีเจอร์ (ใช้บน TradingView)",
   "สัญญาณ Buy / Sell พร้อม Entry / TP / SL",
   "อัปเดตฟังก์ชันใหม่ตลอดอายุสมาชิก",

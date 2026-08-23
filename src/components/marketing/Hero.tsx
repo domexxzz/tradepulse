@@ -1,6 +1,5 @@
 import Image from "next/image";
 import { Button } from "@/components/ui/Button";
-import { telegramCommunityUrl } from "@/config/site";
 import { ShieldCheck, Zap, Send, LineChart } from "lucide-react";
 
 const badges = [
@@ -10,7 +9,6 @@ const badges = [
 ];
 
 export function Hero() {
-  const tgHref = telegramCommunityUrl || "#telegram";
   return (
     <section id="top" className="hero-backdrop relative overflow-hidden pt-28 pb-16 sm:pt-32 sm:pb-20">
       <div className="container-x grid items-center gap-12 lg:grid-cols-2">
@@ -30,7 +28,7 @@ export function Hero() {
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Button href="#pricing" size="lg">เริ่มใช้งาน</Button>
-            <Button href={tgHref} variant="outline" size="lg">เข้ากลุ่ม Telegram</Button>
+            <Button href="#results" variant="outline" size="lg">ดูผลลัพธ์จริง</Button>
           </div>
 
           <div className="mt-7 flex flex-wrap gap-x-5 gap-y-2">
