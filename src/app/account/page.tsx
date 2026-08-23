@@ -5,7 +5,7 @@ import { syncCheckoutSession } from "@/lib/stripe-sync";
 import { prisma } from "@/lib/prisma";
 import { plans } from "@/config/plans";
 import { formatTHB } from "@/lib/utils";
-import { CheckCircle2, AlertCircle, LineChart, PartyPopper } from "lucide-react";
+import { CheckCircle2, AlertCircle, LineChart, PartyPopper, Send } from "lucide-react";
 
 export default async function AccountOverview({
   searchParams,
@@ -24,6 +24,7 @@ export default async function AccountOverview({
   const { sub, isActive } = await getUserSubscription(userId);
   const user = await prisma.user.findUnique({ where: { id: userId } });
   const plan = plans.find((p) => p.id === sub?.planCode);
+  const telegramInvite = process.env.TELEGRAM_INVITE_URL;
 
   return (
     <div className="space-y-6">
@@ -79,6 +80,22 @@ export default async function AccountOverview({
           </Link>
         </div>
       </div>
+
+      {isActive && (
+        <div className="card-surface rounded-2xl p-6">
+          <div className="flex items-center gap-2 text-sm text-muted">
+            <Send className="h-4 w-4 text-brand" />
+            กลุ่มสัญญาณ Telegram (เฉพาะสมาชิก)
+          </div>
+          {telegramInvite ? (
+            <a href={telegramInvite} target="_blank" rel="noopener noreferrer" className="mt-4 inline-block rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-background transition-colors hover:bg-brand-strong">
+              เข้ากลุ่ม Telegram
+            </a>
+          ) : (
+            <p className="mt-2 text-sm text-muted">ทีมงานจะส่งลิงก์เชิญกลุ่ม Telegram ให้เร็ว ๆ นี้ (หรือติดต่อผ่านหน้าช่วยเหลือ)</p>
+          )}
+        </div>
+      )}
 
       {!isActive && (
         <div className="rounded-2xl border border-brand/30 bg-brand/5 p-6">
