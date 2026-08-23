@@ -11,6 +11,7 @@ import { HowItWorks } from "@/components/marketing/HowItWorks";
 import { CoreFeatures } from "@/components/marketing/CoreFeatures";
 import { AllFeatures } from "@/components/marketing/AllFeatures";
 import { Demo } from "@/components/marketing/Demo";
+import { RealResults } from "@/components/marketing/RealResults";
 import { Pricing } from "@/components/marketing/Pricing";
 import { Benefits } from "@/components/marketing/Benefits";
 import { FAQ } from "@/components/marketing/FAQ";
@@ -33,6 +34,7 @@ export default function Home() {
         <CoreFeatures />
         <AllFeatures />
         <Demo />
+        <RealResults />
         <Pricing />
         <Benefits />
         <FAQ />

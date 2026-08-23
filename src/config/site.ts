@@ -22,6 +22,7 @@ export const site = {
     { label: "กราฟ", href: "#chart" },
     { label: "วิธีทำงาน", href: "#how" },
     { label: "เดโม", href: "#demo" },
+    { label: "ผลลัพธ์", href: "#results" },
     { label: "ราคา", href: "#pricing" },
     { label: "คำถามพบบ่อย", href: "#faq" },
   ],
