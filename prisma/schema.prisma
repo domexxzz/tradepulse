@@ -33,6 +33,7 @@ model User {
   accessGrants  AccessGrant[]
   payments      Payment[]
   telegramGrants TelegramGrant[]
+  slipOrders    SlipOrder[]
 }
 
 model Account {
@@ -159,6 +160,21 @@ model TelegramGrant {
   addedAt   DateTime?
   removedAt DateTime?
   createdAt DateTime  @default(now())
+
+  @@index([status])
+}
+
+model SlipOrder {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planCode   String
+  amountTHB  Int
+  status     String    @default("PENDING") // PENDING | SUBMITTED | APPROVED | REJECTED
+  slipData   String?   // base64 data URL ของสลิป
+  note       String?
+  reviewedAt DateTime?
+  createdAt  DateTime  @default(now())
 
   @@index([status])
 }

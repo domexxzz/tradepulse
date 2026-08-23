@@ -1,6 +1,7 @@
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { plans, planIncludes } from "@/config/plans";
-import { paymentsEnabled } from "@/config/site";
+import { paymentsEnabled, paymentMode } from "@/config/site";
+import { createQrOrder } from "@/lib/actions/payment";
 import { formatTHB } from "@/lib/utils";
 import { CheckoutButton } from "./CheckoutButton";
 import { Check } from "lucide-react";
@@ -47,14 +48,15 @@ export function Pricing() {
                 )}
 
                 <div className="mt-6">
-                  {paymentsEnabled ? (
-                    <CheckoutButton planCode={p.id} className={cls}>
-                      สมัครสมาชิก
-                    </CheckoutButton>
+                  {paymentMode === "qr" ? (
+                    <form action={createQrOrder}>
+                      <input type="hidden" name="planCode" value={p.id} />
+                      <button className={cls}>สมัคร · โอนผ่าน QR</button>
+                    </form>
+                  ) : paymentsEnabled ? (
+                    <CheckoutButton planCode={p.id} className={cls}>สมัครสมาชิก</CheckoutButton>
                   ) : (
-                    <a href="/register" className={cls}>
-                      สมัครบัญชี เริ่มต้นใช้งาน
-                    </a>
+                    <a href="/register" className={cls}>สมัครบัญชี</a>
                   )}
                 </div>
               </div>

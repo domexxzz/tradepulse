@@ -104,3 +104,6 @@ export const chartExamples: ChartExample[] = [
 
 /** ลิงก์กลุ่ม Telegram community (ตั้งใน env — ว่าง = ปุ่มลิงก์ไป pricing แทน) */
 export const telegramCommunityUrl = process.env.NEXT_PUBLIC_TELEGRAM_COMMUNITY_URL || "";
+
+/** โหมดชำระเงิน: "qr" (PromptPay + แนบสลิป) หรือ "stripe" */
+export const paymentMode = (process.env.NEXT_PUBLIC_PAYMENT_MODE || "qr") as "qr" | "stripe";
