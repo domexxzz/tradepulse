@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { sendToTopic, formatSignal, telegramEnabled } from "@/lib/telegram";
+import { prisma } from "@/lib/prisma";
+
+export const dynamic = "force-dynamic";
 
 const schema = z.object({
   timeframe: z.enum(["M5", "M15", "M30", "1H"]),
@@ -14,11 +17,10 @@ const schema = z.object({
   secret: z.string().optional(),
 });
 
-export async function POST(req: Request) {
-  if (!telegramEnabled) {
-    return NextResponse.json({ error: "ยังไม่ได้ตั้งค่า Telegram" }, { status: 503 });
-  }
+const str = (v: unknown) => (v === undefined || v === null ? null : String(v));
 
+/** รับสัญญาณ: เก็บลง DB (โชว์บนเว็บ) + ส่งเข้า Telegram */
+export async function POST(req: Request) {
   let body: unknown;
   try {
     body = await req.json();
@@ -31,17 +33,51 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "invalid payload" }, { status: 400 });
   }
 
-  // auth: header x-signal-secret หรือ field secret ใน body (สำหรับ TradingView alert ที่ตั้ง header ไม่ได้)
   const secret = req.headers.get("x-signal-secret") ?? parsed.data.secret;
   if (!process.env.TELEGRAM_SIGNAL_SECRET || secret !== process.env.TELEGRAM_SIGNAL_SECRET) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
+  const d = parsed.data;
+
+  // 1) เก็บลง DB สำหรับ Live Feed บนเว็บ (ไม่ให้ DB ล่มมากระทบการส่ง Telegram)
   try {
-    const text = formatSignal(parsed.data);
-    await sendToTopic(parsed.data.timeframe, text);
-    return NextResponse.json({ ok: true });
+    await prisma.signal.create({
+      data: {
+        timeframe: d.timeframe,
+        side: d.side ?? null,
+        symbol: d.symbol ?? "XAUUSD",
+        entry: str(d.entry),
+        tp: str(d.tp),
+        sl: str(d.sl),
+        note: d.note ?? null,
+      },
+    });
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : "send failed" }, { status: 502 });
+    console.error("signal store failed:", e);
+  }
+
+  // 2) ส่งเข้า Telegram (ถ้าตั้งค่าไว้)
+  if (telegramEnabled) {
+    try {
+      await sendToTopic(d.timeframe, formatSignal(d));
+    } catch (e) {
+      return NextResponse.json({ ok: true, telegram: false, error: e instanceof Error ? e.message : "telegram failed" });
+    }
+  }
+
+  return NextResponse.json({ ok: true });
+}
+
+/** ดึงสัญญาณล่าสุดสำหรับแสดงบนเว็บ (อ่านอย่างเดียว) */
+export async function GET() {
+  try {
+    const signals = await prisma.signal.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 12,
+    });
+    return NextResponse.json({ signals });
+  } catch {
+    return NextResponse.json({ signals: [] });
   }
 }

@@ -23,6 +23,7 @@ export const site = {
     { label: "วิธีทำงาน", href: "#how" },
     { label: "เดโม", href: "#demo" },
     { label: "ผลลัพธ์", href: "#results" },
+    { label: "สัญญาณสด", href: "#signals" },
     { label: "ราคา", href: "#pricing" },
     { label: "คำถามพบบ่อย", href: "#faq" },
   ],

@@ -134,3 +134,17 @@ model Review {
   isApproved Boolean  @default(false)
   createdAt  DateTime @default(now())
 }
+
+model Signal {
+  id        String   @id @default(cuid())
+  timeframe String
+  side      String?
+  symbol    String?
+  entry     String?
+  tp        String?
+  sl        String?
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
