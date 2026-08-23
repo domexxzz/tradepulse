@@ -81,3 +81,17 @@ export async function GET() {
     return NextResponse.json({ signals: [] });
   }
 }
+
+/** ล้างสัญญาณทั้งหมด (แอดมิน — auth ด้วย secret) */
+export async function DELETE(req: Request) {
+  const secret = req.headers.get("x-signal-secret") ?? new URL(req.url).searchParams.get("secret");
+  if (!process.env.TELEGRAM_SIGNAL_SECRET || secret !== process.env.TELEGRAM_SIGNAL_SECRET) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  try {
+    const r = await prisma.signal.deleteMany({});
+    return NextResponse.json({ ok: true, deleted: r.count });
+  } catch {
+    return NextResponse.json({ error: "delete failed" }, { status: 500 });
+  }
+}
