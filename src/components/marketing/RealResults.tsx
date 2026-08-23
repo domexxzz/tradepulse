@@ -53,9 +53,32 @@ export function RealResults() {
           </figure>
         </div>
 
+        {/* performance / equity curve */}
+        <figure className="card-surface mt-6 overflow-hidden rounded-2xl p-1.5">
+          <div className="mb-1 flex flex-wrap items-center justify-between gap-2 px-2 pt-1">
+            <span className="text-sm font-semibold">ผลการทำงานสะสมของระบบ (ย้อนหลัง)</span>
+            <a
+              href="https://www.tradingview.com/x/wtpTag6b/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-brand hover:underline"
+            >
+              แสดงผลบน TradingView <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+          <Image
+            src="/images/performance-curve.png"
+            alt="เส้นผลการทำงานสะสมของระบบ TradePulse จากสัญญาณย้อนหลัง แสดงบน TradingView"
+            width={1764}
+            height={509}
+            className="h-auto w-full rounded-xl border border-border"
+            sizes="100vw"
+          />
+        </figure>
+
         <p className="mx-auto mt-6 max-w-3xl text-center text-xs text-muted">
-          ภาพและคลิปเป็นการใช้งานจริงเพื่อประกอบการอธิบาย ไม่ใช่คำแนะนำการลงทุน •
-          ผลการเทรดในอดีตไม่ได้รับประกันผลในอนาคต การเทรดมีความเสี่ยง
+          ภาพ คลิป และเส้นผลการทำงานเป็นข้อมูลย้อนหลังเพื่อประกอบการอธิบายการทำงานของระบบ
+          ไม่ใช่คำแนะนำการลงทุน • ผลในอดีตไม่ได้รับประกันผลในอนาคต การเทรดมีความเสี่ยง
         </p>
       </div>
     </section>

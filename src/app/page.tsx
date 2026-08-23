@@ -12,6 +12,7 @@ import { CoreFeatures } from "@/components/marketing/CoreFeatures";
 import { AllFeatures } from "@/components/marketing/AllFeatures";
 import { Demo } from "@/components/marketing/Demo";
 import { RealResults } from "@/components/marketing/RealResults";
+import { BacktestStats } from "@/components/marketing/BacktestStats";
 import { LiveSignals } from "@/components/marketing/LiveSignals";
 import { Pricing } from "@/components/marketing/Pricing";
 import { Benefits } from "@/components/marketing/Benefits";
@@ -36,6 +37,7 @@ export default function Home() {
         <AllFeatures />
         <Demo />
         <RealResults />
+        <BacktestStats />
         <LiveSignals />
         <Pricing />
         <Benefits />
