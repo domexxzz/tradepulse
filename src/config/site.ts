@@ -24,6 +24,7 @@ export const site = {
     { label: "เดโม", href: "#demo" },
     { label: "ผลลัพธ์", href: "#results" },
     { label: "สัญญาณสด", href: "#signals" },
+    { label: "Telegram", href: "#telegram" },
     { label: "ราคา", href: "#pricing" },
     { label: "คำถามพบบ่อย", href: "#faq" },
   ],
@@ -100,3 +101,6 @@ export const chartExamples: ChartExample[] = [
       "โซน FVG และ Order Block ที่ระบบตีให้ พร้อมสัญญาณ LONG / SELL, ระดับ NEXT SUPPLY / NEXT DEMAND และกล่องสถานะแผนเทรด",
   },
 ];
+
+/** ลิงก์กลุ่ม Telegram community (ตั้งใน env — ว่าง = ปุ่มลิงก์ไป pricing แทน) */
+export const telegramCommunityUrl = process.env.NEXT_PUBLIC_TELEGRAM_COMMUNITY_URL || "";

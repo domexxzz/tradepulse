@@ -7,8 +7,8 @@ export function RealResults() {
     <section id="results" className="py-20">
       <div className="container-x">
         <SectionHeading
-          eyebrow="ผลลัพธ์จริง"
-          title="อินดิเคเตอร์ทำงานจริงบนกราฟทองคำ"
+          eyebrow="โปร่งใส · พิสูจน์ได้"
+          title="ผลงานจริง ตรวจสอบได้บน TradingView"
           subtitle="คลิปและภาพจากการใช้งานจริงบน TradingView แสดง Trend, สัญญาณ และการวางแผน Entry / TP / SL"
         />
 
