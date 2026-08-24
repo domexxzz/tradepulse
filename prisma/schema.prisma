@@ -183,3 +183,13 @@ model SlipOrder {
 
   @@index([status])
 }
+
+model Subscriber {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  source         String    @default("landing")
+  createdAt      DateTime  @default(now())
+  unsubscribedAt DateTime?
+
+  @@index([createdAt])
+}

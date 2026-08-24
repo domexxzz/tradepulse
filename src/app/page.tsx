@@ -20,6 +20,7 @@ import { Reviews } from "@/components/marketing/Reviews";
 import { Pricing } from "@/components/marketing/Pricing";
 import { Benefits } from "@/components/marketing/Benefits";
 import { FAQ } from "@/components/marketing/FAQ";
+import { EmailCapture } from "@/components/marketing/EmailCapture";
 import { Disclaimer } from "@/components/marketing/Disclaimer";
 import { MobileStickyCTA } from "@/components/marketing/MobileStickyCTA";
 import { ChatWidget } from "@/components/marketing/ChatWidget";
@@ -51,6 +52,7 @@ export default function Home() {
         <Pricing />
         <Benefits />
         <FAQ />
+        <EmailCapture />
         <Disclaimer />
       </main>
       <Footer />

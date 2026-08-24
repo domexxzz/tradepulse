@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, ClipboardCheck, Star, CreditCard, Send, Receipt, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, ClipboardCheck, Star, CreditCard, Send, Receipt, Mail, LogOut } from "lucide-react";
 import { signOutAction } from "@/lib/actions/account";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +12,7 @@ const links = [
   { href: "/admin/telegram", label: "คิว Telegram", icon: Send },
   { href: "/admin/members", label: "สมาชิก", icon: Users },
   { href: "/admin/reviews", label: "รีวิว", icon: Star },
+  { href: "/admin/subscribers", label: "ผู้รับข่าวสาร", icon: Mail },
   { href: "/admin/plans", label: "แพ็คเกจ", icon: CreditCard },
 ];
 
