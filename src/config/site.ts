@@ -110,9 +110,10 @@ export const telegramCommunityUrl = process.env.NEXT_PUBLIC_TELEGRAM_COMMUNITY_U
  * ลิงก์เชิญเซิร์ฟเวอร์ Discord — ชุมชนเปิด ใครก็เข้าได้
  * ห้องเฉพาะสมาชิกในเซิร์ฟเวอร์ล็อกไว้ ปลดตามแพ็กเกจที่สมัคร (ทีมงานให้ role เอง)
  * ⚠️ ใช้ลิงก์เชิญแบบไม่หมดอายุเท่านั้น (Discord: Edit Invite Link -> Expire After = Never)
+ * ลิงก์ปัจจุบันตรวจแล้ว expires_at = null และลงที่ช่อง "ห้องรับยศ"
  */
 export const discordInviteUrl =
-  process.env.NEXT_PUBLIC_DISCORD_INVITE_URL || "https://discord.gg/gCMYgGWB2";
+  process.env.NEXT_PUBLIC_DISCORD_INVITE_URL || "https://discord.gg/kA8cRPMQwb";
 
 /** มีลิงก์ Discord ให้แสดงหรือยัง */
 export const hasDiscord = Boolean(discordInviteUrl);
