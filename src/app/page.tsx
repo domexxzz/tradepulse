@@ -20,6 +20,7 @@ import { Benefits } from "@/components/marketing/Benefits";
 import { FAQ } from "@/components/marketing/FAQ";
 import { Disclaimer } from "@/components/marketing/Disclaimer";
 import { MobileStickyCTA } from "@/components/marketing/MobileStickyCTA";
+import { ChatWidget } from "@/components/marketing/ChatWidget";
 
 export default function Home() {
   return (
@@ -48,6 +49,7 @@ export default function Home() {
       </main>
       <Footer />
       <MobileStickyCTA />
+      <ChatWidget />
     </>
   );
 }
