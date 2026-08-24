@@ -33,6 +33,7 @@ export async function approveReview(formData: FormData) {
   if (!id) return;
   await prisma.review.update({ where: { id }, data: { isApproved: true } });
   revalidatePath("/admin/reviews");
+  revalidatePath("/");
 }
 
 export async function unapproveReview(formData: FormData) {
@@ -41,6 +42,7 @@ export async function unapproveReview(formData: FormData) {
   if (!id) return;
   await prisma.review.update({ where: { id }, data: { isApproved: false } });
   revalidatePath("/admin/reviews");
+  revalidatePath("/");
 }
 
 export async function deleteReview(formData: FormData) {
@@ -49,6 +51,7 @@ export async function deleteReview(formData: FormData) {
   if (!id) return;
   await prisma.review.delete({ where: { id } });
   revalidatePath("/admin/reviews");
+  revalidatePath("/");
 }
 
 export async function grantTelegram(formData: FormData) {

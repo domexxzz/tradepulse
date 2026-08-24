@@ -16,12 +16,15 @@ import { BacktestStats } from "@/components/marketing/BacktestStats";
 import { TelegramAlerts } from "@/components/marketing/TelegramAlerts";
 import { Community } from "@/components/marketing/Community";
 import { LiveSignals } from "@/components/marketing/LiveSignals";
+import { Reviews } from "@/components/marketing/Reviews";
 import { Pricing } from "@/components/marketing/Pricing";
 import { Benefits } from "@/components/marketing/Benefits";
 import { FAQ } from "@/components/marketing/FAQ";
 import { Disclaimer } from "@/components/marketing/Disclaimer";
 import { MobileStickyCTA } from "@/components/marketing/MobileStickyCTA";
 import { ChatWidget } from "@/components/marketing/ChatWidget";
+
+export const revalidate = 300;
 
 export default function Home() {
   return (
@@ -44,6 +47,7 @@ export default function Home() {
         <TelegramAlerts />
         <Community />
         <LiveSignals />
+        <Reviews />
         <Pricing />
         <Benefits />
         <FAQ />

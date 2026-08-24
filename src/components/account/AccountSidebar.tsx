@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, CreditCard, LineChart, ReceiptText, ScrollText, MessageCircle, LogOut } from "lucide-react";
+import { LayoutDashboard, CreditCard, LineChart, ReceiptText, ScrollText, MessageCircle, Star, LogOut } from "lucide-react";
 import { signOutAction } from "@/lib/actions/account";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +11,7 @@ const links = [
   { href: "/account/orders", label: "ประวัติออเดอร์", icon: ScrollText },
   { href: "/account/tradingview", label: "TradingView", icon: LineChart },
   { href: "/account/billing", label: "ประวัติการชำระ", icon: ReceiptText },
+  { href: "/account/reviews", label: "รีวิวของฉัน", icon: Star },
   { href: "/account/support", label: "ช่วยเหลือ", icon: MessageCircle },
 ];
 

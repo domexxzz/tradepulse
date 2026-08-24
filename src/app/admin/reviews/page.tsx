@@ -11,7 +11,7 @@ export default async function AdminReviewsPage() {
 
       {reviews.length === 0 ? (
         <div className="card-surface rounded-2xl p-6 text-sm text-muted">
-          ยังไม่มีรีวิวในระบบ (รีวิวบนหน้าแรกตอนนี้เป็นตัวอย่างจาก config)
+          ยังไม่มีรีวิวในระบบ — section รีวิวบนหน้าแรกจะซ่อนไว้จนกว่าจะมีรีวิวที่อนุมัติแล้วอย่างน้อย 1 รายการ
         </div>
       ) : (
         <div className="space-y-3">
