@@ -86,7 +86,7 @@ body {
 }
 
 /* ============================================================
-   3D background (lifted, not pitch black) + graph marquee
+   3D background — layered (glow orbs + grid + grain + particles)
    ============================================================ */
 .bg3d {
   position: fixed;
@@ -95,33 +95,37 @@ body {
   pointer-events: none;
   overflow: hidden;
   background:
-    radial-gradient(55% 45% at 50% 0%, rgba(101, 230, 44, 0.12), transparent 60%),
-    radial-gradient(45% 40% at 82% 25%, rgba(64, 190, 130, 0.10), transparent 60%),
-    linear-gradient(180deg, #0d1a12 0%, #0a140e 55%, #08110c 100%);
+    radial-gradient(60% 50% at 50% -5%, rgba(101, 230, 44, 0.10), transparent 60%),
+    radial-gradient(45% 40% at 85% 18%, rgba(64, 200, 150, 0.07), transparent 60%),
+    linear-gradient(180deg, #0c1710 0%, #0a140e 55%, #08110c 100%);
 }
 .bg3d__grid {
   position: absolute;
-  left: 50%;
-  bottom: -12%;
-  width: 220%;
-  height: 68%;
-  transform: translateX(-50%) perspective(620px) rotateX(62deg);
-  transform-origin: bottom center;
+  inset: 0;
   background-image:
-    linear-gradient(to right, rgba(101, 230, 44, 0.14) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(101, 230, 44, 0.14) 1px, transparent 1px);
-  background-size: 46px 46px;
-  -webkit-mask-image: linear-gradient(to top, #000 0%, transparent 85%);
-  mask-image: linear-gradient(to top, #000 0%, transparent 85%);
-  animation: grid-move 7s linear infinite;
+    linear-gradient(rgba(101, 230, 44, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(101, 230, 44, 0.05) 1px, transparent 1px);
+  background-size: 42px 42px;
+  -webkit-mask-image: radial-gradient(ellipse 85% 60% at 50% 28%, #000 35%, transparent 100%);
+  mask-image: radial-gradient(ellipse 85% 60% at 50% 28%, #000 35%, transparent 100%);
 }
-@keyframes grid-move { from { background-position: 0 0; } to { background-position: 0 46px; } }
-
-.bg3d__orb { position: absolute; border-radius: 9999px; filter: blur(64px); opacity: 0.55; }
-.bg3d__orb--a { top: -6%; left: 8%; width: 340px; height: 340px; background: rgba(101, 230, 44, 0.16); animation: orb-a 16s ease-in-out infinite alternate; }
-.bg3d__orb--b { top: 18%; right: 4%; width: 300px; height: 300px; background: rgba(64, 200, 150, 0.14); animation: orb-b 20s ease-in-out infinite alternate; }
-@keyframes orb-a { from { transform: translate3d(0,0,0); } to { transform: translate3d(40px, 30px, 0); } }
-@keyframes orb-b { from { transform: translate3d(0,0,0); } to { transform: translate3d(-46px, 24px, 0); } }
+.bg3d__grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.bg3d__orb { position: absolute; border-radius: 9999px; filter: blur(70px); opacity: 0.6; }
+.bg3d__orb--a { top: -8%; left: 6%; width: 380px; height: 380px; background: rgba(101, 230, 44, 0.16); animation: floatG 18s ease-in-out infinite; }
+.bg3d__orb--b { top: 20%; right: 2%; width: 320px; height: 320px; background: rgba(64, 200, 150, 0.13); animation: floatG 22s ease-in-out infinite reverse; }
+.bg3d__orb--c { bottom: -12%; left: 42%; width: 300px; height: 300px; background: rgba(60, 168, 30, 0.12); animation: floatG 26s ease-in-out infinite; }
+@keyframes floatG {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(28px, -22px) scale(1.08); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bg3d__orb { animation: none; }
+}
 
 /* graph marquee */
 .marquee-mask {
