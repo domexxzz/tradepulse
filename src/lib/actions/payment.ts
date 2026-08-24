@@ -5,7 +5,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin";
 import { plans } from "@/config/plans";
-import { recordPayment, ensureAccessGrant, ensureTelegramGrant } from "@/lib/fulfillment";
+import { recordPayment, ensureAccessGrant, ensureTelegramGrant, ensureDiscordRole } from "@/lib/fulfillment";
 import { formatTHB } from "@/lib/utils";
 import { sendAdminAlert } from "@/lib/telegram";
 
@@ -74,6 +74,7 @@ export async function approveOrder(formData: FormData) {
   await recordPayment(order.userId, order.amountTHB, `slip_${order.id}`);
   await ensureAccessGrant(order.userId);
   await ensureTelegramGrant(order.userId);
+  await ensureDiscordRole(order.userId, order.planCode);
   await prisma.slipOrder.update({ where: { id }, data: { status: "APPROVED", reviewedAt: new Date() } });
 
   revalidatePath("/admin/orders");

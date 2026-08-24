@@ -23,6 +23,8 @@ model User {
   passwordHash        String?
   role                String    @default("USER")
   tradingViewUsername String?
+  discordUserId   String?  @unique
+  discordUsername String?
   lineUserId          String?
   stripeCustomerId    String?   @unique
   createdAt           DateTime  @default(now())

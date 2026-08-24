@@ -71,3 +71,24 @@ export async function ensureTelegramGrant(userId: string) {
   if (existing) return;
   await prisma.telegramGrant.create({ data: { userId, status: "PENDING" } });
 }
+
+/**
+ * ให้ยศ Discord ตามแพ็กเกจ — ทำงานเฉพาะเมื่อตั้งค่าบอทแล้วและสมาชิกผูกบัญชีไว้
+ * ห้ามให้ขั้นตอนนี้ทำให้การอนุมัติออเดอร์ล้ม จึงกลืน error ไว้ทั้งหมด
+ */
+export async function ensureDiscordRole(userId: string, planCode: string) {
+  const { discordBotEnabled, syncDiscordRoles } = await import("@/lib/discord");
+  if (!discordBotEnabled) return;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { discordUserId: true },
+  });
+  if (!user?.discordUserId) return;
+
+  try {
+    await syncDiscordRoles(user.discordUserId, planCode as never);
+  } catch {
+    // ปล่อยผ่าน แอดมินสั่งให้ยศซ้ำได้จากหน้าแอดมิน
+  }
+}
