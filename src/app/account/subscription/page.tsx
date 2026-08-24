@@ -5,6 +5,7 @@ import { paymentMode } from "@/config/site";
 import { formatTHB } from "@/lib/utils";
 import { createQrOrder } from "@/lib/actions/payment";
 import { CheckoutButton } from "@/components/marketing/CheckoutButton";
+import { GuaranteeLine } from "@/components/marketing/GuaranteeBadge";
 import { Check } from "lucide-react";
 
 function PlanCards() {
@@ -34,6 +35,7 @@ function PlanCards() {
               ) : (
                 <CheckoutButton planCode={p.id} className={cls}>สมัครสมาชิก</CheckoutButton>
               )}
+              <GuaranteeLine className="mt-3" />
             </div>
           </div>
         );

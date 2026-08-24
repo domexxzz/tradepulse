@@ -4,6 +4,7 @@ import { paymentsEnabled, paymentMode } from "@/config/site";
 import { createQrOrder } from "@/lib/actions/payment";
 import { formatTHB } from "@/lib/utils";
 import { CheckoutButton } from "./CheckoutButton";
+import { GuaranteeStrip, GuaranteeLine } from "./GuaranteeBadge";
 import { Check } from "lucide-react";
 
 export function Pricing() {
@@ -15,6 +16,8 @@ export function Pricing() {
           title="เลือกแพ็กเกจที่เหมาะกับคุณ"
           subtitle="ทุกแพ็กเกจได้ฟีเจอร์ครบเหมือนกัน ต่างกันที่ระยะเวลาและราคาเฉลี่ยต่อเดือน"
         />
+
+        <GuaranteeStrip />
 
         <div className="mt-12 grid gap-5 lg:grid-cols-4">
           {plans.map((p) => {
@@ -58,6 +61,7 @@ export function Pricing() {
                   ) : (
                     <a href="/register" className={cls}>สมัครบัญชี</a>
                   )}
+                  <GuaranteeLine className="mt-3" />
                 </div>
               </div>
             );
@@ -81,7 +85,12 @@ export function Pricing() {
             ))}
           </ul>
           <ul className="mt-6 space-y-1.5 border-t border-border pt-5 text-xs text-muted">
-            <li>• ยกเลิกได้ตามเงื่อนไขแพ็กเกจ</li>
+            <li>
+              •{" "}
+              {paymentMode === "qr"
+                ? "ไม่ต่ออายุอัตโนมัติ ไม่มีการตัดเงินโดยไม่แจ้ง"
+                : "ยกเลิกได้เองในหน้าบัญชี"}
+            </li>
             <li>• การสมัครสมาชิกไม่รับประกันผลกำไร</li>
             <li>• ตรวจสอบ <a href="/refund" className="text-brand hover:underline">รายละเอียดการคืนเงิน</a> ก่อนชำระเงิน</li>
           </ul>
