@@ -61,7 +61,7 @@ export default async function AccountOverview({
             </p>
           )}
           {!isActive && (
-            <Link href="/#pricing" className="mt-4 inline-block text-sm text-brand hover:underline">
+            <Link href="/account/subscription" className="mt-4 inline-block text-sm text-brand hover:underline">
               เลือกแพ็คเกจ →
             </Link>
           )}
@@ -104,7 +104,7 @@ export default async function AccountOverview({
             <span className="font-semibold text-brand">
               {formatTHB(Math.min(...plans.map((p) => p.priceTHB)))}/เดือน
             </span>{" "}
-            — <Link href="/#pricing" className="underline">ดูแพ็คเกจทั้งหมด</Link>
+            — <Link href="/account/subscription" className="underline">ดูแพ็คเกจทั้งหมด</Link>
           </p>
         </div>
       )}
