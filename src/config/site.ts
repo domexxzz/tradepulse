@@ -17,17 +17,18 @@ export const site = {
     email: process.env.NEXT_PUBLIC_CONTACT_EMAIL || "",
   },
 
+  // ใช้ "/#..." เพื่อให้ลิงก์ใน Footer ใช้ได้จากทุกหน้า ไม่ใช่เฉพาะหน้าแรก
   nav: [
-    { label: "ฟีเจอร์", href: "#features" },
-    { label: "กราฟ", href: "#chart" },
-    { label: "วิธีทำงาน", href: "#how" },
-    { label: "เดโม", href: "#demo" },
-    { label: "ผลลัพธ์", href: "#results" },
-    { label: "สัญญาณสด", href: "#signals" },
-    { label: "Telegram", href: "#telegram" },
-    { label: "ชุมชน", href: "#community" },
-    { label: "ราคา", href: "#pricing" },
-    { label: "คำถามพบบ่อย", href: "#faq" },
+    { label: "ฟีเจอร์", href: "/#features" },
+    { label: "กราฟ", href: "/#chart" },
+    { label: "วิธีทำงาน", href: "/#how" },
+    { label: "เดโม", href: "/#demo" },
+    { label: "ผลลัพธ์", href: "/#results" },
+    { label: "สัญญาณสด", href: "/#signals" },
+    { label: "Telegram", href: "/#telegram" },
+    { label: "ชุมชน", href: "/#community" },
+    { label: "ราคา", href: "/#pricing" },
+    { label: "คำถามพบบ่อย", href: "/#faq" },
   ],
 } as const;
 
