@@ -46,8 +46,8 @@ export function BgParticles() {
           if (p.y < 0 || p.y > h) p.vy *= -1;
         }
         ctx!.beginPath();
-        ctx!.arc(p.x, p.y, 1.4, 0, Math.PI * 2);
-        ctx!.fillStyle = "rgba(101, 230, 44, 0.5)";
+        ctx!.arc(p.x, p.y, 1.7, 0, Math.PI * 2);
+        ctx!.fillStyle = "rgba(101, 230, 44, 0.75)";
         ctx!.fill();
       }
       for (let i = 0; i < pts.length; i++) {
@@ -56,7 +56,7 @@ export function BgParticles() {
           const dy = pts[i].y - pts[j].y;
           const d = Math.hypot(dx, dy);
           if (d < LINK) {
-            ctx!.strokeStyle = `rgba(101, 230, 44, ${0.12 * (1 - d / LINK)})`;
+            ctx!.strokeStyle = `rgba(101, 230, 44, ${0.18 * (1 - d / LINK)})`;
             ctx!.lineWidth = 1;
             ctx!.beginPath();
             ctx!.moveTo(pts[i].x, pts[i].y);
