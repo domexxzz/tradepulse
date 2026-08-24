@@ -1,4 +1,4 @@
-import { site, hasLineContact } from "@/config/site";
+import { site, hasLineContact, hasDiscord, discordInviteUrl } from "@/config/site";
 
 export function Footer() {
   const year = new Date().getFullYear();
@@ -41,10 +41,17 @@ export function Footer() {
             {hasLineContact && (
               <li><a href={site.contact.lineUrl} className="hover:text-foreground">ติดต่อผ่าน LINE</a></li>
             )}
+            {hasDiscord && (
+              <li>
+                <a href={discordInviteUrl} target="_blank" rel="noopener noreferrer" className="hover:text-foreground">
+                  ชุมชน Discord
+                </a>
+              </li>
+            )}
             {hasEmail && (
               <li><a href={`mailto:${site.contact.email}`} className="hover:text-foreground">{site.contact.email}</a></li>
             )}
-            {!hasLineContact && !hasEmail && (
+            {!hasLineContact && !hasDiscord && !hasEmail && (
               <li>ช่องทางช่วยเหลืออยู่ในหน้าบัญชีหลังเข้าสู่ระบบ</li>
             )}
           </ul>

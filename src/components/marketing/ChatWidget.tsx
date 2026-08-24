@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { MessageCircle, X, Send } from "lucide-react";
-import { site, hasLineContact } from "@/config/site";
+import { site, hasLineContact, hasDiscord, discordInviteUrl } from "@/config/site";
+import { DiscordIcon } from "@/components/common/DiscordIcon";
 
 type Msg = { role: "bot" | "user"; text: string };
 
@@ -16,6 +17,7 @@ const RULES: { k: string[]; a: string }[] = [
   { k: ["timeframe", "ไทม์เฟรม", "tf", "นาที"], a: "ใช้ได้ทุกไทม์เฟรมครับ แนะนำ M15 ขึ้นไปสำหรับการวางแผนที่ชัดเจน และดูภาพใหญ่จาก TF สูงร่วมด้วย" },
   { k: ["สินทรัพย์", "ทอง", "xauusd", "forex", "crypto", "หุ้น", "คู่"], a: "ออกแบบมาเพื่อทองคำ (XAUUSD) เป็นหลัก และใช้กับ Forex/Crypto/หุ้นได้ เพราะทำงานกับกราฟราคาทุกประเภทบน TradingView ครับ" },
   { k: ["telegram", "กลุ่ม", "สัญญาณ"], a: "สมาชิกจะได้สิทธิ์เข้ากลุ่ม Telegram ที่ส่งสัญญาณเรียลไทม์แยกตามไทม์เฟรม (M5/M15/M30/1H) — รับลิงก์เชิญในหน้าบัญชีหลังสมัครครับ" },
+  { k: ["discord", "ดิสคอร์ด", "ชุมชน", "คอมมู"], a: "เซิร์ฟเวอร์ Discord เปิดให้ทุกคนเข้าได้ฟรีเลยครับ กดปุ่ม Discord ด้านล่างได้ — ส่วนห้องเฉพาะสมาชิกจะปลดล็อกตามแพ็กเกจที่สมัคร แจ้งชื่อผู้ใช้ Discord กับทีมงานหลังสมัครเพื่อรับสิทธิ์ครับ" },
 ];
 
 const CHIPS = ["ราคาเท่าไร", "ติดตั้งยังไง", "ใช้กับอะไรได้", "ยกเลิกได้ไหม"];
@@ -96,6 +98,16 @@ export function ChatWidget() {
             >
               <MessageCircle className="h-4 w-4" /> คุยกับทีมงานจริงบน LINE
             </a>
+            {hasDiscord && (
+              <a
+                href={discordInviteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 flex items-center justify-center gap-2 rounded-full bg-[#5865F2] px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+              >
+                <DiscordIcon className="h-4 w-4" /> เข้าชุมชน Discord (ฟรี)
+              </a>
+            )}
             <form onSubmit={(e) => { e.preventDefault(); send(input); }} className="mt-2 flex items-center gap-2">
               <input
                 value={input}

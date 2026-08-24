@@ -25,6 +25,7 @@ export const site = {
     { label: "ผลลัพธ์", href: "#results" },
     { label: "สัญญาณสด", href: "#signals" },
     { label: "Telegram", href: "#telegram" },
+    { label: "ชุมชน", href: "#community" },
     { label: "ราคา", href: "#pricing" },
     { label: "คำถามพบบ่อย", href: "#faq" },
   ],
@@ -104,6 +105,17 @@ export const chartExamples: ChartExample[] = [
 
 /** ลิงก์กลุ่ม Telegram community (ตั้งใน env — ว่าง = ปุ่มลิงก์ไป pricing แทน) */
 export const telegramCommunityUrl = process.env.NEXT_PUBLIC_TELEGRAM_COMMUNITY_URL || "";
+
+/**
+ * ลิงก์เชิญเซิร์ฟเวอร์ Discord — ชุมชนเปิด ใครก็เข้าได้
+ * ห้องเฉพาะสมาชิกในเซิร์ฟเวอร์ล็อกไว้ ปลดตามแพ็กเกจที่สมัคร (ทีมงานให้ role เอง)
+ * ⚠️ ใช้ลิงก์เชิญแบบไม่หมดอายุเท่านั้น (Discord: Edit Invite Link -> Expire After = Never)
+ */
+export const discordInviteUrl =
+  process.env.NEXT_PUBLIC_DISCORD_INVITE_URL || "https://discord.gg/gCMYgGWB2";
+
+/** มีลิงก์ Discord ให้แสดงหรือยัง */
+export const hasDiscord = Boolean(discordInviteUrl);
 
 /** โหมดชำระเงิน: "qr" (PromptPay + แนบสลิป) หรือ "stripe" */
 export const paymentMode = (process.env.NEXT_PUBLIC_PAYMENT_MODE || "qr") as "qr" | "stripe";

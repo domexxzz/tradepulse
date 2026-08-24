@@ -1,4 +1,5 @@
-import { site, hasLineContact } from "@/config/site";
+import { site, hasLineContact, hasDiscord, discordInviteUrl } from "@/config/site";
+import { DiscordIcon } from "@/components/common/DiscordIcon";
 import { MessageCircle } from "lucide-react";
 
 export default function SupportPage() {
@@ -30,6 +31,25 @@ export default function SupportPage() {
           <p className="mt-4 text-sm text-muted">ช่องทางติดต่อจะแจ้งให้ทราบเร็ว ๆ นี้</p>
         )}
       </div>
+
+      {hasDiscord && (
+        <div className="card-surface rounded-2xl p-6">
+          <DiscordIcon className="h-8 w-8 text-brand" />
+          <h2 className="mt-3 font-semibold">ชุมชน Discord</h2>
+          <p className="mt-1 text-sm text-muted">
+            เข้าเซิร์ฟเวอร์แล้วแจ้งชื่อผู้ใช้ Discord ของคุณกับทีมงาน
+            เพื่อรับสิทธิ์เข้าห้องเฉพาะสมาชิกตามแพ็กเกจที่สมัคร
+          </p>
+          <a
+            href={discordInviteUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#5865F2] px-6 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+          >
+            <DiscordIcon className="h-4 w-4" /> เปิด Discord
+          </a>
+        </div>
+      )}
     </div>
   );
 }

@@ -33,7 +33,7 @@ export function Navbar() {
           <span className="font-display text-lg font-bold tracking-tight">{site.name}</span>
         </a>
 
-        <div className="hidden items-center gap-7 md:flex">
+        <div className="hidden items-center gap-6 lg:flex">
           {site.nav.map((n) => (
             <a key={n.href} href={n.href} className="text-sm text-muted transition-colors hover:text-foreground">
               {n.label}
@@ -41,7 +41,7 @@ export function Navbar() {
           ))}
         </div>
 
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="hidden items-center gap-3 lg:flex">
           <a href="/login" className="text-sm font-medium text-muted transition-colors hover:text-foreground">
             เข้าสู่ระบบ
           </a>
@@ -49,7 +49,7 @@ export function Navbar() {
         </div>
 
         <button
-          className="grid h-10 w-10 place-items-center rounded-lg text-foreground md:hidden"
+          className="grid h-10 w-10 place-items-center rounded-lg text-foreground lg:hidden"
           onClick={() => setOpen((v) => !v)}
           aria-label={open ? "ปิดเมนู" : "เปิดเมนู"}
           aria-expanded={open}
@@ -60,7 +60,7 @@ export function Navbar() {
       </nav>
 
       {open && (
-        <div id="mobile-menu" className="border-t border-border bg-background md:hidden">
+        <div id="mobile-menu" className="border-t border-border bg-background lg:hidden">
           <div className="container-x flex flex-col gap-1 py-3">
             {site.nav.map((n) => (
               <a

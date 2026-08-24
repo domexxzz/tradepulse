@@ -14,6 +14,7 @@ import { Demo } from "@/components/marketing/Demo";
 import { RealResults } from "@/components/marketing/RealResults";
 import { BacktestStats } from "@/components/marketing/BacktestStats";
 import { TelegramAlerts } from "@/components/marketing/TelegramAlerts";
+import { Community } from "@/components/marketing/Community";
 import { LiveSignals } from "@/components/marketing/LiveSignals";
 import { Pricing } from "@/components/marketing/Pricing";
 import { Benefits } from "@/components/marketing/Benefits";
@@ -41,6 +42,7 @@ export default function Home() {
         <RealResults />
         <BacktestStats />
         <TelegramAlerts />
+        <Community />
         <LiveSignals />
         <Pricing />
         <Benefits />
