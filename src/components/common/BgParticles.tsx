@@ -13,7 +13,7 @@ export function BgParticles() {
 
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const DPR = Math.min(window.devicePixelRatio || 1, 2);
-    const COUNT = 52;
+    const COUNT = 80;
     const LINK = 130;
     let w = 0, h = 0, raf = 0;
     const pts: { x: number; y: number; vx: number; vy: number }[] = [];
