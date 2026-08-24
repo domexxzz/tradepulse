@@ -1,16 +1,18 @@
 import {
-  Layers, TrendingUp, Target, Table, Activity, GitBranch, Boxes,
+  Layers, TrendingUp, TrendingDown, Target, Table, Activity, GitBranch, Boxes,
   LayoutGrid, Minus, SeparatorHorizontal, Waves,
   BellRing, Scale, Clock, BarChart3, CandlestickChart, Palette,
   Calculator, Bell, LineChart, BookOpen,
+  Droplets, Shuffle, Zap, Gauge, RefreshCw, Ban,
   type LucideIcon,
 } from "lucide-react";
 
 const map: Record<string, LucideIcon> = {
-  Layers, TrendingUp, Target, Table, Activity, GitBranch, Boxes,
+  Layers, TrendingUp, TrendingDown, Target, Table, Activity, GitBranch, Boxes,
   LayoutGrid, Minus, SeparatorHorizontal, Waves,
   BellRing, Scale, Clock, BarChart3, CandlestickChart, Palette,
   Calculator, Bell, LineChart, BookOpen,
+  Droplets, Shuffle, Zap, Gauge, RefreshCw, Ban,
 };
 
 export function Icon({ name, className }: { name: string; className?: string }) {
