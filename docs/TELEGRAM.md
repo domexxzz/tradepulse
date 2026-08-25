@@ -45,13 +45,41 @@ curl -X POST http://localhost:3000/api/signals \
 
 ผลลัพธ์: ข้อความจะไปโผล่ใน topic ตรงกับ timeframe
 
-## 4) ต่อกับ TradingView Alert
-ในหน้าตั้ง Alert ของ TradingView → Notifications → Webhook URL:
-`https://โดเมนจริง/api/signals`
-ช่อง Message ใส่ JSON (TradingView ตั้ง header ไม่ได้ จึงใส่ secret ใน body):
+## 4) ต่อกับ TradingView Alert (วิธีที่ถูกต้อง)
+
+ในหน้าตั้ง Alert ของอินดิเคเตอร์:
+
+1. **Condition** = ชื่ออินดิเคเตอร์ → เลือก **"alert() function calls only"**
+2. เปิดสวิตช์ **"ส่ง JSON ดิบไป webhook ระบบอื่น"** (`alJsonRaw`) ใน settings กลุ่ม Alert
+   และใส่ **Webhook Secret** ให้ตรงกับ `TELEGRAM_SIGNAL_SECRET` ของเว็บ
+3. **Notifications → Webhook URL** ใส่:
+   ```
+   https://โดเมนจริง/api/signals
+   ```
+4. ตารางการแจ้งเตือน = 24/7 · การหมดอายุ = ไม่หมดอายุ
+
+อินดิเคเตอร์จะส่ง JSON หน้าตาแบบนี้มาเอง:
+
 ```json
-{"secret":"<SECRET>","timeframe":"M15","side":"BUY","symbol":"XAUUSD","entry":"{{close}}"}
+{"secret":"...","symbol":"XAUUSD","side":"BUY","price":4300,"tf":"15","sl":4285,"tp1":4340,"tp2":4380}
 ```
+
+API รับให้แล้วทั้งชื่อฟิลด์แบบนี้ (`tf`/`price`/`tp1`/`tp2`) และแบบของเราเอง
+(`timeframe`/`entry`/`tp`) รวมถึงแปลง `tf` ที่เป็นตัวเลขนาที ("5","15","30","60")
+เป็น M5/M15/M30/1H ให้อัตโนมัติ — **ไม่ต้องแก้ Pine**
+
+### ⚠️ อย่าใส่ Webhook URL เป็น api.telegram.org โดยตรง
+
+การตั้ง Webhook URL เป็น `https://api.telegram.org/bot<TOKEN>/sendMessage`
+แปลว่า **โทเคนบอทถูกเก็บไว้ในหน้าตั้งค่า Alert ของ TradingView เป็นข้อความธรรมดา**
+ใครเห็นหน้าจอหรือเข้าถึงบัญชี TradingView ได้ ก็คุมบอทได้ทันที —
+โพสต์สัญญาณปลอมเข้าห้องลูกค้าที่จ่ายเงินได้เลย
+
+ยิงผ่าน `/api/signals` แทน ได้เพิ่มอีกสามอย่าง:
+
+- โทเคนบอทอยู่ฝั่งเซิร์ฟเวอร์อย่างเดียว TradingView เห็นแค่ secret ที่เพิกถอนได้
+- สัญญาณถูกบันทึกลงฐานข้อมูล → ขึ้น Live Feed บนหน้าเว็บด้วย
+- เปลี่ยนกลุ่ม/ห้องปลายทางได้จาก env ไม่ต้องไปแก้ Alert ทีละ 12 ตัว
 
 ## หมายเหตุความปลอดภัย
 - `TELEGRAM_BOT_TOKEN` และ `TELEGRAM_SIGNAL_SECRET` เป็นความลับ อยู่ใน `.env` (ไม่ขึ้น repo)

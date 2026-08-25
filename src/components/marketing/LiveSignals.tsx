@@ -10,6 +10,7 @@ interface Signal {
   symbol: string | null;
   entry: string | null;
   tp: string | null;
+  tp2: string | null;
   sl: string | null;
   createdAt: string;
 }
@@ -94,7 +95,8 @@ export function LiveSignals() {
                   <span className="rounded-md border border-border px-2 py-0.5 text-xs text-muted">{s.timeframe}</span>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
                     {s.entry && <span>Entry <b className="text-foreground">{s.entry}</b></span>}
-                    {s.tp && <span>TP <b className="text-up">{s.tp}</b></span>}
+                    {s.tp && <span>{s.tp2 ? "TP1" : "TP"} <b className="text-up">{s.tp}</b></span>}
+                    {s.tp2 && <span>TP2 <b className="text-up">{s.tp2}</b></span>}
                     {s.sl && <span>SL <b className="text-down">{s.sl}</b></span>}
                   </div>
                   <span className="ml-auto text-xs text-muted">{ago(s.createdAt)}</span>

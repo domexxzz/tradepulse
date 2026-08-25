@@ -163,6 +163,8 @@ model Signal {
   symbol    String?
   entry     String?
   tp        String?
+  /** อินดิเคเตอร์ส่ง TP มาสองชั้น (TP1/TP2) — tp คือ TP1 */
+  tp2       String?
   sl        String?
   note      String?
   createdAt DateTime @default(now())

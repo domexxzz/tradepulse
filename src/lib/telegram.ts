@@ -26,7 +26,10 @@ export interface SignalInput {
   side?: "BUY" | "SELL";
   symbol?: string;
   entry?: string | number;
+  /** TP ชั้นแรก */
   tp?: string | number;
+  /** TP ชั้นที่สอง (อินดิเคเตอร์ส่งมาเป็น tp2) */
+  tp2?: string | number;
   sl?: string | number;
   note?: string;
   text?: string;
@@ -39,7 +42,8 @@ export function formatSignal(s: SignalInput): string {
   const head = `${icon} <b>${escapeHtml(s.side ?? "SIGNAL")} ${escapeHtml(s.symbol ?? "XAUUSD")}</b> · ${s.timeframe}`;
   const lines = [head];
   if (s.entry !== undefined) lines.push(`Entry: <b>${escapeHtml(String(s.entry))}</b>`);
-  if (s.tp !== undefined) lines.push(`TP: <b>${escapeHtml(String(s.tp))}</b>`);
+  if (s.tp !== undefined) lines.push(`${s.tp2 !== undefined ? "TP1" : "TP"}: <b>${escapeHtml(String(s.tp))}</b>`);
+  if (s.tp2 !== undefined) lines.push(`TP2: <b>${escapeHtml(String(s.tp2))}</b>`);
   if (s.sl !== undefined) lines.push(`SL: <b>${escapeHtml(String(s.sl))}</b>`);
   if (s.note) lines.push(`\n${escapeHtml(s.note)}`);
   return lines.join("\n");
