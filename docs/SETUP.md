@@ -92,10 +92,19 @@ STRIPE_PRICE_YEAR=price_...
 > ให้ build บน Vercel รัน `prisma generate` อัตโนมัติแล้ว (postinstall)
 > ถ้าเจอ error เรื่อง Prisma Client ตอน build ให้เช็กว่า `DIRECT_URL` ตั้งครบ
 
+### เทสต์
+
+```bash
+npm test        # รันครั้งเดียว
+npm run test:watch
+```
+
+ครอบตรรกะที่พลาดแล้วเสียเงินจริง: การคิดวันหมดอายุ (`addMonths` สิ้นเดือน/ปีอธิกสุรทิน),
+การตัดสินว่าแพ็กเกจยังใช้ได้ไหม (`isSubscriptionActive`) และการตรวจไฟล์สลิป (`parseSlipDataUrl`)
+
 ### ที่ควรทำต่อ
 - แปลง field `status` / `role` / `interval` (String) เป็น enum ของ Postgres
 - ย้ายรูปสลิปออกจากฐานข้อมูลไป object storage เมื่อออเดอร์เริ่มเยอะ (ดู [SLIP.md](./SLIP.md))
-- เทสต์อัตโนมัติสำหรับตรรกะวันหมดอายุ/การต่ออายุ
 - i18n ภาษาอังกฤษ
 
 ## สถานะเฟส

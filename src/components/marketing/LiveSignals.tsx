@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Lock } from "lucide-react";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +29,7 @@ function ago(iso: string) {
 
 export function LiveSignals() {
   const [signals, setSignals] = useState<Signal[]>([]);
+  const [masked, setMasked] = useState(true);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -37,6 +40,7 @@ export function LiveSignals() {
         const data = await res.json();
         if (alive) {
           setSignals(Array.isArray(data.signals) ? data.signals : []);
+          setMasked(data.masked !== false);
           setLoaded(true);
         }
       } catch {
@@ -105,6 +109,21 @@ export function LiveSignals() {
             })
           )}
         </div>
+
+        {loaded && masked && signals.length > 0 && (
+          <div className="mx-auto mt-6 flex max-w-3xl flex-wrap items-center justify-center gap-x-3 gap-y-2 rounded-2xl border border-brand/25 bg-brand/5 px-5 py-4 text-center">
+            <Lock className="h-4 w-4 shrink-0 text-brand" />
+            <span className="text-sm text-muted">
+              ราคาเข้า เป้าทำกำไร และจุดตัดขาดทุน เปิดให้เฉพาะสมาชิก
+            </span>
+            <Link
+              href="#pricing"
+              className="rounded-full bg-brand px-5 py-1.5 text-sm font-semibold text-background transition-colors hover:bg-brand-strong"
+            >
+              ดูแพ็กเกจ
+            </Link>
+          </div>
+        )}
       </div>
     </section>
   );

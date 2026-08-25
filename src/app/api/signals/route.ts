@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { sendToTopic, formatSignal, telegramEnabled, TIMEFRAMES, type Timeframe } from "@/lib/telegram";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
+import { hasActiveSubscription } from "@/lib/subscription";
 
 export const dynamic = "force-dynamic";
 
@@ -125,16 +127,28 @@ export async function POST(req: Request) {
   return NextResponse.json({ ok: true, timeframe });
 }
 
-/** ดึงสัญญาณล่าสุดสำหรับแสดงบนเว็บ (อ่านอย่างเดียว) */
+/**
+ * ดึงสัญญาณล่าสุดสำหรับแสดงบนเว็บ
+ *
+ * คนทั่วไปเห็นว่ามีสัญญาณเข้าจริง (ทิศทาง สินทรัพย์ ไทม์เฟรม เวลา)
+ * แต่ราคา Entry / TP / SL ถูกซ่อนไว้ เพราะเป็นสิ่งที่เราขายเป็นสิทธิ์สมาชิก
+ * เดิมเปิดให้ทุกคนดูฟรีทั้งหมด — คนไม่จ่ายเงินแค่รีเฟรชหน้าแรกก็ได้ของเดียวกับคนจ่าย
+ */
 export async function GET() {
   try {
-    const signals = await prisma.signal.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 12,
-    });
-    return NextResponse.json({ signals });
+    const [signals, session] = await Promise.all([
+      prisma.signal.findMany({ orderBy: { createdAt: "desc" }, take: 12 }),
+      auth().catch(() => null),
+    ]);
+
+    const isMember = session?.user?.id ? await hasActiveSubscription(session.user.id) : false;
+    if (isMember) return NextResponse.json({ signals, masked: false });
+
+    // ตัดราคาออกตั้งแต่ฝั่งเซิร์ฟเวอร์ ไม่ใช่แค่ซ่อนด้วย CSS
+    const masked = signals.map((s) => ({ ...s, entry: null, tp: null, sl: null, note: null }));
+    return NextResponse.json({ signals: masked, masked: true });
   } catch {
-    return NextResponse.json({ signals: [] });
+    return NextResponse.json({ signals: [], masked: true });
   }
 }
 
