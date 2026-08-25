@@ -56,13 +56,13 @@ export function Community() {
               <AccessRow
                 icon={<Lock className="h-5 w-5" />}
                 title="ห้องเฉพาะสมาชิก"
-                desc="ปลดล็อกตามแพ็กเกจที่สมัคร ทีมงานให้สิทธิ์หลังตรวจสอบการชำระเงิน"
+                desc="ปลดล็อกตามแพ็กเกจที่สมัคร หลังยืนยันการชำระเงินและผูกบัญชี Discord"
                 tone="locked"
               />
             </div>
 
             <p className="mt-4 border-t border-border pt-4 text-xs text-muted">
-              แจ้งชื่อผู้ใช้ Discord กับทีมงานหลังสมัคร เพื่อรับสิทธิ์เข้าห้องสมาชิก
+              ผูกบัญชี Discord ได้เองในหน้าบัญชี → เมนู Discord แล้วรับยศเข้าห้องสมาชิกทันที
             </p>
           </div>
         </div>
