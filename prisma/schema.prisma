@@ -25,6 +25,9 @@ model User {
   tradingViewUsername String?
   discordUserId   String?  @unique
   discordUsername String?
+  // รู้ได้ตอนสมาชิกกดเข้ากลุ่มผ่านลิงก์ส่วนตัว — ใช้ตอนนำออกเมื่อหมดอายุ
+  telegramUserId   String?  @unique
+  telegramUsername String?
   lineUserId          String?
   stripeCustomerId    String?   @unique
   createdAt           DateTime  @default(now())
@@ -171,13 +174,19 @@ model TelegramGrant {
   id        String    @id @default(cuid())
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  status    String    @default("PENDING") // PENDING | ADDED | REMOVED
+  status    String    @default("PENDING") // PENDING | ADDED | REMOVED | PENDING_REMOVE
   note      String?
+  /** ลิงก์เชิญส่วนตัวของสมาชิกรายนี้ (ใช้ได้ครั้งเดียว ผูกกับคิวใบนี้) */
+  inviteLink String?
+  /** Telegram user id ที่เข้ากลุ่มด้วยลิงก์นี้ — ใช้ตอนนำออก */
+  telegramUserId String?
+  invitedAt DateTime?
   addedAt   DateTime?
   removedAt DateTime?
   createdAt DateTime  @default(now())
 
   @@index([status])
+  @@index([userId])
 }
 
 model SlipOrder {

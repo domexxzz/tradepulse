@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin";
 import { plans } from "@/config/plans";
 import { activateMembership, expireSubscriptionById, syncTradingViewGrant } from "@/lib/lifecycle";
+import { removeGroupMember, telegramGroupManaged } from "@/lib/telegram";
 
 export async function grantAccess(formData: FormData) {
   await requireAdmin();
@@ -68,13 +69,34 @@ export async function grantTelegram(formData: FormData) {
   revalidatePath("/admin");
 }
 
+/**
+ * นำออกจากกลุ่ม — พยายามเตะออกจริงก่อนถ้ารู้ว่าเป็นใคร
+ * เตะไม่สำเร็จก็ยังบันทึกสถานะให้ พร้อมบอกเหตุผลไว้ในโน้ต ให้แอดมินไปทำมือต่อ
+ */
 export async function revokeTelegram(formData: FormData) {
   await requireAdmin();
   const id = String(formData.get("grantId") ?? "");
   if (!id) return;
+
+  const grant = await prisma.telegramGrant.findUnique({
+    where: { id },
+    select: { telegramUserId: true, user: { select: { telegramUserId: true } } },
+  });
+  const telegramUserId = grant?.telegramUserId ?? grant?.user.telegramUserId;
+
+  let note = "แอดมินนำออกเอง";
+  if (telegramGroupManaged && telegramUserId) {
+    try {
+      await removeGroupMember(telegramUserId);
+      note = "นำออกจากกลุ่มแล้ว (แอดมินสั่ง)";
+    } catch (e) {
+      note = `เตะออกจากกลุ่มไม่สำเร็จ: ${e instanceof Error ? e.message : "ไม่ทราบสาเหตุ"}`;
+    }
+  }
+
   await prisma.telegramGrant.update({
     where: { id },
-    data: { status: "REMOVED", removedAt: new Date() },
+    data: { status: "REMOVED", removedAt: new Date(), note },
   });
   revalidatePath("/admin/telegram");
   revalidatePath("/admin");

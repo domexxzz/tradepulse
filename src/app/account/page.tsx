@@ -25,7 +25,17 @@ export default async function AccountOverview({
   const { sub, isActive, daysLeft, expiringSoon } = await getUserSubscription(userId);
   const user = await prisma.user.findUnique({ where: { id: userId } });
   const plan = plans.find((p) => p.id === sub?.planCode);
-  const telegramInvite = process.env.TELEGRAM_INVITE_URL;
+
+  // ลิงก์เชิญส่วนตัว (ใช้ได้ครั้งเดียว) — ถ้ายังไม่ได้เปิดระบบอัตโนมัติจะไม่มีค่านี้
+  const telegramGrant = isActive
+    ? await prisma.telegramGrant.findFirst({
+        where: { userId, status: { in: ["PENDING", "ADDED"] } },
+        orderBy: { createdAt: "desc" },
+        select: { status: true, inviteLink: true },
+      })
+    : null;
+  const telegramInvite = telegramGrant?.inviteLink ?? process.env.TELEGRAM_INVITE_URL;
+  const alreadyInGroup = telegramGrant?.status === "ADDED";
 
   return (
     <div className="space-y-6">
@@ -111,10 +121,25 @@ export default async function AccountOverview({
             <Send className="h-4 w-4 text-brand" />
             กลุ่มสัญญาณ Telegram (เฉพาะสมาชิก)
           </div>
-          {telegramInvite ? (
-            <a href={telegramInvite} target="_blank" rel="noopener noreferrer" className="mt-4 inline-block rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-background transition-colors hover:bg-brand-strong">
-              เข้ากลุ่ม Telegram
-            </a>
+          {alreadyInGroup ? (
+            <p className="mt-2 text-sm text-up">คุณอยู่ในกลุ่มแล้ว — เปิด Telegram ได้เลย</p>
+          ) : telegramInvite ? (
+            <>
+              <a
+                href={telegramInvite}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 inline-block rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-background transition-colors hover:bg-brand-strong"
+              >
+                เข้ากลุ่ม Telegram
+              </a>
+              {telegramGrant?.inviteLink && (
+                <p className="mt-2.5 text-xs text-muted">
+                  ลิงก์นี้เป็นของคุณคนเดียว ใช้ได้ครั้งเดียวและผูกกับบัญชีสมาชิกของคุณ
+                  — ส่งต่อให้คนอื่นจะถูกปฏิเสธอัตโนมัติ
+                </p>
+              )}
+            </>
           ) : (
             <p className="mt-2 text-sm text-muted">ทีมงานจะส่งลิงก์เชิญกลุ่ม Telegram ให้เร็ว ๆ นี้ (หรือติดต่อผ่านหน้าช่วยเหลือ)</p>
           )}

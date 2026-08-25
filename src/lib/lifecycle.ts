@@ -13,7 +13,13 @@ import { recordPayment, ensureAccessGrant, ensureTelegramGrant, ensureDiscordRol
 import { grantTradingViewAccess, revokeTradingViewAccess, tvAutoGrantEnabled } from "@/lib/tradingview";
 import { sendEmail } from "@/lib/email";
 import { receiptEmail, expiringSoonEmail, expiredEmail } from "@/lib/email-templates";
-import { sendAdminAlert } from "@/lib/telegram";
+import {
+  sendAdminAlert,
+  telegramGroupManaged,
+  createMemberInviteLink,
+  removeGroupMember,
+  isGroupMember,
+} from "@/lib/telegram";
 import { formatTHB } from "@/lib/utils";
 
 /** เตือนล่วงหน้ากี่วันก่อนหมดอายุ */
@@ -90,7 +96,7 @@ export async function activateMembership(input: ActivateInput): Promise<Activate
     await recordPayment(input.userId, input.amountTHB, input.providerRef);
   }
   await ensureAccessGrant(input.userId);
-  await ensureTelegramGrant(input.userId);
+  await ensureTelegramInvite(input.userId);
   await ensureDiscordRole(input.userId, input.planCode);
   await syncTradingViewGrant(input.userId);
 
@@ -182,6 +188,54 @@ export async function syncTradingViewGrant(userId: string): Promise<void> {
   }
 }
 
+/**
+ * เตรียมสิทธิ์กลุ่ม Telegram ให้สมาชิก
+ *
+ * ยังไม่ตั้งบอท/กลุ่ม = เข้าคิวให้แอดมินเพิ่มเข้ากลุ่มเองเหมือนเดิม
+ * ตั้งแล้ว = สร้างลิงก์เชิญส่วนตัวที่ใช้ได้ครั้งเดียวให้ (สมาชิกกดเองในหน้าบัญชี)
+ *
+ * คนที่ยังอยู่ในกลุ่มจากรอบก่อนไม่ต้องได้ลิงก์ใหม่ — ปิดคิวให้เลย
+ * ห้าม throw: Telegram ล่มไม่ควรทำให้การเปิดสิทธิ์ทั้งก้อนล้ม
+ */
+export async function ensureTelegramInvite(userId: string): Promise<void> {
+  await ensureTelegramGrant(userId);
+  if (!telegramGroupManaged) return;
+
+  try {
+    const grant = await prisma.telegramGrant.findFirst({
+      where: { userId, status: { in: ["PENDING", "ADDED"] } },
+      orderBy: { createdAt: "desc" },
+    });
+    if (!grant || grant.status === "ADDED" || grant.inviteLink) return;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { telegramUserId: true },
+    });
+
+    if (user?.telegramUserId && (await isGroupMember(user.telegramUserId))) {
+      await prisma.telegramGrant.update({
+        where: { id: grant.id },
+        data: {
+          status: "ADDED",
+          addedAt: new Date(),
+          telegramUserId: user.telegramUserId,
+          note: "ยังอยู่ในกลุ่มจากรอบก่อน",
+        },
+      });
+      return;
+    }
+
+    const inviteLink = await createMemberInviteLink(grant.id);
+    await prisma.telegramGrant.update({
+      where: { id: grant.id },
+      data: { inviteLink, invitedAt: new Date(), note: "ลิงก์เชิญส่วนตัวพร้อมใช้งาน" },
+    });
+  } catch (e) {
+    console.error("telegram invite failed:", e);
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* ปิดสิทธิ์เมื่อหมดอายุ                                                */
 /* ------------------------------------------------------------------ */
@@ -200,7 +254,13 @@ export async function expireSubscription(sub: Subscription): Promise<void> {
 
   const user = await prisma.user.findUnique({
     where: { id: sub.userId },
-    select: { email: true, name: true, discordUserId: true, tradingViewUsername: true },
+    select: {
+      email: true,
+      name: true,
+      discordUserId: true,
+      tradingViewUsername: true,
+      telegramUserId: true,
+    },
   });
 
   // 1) TradingView — ถอนอัตโนมัติถ้ามีบอท ไม่งั้นเข้าคิวให้แอดมินถอนเอง
@@ -238,11 +298,23 @@ export async function expireSubscription(sub: Subscription): Promise<void> {
     console.error("expire: discord step failed:", e);
   }
 
-  // 3) Telegram — ยังไม่มี API เตะออกอัตโนมัติ จึงเข้าคิวให้แอดมิน
+  // 3) Telegram — นำออกอัตโนมัติถ้ารู้ว่าเป็นใครในกลุ่ม ไม่งั้นเข้าคิวให้แอดมิน
   try {
+    let removed = false;
+    if (telegramGroupManaged && user?.telegramUserId) {
+      try {
+        await removeGroupMember(user.telegramUserId);
+        removed = true;
+      } catch (e) {
+        console.error("expire: telegram kick failed:", e);
+      }
+    }
+
     await prisma.telegramGrant.updateMany({
       where: { userId: sub.userId, status: { in: ["PENDING", "ADDED"] } },
-      data: { status: "PENDING_REMOVE", note: "หมดอายุ — รอนำออกจากกลุ่ม" },
+      data: removed
+        ? { status: "REMOVED", removedAt: now, note: "นำออกจากกลุ่มอัตโนมัติ (หมดอายุ)" }
+        : { status: "PENDING_REMOVE", note: "หมดอายุ — รอนำออกจากกลุ่ม" },
     });
   } catch (e) {
     console.error("expire: telegram step failed:", e);
