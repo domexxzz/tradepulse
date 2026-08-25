@@ -2,6 +2,8 @@
 
 export interface Feature {
   title: string;
+  /** ใช้เป็น URL หน้า /features/[slug] — เปลี่ยนแล้วลิงก์เดิมจะพัง ระวังด้วย */
+  slug: string;
   desc: string;
   howto: string;
   icon: string;
@@ -14,6 +16,7 @@ export const coreIntro =
 export const coreFeatures: Feature[] = [
   {
     title: "FVG — Fair Value Gap",
+    slug: "fvg",
     icon: "SeparatorHorizontal",
     image: "",
     desc: "แสดงบริเวณที่ราคาเคลื่อนที่เร็วและทิ้งช่องว่างไว้ ใช้เฝ้าดูจังหวะที่ราคาอาจกลับมาทดสอบหรือเกิดปฏิกิริยา",
@@ -21,6 +24,7 @@ export const coreFeatures: Feature[] = [
   },
   {
     title: "OB — Order Block",
+    slug: "order-block",
     icon: "Boxes",
     image: "",
     desc: "แสดงโซนที่เคยเกิดแรงซื้อหรือแรงขายชัดเจน ใช้เป็นบริเวณสำคัญสำหรับเฝ้าดูการตอบสนองของราคา",
@@ -28,6 +32,7 @@ export const coreFeatures: Feature[] = [
   },
   {
     title: "LQ — Liquidity & Sweep",
+    slug: "liquidity-sweep",
     icon: "Droplets",
     image: "",
     desc: "ช่วยมองเห็นจุดสภาพคล่อง และจังหวะที่ราคากวาดระดับสำคัญก่อนกลับตัว",
@@ -35,6 +40,7 @@ export const coreFeatures: Feature[] = [
   },
   {
     title: "DM-SP — Demand / Supply Zone",
+    slug: "demand-supply-zone",
     icon: "LayoutGrid",
     image: "",
     desc: "แสดง Demand Zone และ Supply Zone ซึ่งเป็นบริเวณที่ราคาเคยมีแรงซื้อหรือแรงขายเด่นชัด",
@@ -42,6 +48,7 @@ export const coreFeatures: Feature[] = [
   },
   {
     title: "BOS — Break of Structure",
+    slug: "break-of-structure",
     icon: "GitBranch",
     image: "",
     desc: "แสดงเมื่อราคาทะลุโครงสร้างสำคัญ ช่วยให้เห็นว่าราคาอาจยังมีแรงเดินต่อในทิศทางเดิม",
@@ -49,6 +56,7 @@ export const coreFeatures: Feature[] = [
   },
   {
     title: "CHoCH / MSS — Change of Character",
+    slug: "change-of-character",
     icon: "Shuffle",
     image: "",
     desc: "แสดงเมื่อโครงสร้างราคาเริ่มเปลี่ยนไปจากทิศทางเดิม เป็นสัญญาณเตือนว่าตลาดอาจกำลังเปลี่ยนแนวโน้ม",
@@ -56,6 +64,7 @@ export const coreFeatures: Feature[] = [
   },
   {
     title: "Buy / Sell Scalping",
+    slug: "buy-sell-scalping",
     icon: "Zap",
     image: "",
     desc: "สัญญาณ Buy / Sell สำหรับช่วยหาจังหวะเทรดระยะสั้นบนกราฟทองคำ โดยแสดงเมื่อระบบพบเงื่อนไขที่เข้าเกณฑ์",
@@ -63,6 +72,7 @@ export const coreFeatures: Feature[] = [
   },
   {
     title: "ICT Buy",
+    slug: "ict-buy",
     icon: "TrendingUp",
     image: "",
     desc: "สัญญาณ Buy ที่ช่วยค้นหาจังหวะเมื่อราคาแสดงแรงตอบสนองเชิงบวกจากบริเวณ Demand หรือโซนสำคัญ",
@@ -70,6 +80,7 @@ export const coreFeatures: Feature[] = [
   },
   {
     title: "ICT Sell",
+    slug: "ict-sell",
     icon: "TrendingDown",
     image: "",
     desc: "สัญญาณ Sell ที่ช่วยค้นหาจังหวะเมื่อราคาแสดงแรงตอบสนองเชิงลบจากบริเวณ Supply หรือโซนสำคัญ",
@@ -83,6 +94,7 @@ export const advancedIntro =
 export const advancedTools: Feature[] = [
   {
     title: "Supertrend",
+    slug: "supertrend",
     icon: "Activity",
     image: "",
     desc: "แสดงเส้นแนวโน้มบนกราฟเพื่อช่วยให้มองภาพรวมของราคาและจังหวะการเปลี่ยนทิศทางได้ชัดขึ้น",
@@ -90,6 +102,7 @@ export const advancedTools: Feature[] = [
   },
   {
     title: "EMA200",
+    slug: "ema200",
     icon: "LineChart",
     image: "",
     desc: "แสดงเส้นแนวโน้มระยะยาวบนกราฟ เพื่อช่วยประเมินว่าราคาอยู่ในบริบทขาขึ้นหรือขาลง",
@@ -97,6 +110,7 @@ export const advancedTools: Feature[] = [
   },
   {
     title: "Higher Timeframe Alignment — HTF",
+    slug: "htf-alignment",
     icon: "Layers",
     image: "",
     desc: "ใช้แนวโน้มและโซนจาก Timeframe ใหญ่เป็นข้อมูลประกอบการวิเคราะห์บน Timeframe ที่ใช้เข้าเทรด",
@@ -104,6 +118,7 @@ export const advancedTools: Feature[] = [
   },
   {
     title: "Confluence Score",
+    slug: "confluence-score",
     icon: "Gauge",
     image: "",
     desc: "ระบบให้คะแนนโซน 0-100 เพื่อช่วยจัดลำดับว่าโซนใดมีองค์ประกอบสนับสนุนหลายด้านมากกว่า",
@@ -111,6 +126,7 @@ export const advancedTools: Feature[] = [
   },
   {
     title: "Zone Lifecycle",
+    slug: "zone-lifecycle",
     icon: "RefreshCw",
     image: "",
     desc: "ติดตามสถานะของโซนว่าเป็นโซนใหม่ ถูกแตะ ถูกใช้งาน หรือเสียโครงสร้างแล้ว เพื่อให้กราฟเหลือข้อมูลที่ยังน่าติดตาม",
@@ -118,6 +134,7 @@ export const advancedTools: Feature[] = [
   },
   {
     title: "PPDD Order Block",
+    slug: "ppdd-order-block",
     icon: "Boxes",
     image: "",
     desc: "แสดง Order Block ที่เกิดหลังการกวาด Liquidity เพื่อช่วยเน้นบริเวณที่มีบริบทด้านสภาพคล่องร่วมด้วย",
@@ -125,6 +142,7 @@ export const advancedTools: Feature[] = [
   },
   {
     title: "High Volume Bar — HVB",
+    slug: "high-volume-bar",
     icon: "BarChart3",
     image: "",
     desc: "เน้นแท่งเทียนที่มีปริมาณการซื้อขายเด่นกว่าปกติ เพื่อช่วยให้มองเห็นช่วงที่ตลาดมีแรงเข้ามาชัดเจน",
@@ -132,6 +150,7 @@ export const advancedTools: Feature[] = [
   },
   {
     title: "Stacked OB + FVG",
+    slug: "stacked-ob-fvg",
     icon: "Layers",
     image: "",
     desc: "แสดงบริเวณที่ Order Block และ Fair Value Gap เกิดร่วมกัน เพื่อช่วยให้เห็นโซนที่มีองค์ประกอบซ้อนกัน",
@@ -139,6 +158,7 @@ export const advancedTools: Feature[] = [
   },
   {
     title: "Rejection Block — RJB",
+    slug: "rejection-block",
     icon: "Ban",
     image: "",
     desc: "แสดงบริเวณที่ราคาเกิดแรงปฏิเสธชัดเจนจากแท่งเทียน เพื่อใช้มองจุดที่แรงซื้อหรือแรงขายตอบสนองกลับ",
@@ -208,3 +228,24 @@ export const faqs: Faq[] = [
   { q: "มีการรับประกันกำไรหรือไม่?", a: "ไม่มีการรับประกันผลกำไร TradePulse เป็นเครื่องมือช่วยวิเคราะห์และวางแผนเท่านั้น การเทรดมีความเสี่ยงและขึ้นกับการตัดสินใจของผู้ใช้" },
   { q: "ติดต่อทีมช่วยเหลือได้ทางไหน?", a: "ติดต่อทีมงานผ่านช่องทางที่ระบุในหน้าเว็บ ทีมงานพร้อมช่วยเหลือเรื่องการติดตั้งและการใช้งานระบบ" },
 ];
+
+/* ------------------------------------------------------------------ */
+/* หน้าฟีเจอร์รายตัว (/features/[slug])                                 */
+/* ------------------------------------------------------------------ */
+
+export type FeatureGroup = "core" | "advanced";
+
+export interface FeatureEntry extends Feature {
+  group: FeatureGroup;
+  groupLabel: string;
+}
+
+/** ฟีเจอร์ทั้งหมดเรียงตามที่แสดงบนหน้าแรก */
+export const allFeatures: FeatureEntry[] = [
+  ...coreFeatures.map((f) => ({ ...f, group: "core" as const, groupLabel: "ระบบหลัก" })),
+  ...advancedTools.map((f) => ({ ...f, group: "advanced" as const, groupLabel: "เครื่องมือขั้นสูง" })),
+];
+
+export function getFeatureBySlug(slug: string): FeatureEntry | undefined {
+  return allFeatures.find((f) => f.slug === slug);
+}

@@ -24,12 +24,19 @@ import { EmailCapture } from "@/components/marketing/EmailCapture";
 import { Disclaimer } from "@/components/marketing/Disclaimer";
 import { MobileStickyCTA } from "@/components/marketing/MobileStickyCTA";
 import { ChatWidget } from "@/components/marketing/ChatWidget";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { homeJsonLd } from "@/lib/seo";
+
+export const metadata = {
+  alternates: { canonical: "/" },
+};
 
 export const revalidate = 300;
 
 export default function Home() {
   return (
     <>
+      <JsonLd data={homeJsonLd()} />
       <Background3D />
       <Navbar />
       <main>
