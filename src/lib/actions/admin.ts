@@ -2,6 +2,8 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin";
+import { plans } from "@/config/plans";
+import { activateMembership, expireSubscriptionById, syncTradingViewGrant } from "@/lib/lifecycle";
 
 export async function grantAccess(formData: FormData) {
   await requireAdmin();
@@ -76,4 +78,52 @@ export async function revokeTelegram(formData: FormData) {
   });
   revalidatePath("/admin/telegram");
   revalidatePath("/admin");
+}
+
+/* ------------------------------------------------------------------ */
+/* จัดการอายุสมาชิกด้วยมือ — ใช้ตอนโอนนอกระบบ ชดเชย หรือแก้เคสพิเศษ      */
+/* ------------------------------------------------------------------ */
+
+/** เปิด/ต่ออายุแพ็กเกจให้สมาชิกโดยไม่ผ่านออเดอร์ (amountTHB = 0 คือแถมให้ ไม่นับเป็นรายได้) */
+export async function adminActivateMembership(formData: FormData) {
+  await requireAdmin();
+  const userId = String(formData.get("userId") ?? "");
+  const planCode = String(formData.get("planCode") ?? "");
+  const amountTHB = Math.max(0, Number(formData.get("amountTHB") ?? 0) || 0);
+  if (!userId || !plans.some((p) => p.id === planCode)) return;
+
+  await activateMembership({
+    userId,
+    planCode,
+    amountTHB,
+    // เวลาในคีย์ทำให้เปิดสิทธิ์ซ้ำได้ (ต่ออายุหลายรอบ) โดยยังกันบันทึกซ้ำของรอบเดิม
+    providerRef: `manual_${userId}_${Date.now()}`,
+    source: "แอดมินเปิดสิทธิ์เอง",
+  });
+
+  revalidatePath("/admin/members");
+  revalidatePath("/admin");
+}
+
+/** ปิดสิทธิ์ทันทีโดยไม่รอ cron (คืนเงิน / ผิดเงื่อนไข) */
+export async function adminExpireMembership(formData: FormData) {
+  await requireAdmin();
+  const subscriptionId = String(formData.get("subscriptionId") ?? "");
+  if (!subscriptionId) return;
+
+  await expireSubscriptionById(subscriptionId);
+
+  revalidatePath("/admin/members");
+  revalidatePath("/admin");
+}
+
+/** ลองให้สิทธิ์ TradingView ผ่านบอทอีกครั้ง (ใช้ตอนบอทล่มตอนแรก) */
+export async function adminRetryTradingView(formData: FormData) {
+  await requireAdmin();
+  const userId = String(formData.get("userId") ?? "");
+  if (!userId) return;
+
+  await syncTradingViewGrant(userId);
+
+  revalidatePath("/admin/access-queue");
 }

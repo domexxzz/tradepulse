@@ -37,6 +37,7 @@ model User {
   telegramGrants TelegramGrant[]
   slipOrders    SlipOrder[]
   reviews       Review[]
+  passwordResets PasswordResetToken[]
 }
 
 model Account {
@@ -99,10 +100,18 @@ model Subscription {
   status               String    @default("INACTIVE")
   currentPeriodEnd     DateTime?
   cancelAtPeriodEnd    Boolean   @default(false)
+  // เวลาที่ cron ปิดสิทธิ์จริง (ไม่ใช่แค่วันครบกำหนด) ใช้ตรวจย้อนหลังว่าปิดไปแล้วจริง
+  expiredAt            DateTime?
+  // กันส่งอีเมลเตือนใกล้หมดอายุซ้ำในรอบเดียวกัน — เคลียร์เป็น null ทุกครั้งที่ต่ออายุ
+  expiryNotifiedAt     DateTime?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
   accessGrants AccessGrant[]
+
+  // cron รายวันกวาดด้วยสองคอลัมน์นี้เป็นหลัก
+  @@index([status, currentPeriodEnd])
+  @@index([userId])
 }
 
 model AccessGrant {
@@ -178,12 +187,22 @@ model SlipOrder {
   planCode   String
   amountTHB  Int
   status     String    @default("PENDING") // PENDING | SUBMITTED | APPROVED | REJECTED
-  slipData   String?   // base64 data URL ของสลิป
+  slipData   String?   // base64 data URL ของสลิป (อย่า select ในหน้า list — แถวละหลาย MB)
+  slipMime   String?
+  // sha256 ของไฟล์สลิป — unique เพื่อกันส่งรูปเดิมซ้ำหลายออเดอร์
+  slipHash   String?   @unique
+  // เลขอ้างอิงรายการโอนจากผู้ให้บริการตรวจสลิป — กันสลิปซ้ำแม้ถ่ายรูปใหม่
+  transRef   String?   @unique
+  // ผลตรวจอัตโนมัติ: VERIFIED | MISMATCH | DUPLICATE | FAILED | SKIPPED
+  verifyStatus String?
+  verifyNote   String?
+  verifiedAt   DateTime?
   note       String?
   reviewedAt DateTime?
   createdAt  DateTime  @default(now())
 
   @@index([status])
+  @@index([userId])
 }
 
 model Subscriber {
@@ -194,4 +213,20 @@ model Subscriber {
   unsubscribedAt DateTime?
 
   @@index([createdAt])
+}
+
+/**
+ * ตั๋วรีเซ็ตรหัสผ่าน — เก็บเฉพาะ sha256 ของโทเคน
+ * ถ้าฐานข้อมูลหลุด คนที่ได้ไปก็ใช้รีเซ็ตรหัสผ่านใครไม่ได้
+ */
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
 }

@@ -16,7 +16,11 @@ export function SlipUploadForm({ orderId }: { orderId: string }) {
   }
 
   if (state.ok) {
-    return <div className="rounded-lg border border-up/30 bg-up/10 px-4 py-3 text-sm text-up">ส่งสลิปเรียบร้อย รอทีมงานตรวจสอบ</div>;
+    return (
+      <div className="rounded-lg border border-up/30 bg-up/10 px-4 py-3 text-sm text-up">
+        {state.note ?? "ส่งสลิปเรียบร้อย รอทีมงานตรวจสอบ"}
+      </div>
+    );
   }
 
   return (

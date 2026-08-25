@@ -3,11 +3,13 @@ import { grantTelegram, revokeTelegram } from "@/lib/actions/admin";
 
 const statusStyle: Record<string, string> = {
   PENDING: "text-amber-400 border-amber-400/30 bg-amber-400/10",
+  PENDING_REMOVE: "text-down border-down/30 bg-down/10",
   ADDED: "text-up border-up/30 bg-up/10",
-  REMOVED: "text-down border-down/30 bg-down/10",
+  REMOVED: "text-muted border-border bg-surface-2",
 };
 const statusLabel: Record<string, string> = {
   PENDING: "รอเพิ่มเข้ากลุ่ม",
+  PENDING_REMOVE: "หมดอายุ — รอนำออก",
   ADDED: "อยู่ในกลุ่มแล้ว",
   REMOVED: "นำออกแล้ว",
 };

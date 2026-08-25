@@ -14,6 +14,11 @@ export default function LoginPage() {
         <Field name="password" type="password" label="รหัสผ่าน" placeholder="••••••••" />
         <SubmitBtn pending={pending}>เข้าสู่ระบบ</SubmitBtn>
       </form>
+      <p className="mt-4 text-center text-sm">
+        <Link href="/forgot-password" className="text-muted hover:text-brand hover:underline">
+          ลืมรหัสผ่าน?
+        </Link>
+      </p>
       <p className="mt-6 text-center text-sm text-muted">
         ยังไม่มีบัญชี?{" "}
         <Link href="/register" className="text-brand hover:underline">สมัครสมาชิก</Link>

@@ -1,5 +1,6 @@
 import { stripe } from "@/lib/stripe";
-import { upsertSubscription, recordPayment, ensureAccessGrant, ensureTelegramGrant } from "@/lib/fulfillment";
+import { upsertSubscription, recordPayment, ensureAccessGrant, ensureTelegramGrant, ensureDiscordRole } from "@/lib/fulfillment";
+import { syncTradingViewGrant } from "@/lib/lifecycle";
 
 /**
  * ซิงก์สถานะจาก Stripe Checkout Session (เรียกบนหน้า success)
@@ -21,6 +22,8 @@ export async function syncCheckoutSession(sessionId: string, userId: string): Pr
     if (s.amount_total) await recordPayment(userId, Math.round(s.amount_total / 100), s.id);
     await ensureAccessGrant(userId);
     await ensureTelegramGrant(userId);
+    if (s.metadata?.planCode) await ensureDiscordRole(userId, s.metadata.planCode);
+    await syncTradingViewGrant(userId);
     return true;
   } catch {
     return false;

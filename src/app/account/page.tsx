@@ -5,7 +5,8 @@ import { syncCheckoutSession } from "@/lib/stripe-sync";
 import { prisma } from "@/lib/prisma";
 import { plans } from "@/config/plans";
 import { formatTHB } from "@/lib/utils";
-import { CheckCircle2, AlertCircle, LineChart, PartyPopper, Send } from "lucide-react";
+import { formatThaiDate } from "@/lib/date";
+import { CheckCircle2, AlertCircle, LineChart, PartyPopper, Send, CalendarClock } from "lucide-react";
 
 export default async function AccountOverview({
   searchParams,
@@ -21,7 +22,7 @@ export default async function AccountOverview({
     await syncCheckoutSession(session_id, userId);
   }
 
-  const { sub, isActive } = await getUserSubscription(userId);
+  const { sub, isActive, daysLeft, expiringSoon } = await getUserSubscription(userId);
   const user = await prisma.user.findUnique({ where: { id: userId } });
   const plan = plans.find((p) => p.id === sub?.planCode);
   const telegramInvite = process.env.TELEGRAM_INVITE_URL;
@@ -42,6 +43,28 @@ export default async function AccountOverview({
         </div>
       )}
 
+      {expiringSoon && daysLeft !== null && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4">
+          <div className="flex items-start gap-3 text-sm">
+            <CalendarClock className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
+            <div>
+              <div className="font-semibold text-amber-400">
+                แพ็กเกจเหลืออีก {Math.max(0, daysLeft)} วัน
+              </div>
+              <p className="mt-0.5 text-muted">
+                ต่ออายุก่อนหมดวัน ระบบจะทบวันที่เหลือให้ ไม่เสียของเดิม
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/account/subscription"
+            className="rounded-full bg-brand px-5 py-2 text-sm font-semibold text-background transition-colors hover:bg-brand-strong"
+          >
+            ต่ออายุ
+          </Link>
+        </div>
+      )}
+
       <h1 className="font-display text-2xl font-bold">
         สวัสดี, {session!.user.name ?? "สมาชิก"} 👋
       </h1>
@@ -57,12 +80,13 @@ export default async function AccountOverview({
           </div>
           {sub?.currentPeriodEnd && (
             <p className="mt-1 text-sm text-muted">
-              ต่ออายุ/หมดอายุ: {new Date(sub.currentPeriodEnd).toLocaleDateString("th-TH")}
+              {isActive ? "ใช้ได้ถึง" : "หมดอายุเมื่อ"} {formatThaiDate(sub.currentPeriodEnd)}
+              {isActive && daysLeft !== null && ` · เหลือ ${Math.max(0, daysLeft)} วัน`}
             </p>
           )}
           {!isActive && (
             <Link href="/account/subscription" className="mt-4 inline-block text-sm text-brand hover:underline">
-              เลือกแพ็คเกจ →
+              {sub ? "ต่ออายุแพ็คเกจ →" : "เลือกแพ็คเกจ →"}
             </Link>
           )}
         </div>

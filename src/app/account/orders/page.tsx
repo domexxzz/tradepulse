@@ -23,6 +23,15 @@ export default async function OrdersHistoryPage() {
     where: { userId: session!.user.id },
     orderBy: { createdAt: "desc" },
     take: 50,
+    // ไม่ดึง slipData — รูป base64 ของทุกออเดอร์ทำให้หน้านี้หนักโดยไม่ได้ใช้
+    select: {
+      id: true,
+      planCode: true,
+      amountTHB: true,
+      status: true,
+      note: true,
+      createdAt: true,
+    },
   });
 
   return (
@@ -47,6 +56,9 @@ export default async function OrdersHistoryPage() {
                 <span className={`rounded-full border px-2.5 py-0.5 text-xs ${statusStyle[o.status]}`}>
                   {statusLabel[o.status] ?? o.status}
                 </span>
+                {o.status === "REJECTED" && o.note && (
+                  <p className="w-full text-xs text-down">เหตุผล: {o.note}</p>
+                )}
                 <div className="ml-auto">
                   {o.status === "PENDING" ? (
                     <Link href={`/account/pay/${o.id}`} className="rounded-full bg-brand px-4 py-2 text-xs font-semibold text-background hover:bg-brand-strong">
