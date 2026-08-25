@@ -21,6 +21,19 @@ npm run dev              # http://localhost:3000
 
 หยุด/ลบฐานข้อมูล dev: `docker stop tradepulse-pg` / `docker rm -f tradepulse-pg`
 
+## คู่มือแยกตามระบบ
+
+| ระบบ | เอกสาร |
+|---|---|
+| วงจรชีวิตสมาชิก + cron ปิดสิทธิ์ | [LIFECYCLE.md](./LIFECYCLE.md) |
+| อีเมล (ใบเสร็จ / เตือนหมดอายุ / ลืมรหัสผ่าน) | [EMAIL.md](./EMAIL.md) |
+| สลิป PromptPay + ตรวจสลิปอัตโนมัติ | [SLIP.md](./SLIP.md) |
+| ให้สิทธิ์ TradingView อัตโนมัติ | [TRADINGVIEW.md](./TRADINGVIEW.md) |
+| สัญญาณเข้ากลุ่ม Telegram | [TELEGRAM.md](./TELEGRAM.md) |
+| ยศ Discord ตามแพ็กเกจ | [DISCORD.md](./DISCORD.md) |
+| แดชบอร์ดแอดมิน | [ADMIN.md](./ADMIN.md) |
+| Stripe (ทางเลือกแทน QR) | [PAYMENTS.md](./PAYMENTS.md) |
+
 ## แก้เนื้อหา/แบรนด์ (แก้ที่เดียว เปลี่ยนทั้งเว็บ)
 - `src/config/site.ts` — ชื่อแบรนด์, LINE OA, สถิติ, เมนู
 - `src/config/plans.ts` — แพ็คเกจ + ราคา
@@ -28,13 +41,18 @@ npm run dev              # http://localhost:3000
 - `src/app/globals.css` — สีธีม (--brand เขียวไลม์, --background, .theme-light)
 - `public/images/` — โลโก้/ภาพประกอบ
 
-## ระบบสมาชิก (เฟส 2)
+## ระบบสมาชิก
 - Auth.js v5 (credentials + Google/LINE ถ้ามีคีย์) — `src/auth.ts`, `src/auth.config.ts`
 - DB: Prisma + PostgreSQL — `prisma/schema.prisma`
 - หน้า: `/register`, `/login`, `/account/*`
 - ป้องกันเส้นทาง `/account`, `/admin` ผ่าน `src/proxy.ts`
 
-## ระบบชำระเงิน (เฟส 3 — Stripe)
+## ระบบชำระเงิน
+
+ค่าเริ่มต้นคือ **PromptPay QR + แนบสลิป** (`NEXT_PUBLIC_PAYMENT_MODE=qr`) ไม่มีค่าธรรมเนียม
+ตั้ง `PROMPTPAY_ID` แล้วใช้ได้เลย — รายละเอียดการกันสลิปซ้ำและตรวจสลิปอัตโนมัติดู [SLIP.md](./SLIP.md)
+
+### ทางเลือก: Stripe (ตัดเงินอัตโนมัติ)
 เปิดใช้งานโดยใส่คีย์ใน `.env`:
 ```
 STRIPE_SECRET_KEY=sk_test_...
@@ -64,6 +82,9 @@ STRIPE_PRICE_YEAR=price_...
    (ถ้า migrate ล้ม build จะล้มด้วย ตั้งใจให้รู้ตัวทันทีดีกว่าปล่อยขึ้นไปพัง)
 4. รัน seed ครั้งแรก: `npm run db:seed` (ต้องมี DATABASE_URL ของ production ใน shell)
 5. ตั้ง `ADMIN_EMAILS` แล้วสมัครสมาชิกด้วยอีเมลนั้น จากนั้นรัน seed ซ้ำเพื่อเลื่อนเป็น ADMIN
+6. **ตั้ง `CRON_SECRET`** — ถ้าไม่ตั้ง งานประจำวันจะไม่ทำงาน และสมาชิกจะไม่มีวันหมดอายุ
+   (ดู [LIFECYCLE.md](./LIFECYCLE.md))
+7. ตั้ง `RESEND_API_KEY` + `EMAIL_FROM` ถ้าต้องการให้ระบบส่งใบเสร็จและให้สมาชิกรีเซ็ตรหัสผ่านเองได้
 
 > ⚠️ ถ้าเปิดใช้ Preview Deployment ของ Vercel ให้ตั้ง `DATABASE_URL` ของ preview
 > ไปที่ฐานข้อมูลคนละตัว (Neon สร้าง branch ได้) ไม่งั้น preview จะ migrate ทับ production
@@ -73,11 +94,15 @@ STRIPE_PRICE_YEAR=price_...
 
 ### ที่ควรทำต่อ
 - แปลง field `status` / `role` / `interval` (String) เป็น enum ของ Postgres
+- ย้ายรูปสลิปออกจากฐานข้อมูลไป object storage เมื่อออเดอร์เริ่มเยอะ (ดู [SLIP.md](./SLIP.md))
+- เทสต์อัตโนมัติสำหรับตรรกะวันหมดอายุ/การต่ออายุ
+- i18n ภาษาอังกฤษ
 
 ## สถานะเฟส
 - [x] เฟส 0 — Setup (Next.js 16 + Tailwind v4)
 - [x] เฟส 1 — Landing page (ทุก section + TradingView live + ธีมดำ-เขียว + พื้นขาวสลับดำ)
 - [x] เฟส 2 — Auth + Member portal (register/login/account + TradingView + protected routes)
-- [x] เฟส 3 — Payment (Stripe checkout + webhook + billing portal) *ต้องใส่คีย์เพื่อใช้งานจริง*
-- [x] เฟส 4 — Admin dashboard (คิวอนุมัติสิทธิ์ / สมาชิก / รีวิว / แพ็คเกจ)
-- [ ] เฟส 5 — อีเมล + i18n + deploy
+- [x] เฟส 3 — Payment (PromptPay QR + สลิป เป็นค่าเริ่มต้น, Stripe พร้อมใช้เมื่อใส่คีย์)
+- [x] เฟส 4 — Admin dashboard (ออเดอร์ / คิวสิทธิ์ / สมาชิก / รีวิว / แพ็คเกจ)
+- [x] เฟส 5 — วงจรชีวิตสมาชิก + อีเมล + SEO + deploy
+- [ ] เฟส 6 — i18n, เทสต์อัตโนมัติ, ย้ายรูปสลิปไป object storage
