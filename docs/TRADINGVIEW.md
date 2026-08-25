@@ -52,6 +52,54 @@ POST https://โดเมนเว็บ/api/tradingview/callback
 > `days` คำนวณจากวันหมดอายุแพ็กเกจจริง เพื่อให้สิทธิ์บน TradingView หมดพร้อมกัน
 > เผื่อ cron ฝั่งเราไม่ทำงานสักวันก็ยังไม่มีใครใช้ฟรีเกินกำหนด
 
+## รันบริดจ์ที่ไหน — "คอมเบส" (เครื่อง ASUS ที่บ้าน)
+
+บอทตัวนี้ถูกเขียนมาให้รันบนคอมเบสอยู่แล้ว หลักฐานตรงกันหมด:
+
+| สิ่งที่โค้ดคาดหวัง | คอมเบสมีจริง |
+|---|---|
+| Windows + Chrome | ✅ `C:\Program Files\Google\Chrome\Application\chrome.exe` |
+| โปรไฟล์ Chrome ชื่อ `Profile 1` | ✅ มีอยู่ (ตรงกับค่าที่ฝังไว้ในโค้ดเดิม) |
+| Python | ✅ 3.13 |
+| โค้ดบอท | ✅ `C:\Users\User\OneDrive\Desktop\Bot Tradingview` (git clone ของ repo เดียวกัน) |
+
+สั่งงานคอมเบสจากแมคผ่าน `~/sentiara-ai/scripts/mac/combase.sh`
+(อ่าน `~/sentiara-ai/docs/ops/COMBASE_RUNBOOK.md` ก่อนแตะ — มีกับดักหลายอย่าง)
+
+### ขั้นตอนติดตั้งบนคอมเบส
+
+```bash
+C=~/sentiara-ai/scripts/mac/combase.sh
+$C wake
+$C run 'cd /d "C:\Users\User\OneDrive\Desktop\Bot Tradingview" && git pull'
+$C run 'cd /d "C:\Users\User\OneDrive\Desktop\Bot Tradingview" && pip install -r requirements-bridge.txt'
+# กรอก .env ตาม .env.bridge.example แล้วตั้ง scheduled task ให้รัน tv_bridge.py
+```
+
+> ⚠️ **อย่ารันด้วย `Start-Process` ผ่าน SSH — มันเงียบสนิทไม่ launch อะไรเลย** ต้องใช้ `schtasks`
+> และ `schtasks /run` จะไม่ทำอะไรถ้าสถานะยัง running ต้อง `/end` ก่อนเสมอ
+
+### ให้เว็บบน Vercel เรียกถึงคอมเบสได้
+
+คอมเบสอยู่หลัง AP isolation และไม่มี public IP — ต้องเปิดทางออกให้ก่อน
+
+- **Tailscale Funnel** (แนะนำ เพราะคอมเบสต่อ Tailscale อยู่แล้ว) — ได้ URL `https://<ชื่อเครื่อง>.<tailnet>.ts.net`
+  เอาไปใส่ `TV_BOT_URL` ได้เลย ไม่ต้องลงอะไรเพิ่ม (ต้องเปิด Funnel ใน ACL ของ tailnet ก่อน)
+- **cloudflared tunnel** — ใช้ได้เหมือนกัน แต่ต้องลงโปรแกรมเพิ่ม
+
+### กับดักที่ต้องรู้ก่อนใช้จริง
+
+1. **คอมเบสไม่ได้เปิดตลอด 24 ชม.** — มีคำสั่ง `combase.sh off` ที่ปิดเครื่องตอนกลางคืน
+   ช่วงที่ปิด คำสั่งจากเว็บจะไม่ถึง → รายการตกไปเข้าคิว `/admin/access-queue` ให้ทำมือ
+   (ระบบออกแบบมารองรับแล้ว ออเดอร์ไม่ล้ม แต่ลูกค้าจะรอนานขึ้น)
+   ถ้าจะขายจริงจัง ควรตั้งให้คอมเบสไม่ปิด หรือย้ายบริดจ์ไป VPS แยก
+2. **ห้ามใช้ `Profile 1` ร่วมกับ Chrome ที่เปิดใช้งานอยู่** — Chrome ล็อกโฟลเดอร์โปรไฟล์ไว้
+   Selenium จะเปิดไม่ได้ถ้ามีหน้าต่าง Chrome ของโปรไฟล์เดียวกันเปิดค้าง
+   → ควรสร้างโปรไฟล์แยกไว้ให้บอทโดยเฉพาะ แล้วล็อกอินบัญชีเจ้าของสคริปต์ในนั้น
+   (ตั้งผ่าน `CHROME_PROFILE_DIR` ที่เพิ่งทำให้เป็น env แล้ว)
+3. **บอทยังไม่ได้ตั้งเป็น scheduled task** — ตอนนี้มีแต่งานของ Sentiara
+   ถ้าจะให้บริดจ์ขึ้นเองหลังเครื่องบูต ต้องเพิ่ม task ใหม่
+
 ## ตั้งค่า
 
 ฝั่งเว็บ:
