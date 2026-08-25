@@ -87,6 +87,23 @@ $C run 'cd /d "C:\Users\User\OneDrive\Desktop\Bot Tradingview" && pip install -r
   เอาไปใส่ `TV_BOT_URL` ได้เลย ไม่ต้องลงอะไรเพิ่ม (ต้องเปิด Funnel ใน ACL ของ tailnet ก่อน)
 - **cloudflared tunnel** — ใช้ได้เหมือนกัน แต่ต้องลงโปรแกรมเพิ่ม
 
+### ค่าที่ติดตั้งจริงไว้แล้วบนคอมเบส (26 ส.ค. 2569)
+
+| อะไร | ค่า |
+|---|---|
+| บัญชีเจ้าของสคริปต์ | `Pyro_Bolt` |
+| สคริปต์ที่ขาย | `Test 2 — SMC Unified Suite [Pyro_Bolt]` (invite-only) |
+| โปรไฟล์ Chrome ของบอท | `C:\tv-bot-chrome` (ล็อกอิน TradingView ไว้แล้ว) |
+| scheduled task | `TradePulseTVBridge` (ขึ้นเองตอน login) |
+| log | `%LOCALAPPDATA%\Temp\tv_bridge.log` |
+| URL สาธารณะ | `https://asus.tail17bed7.ts.net` (Tailscale Funnel) |
+
+รีสตาร์ทบริดจ์: ต้องฆ่าโปรเซสที่ถือพอร์ต 8787 ก่อน แล้วค่อย `schtasks /end` + `/run`
+(`/end` อย่างเดียวฆ่าแค่ cmd.exe — ตัว python ยังถือพอร์ตอยู่ ตัวใหม่เลย bind ไม่ได้แล้วตายเงียบ)
+
+> ระหว่างที่บอทกำลังทำงาน `/health` จะไม่ตอบ เพราะ Selenium เป็นโค้ด blocking
+> ที่ค้าง event loop ไว้ทั้งงาน — ไม่ใช่อาการล่ม
+
 ### กับดักที่ต้องรู้ก่อนใช้จริง
 
 1. **คอมเบสไม่ได้เปิดตลอด 24 ชม.** — มีคำสั่ง `combase.sh off` ที่ปิดเครื่องตอนกลางคืน
