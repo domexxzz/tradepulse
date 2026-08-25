@@ -8,7 +8,7 @@ import { prisma } from "@/lib/prisma";
 import type { Subscription } from "@prisma/client";
 import { plans, type PlanInterval } from "@/config/plans";
 import { addMonths, daysUntil, formatThaiDate } from "@/lib/date";
-import { isSubscriptionActive, ACTIVE_STATUSES } from "@/lib/subscription";
+import { isSubscriptionActive, ACTIVE_STATUSES, getUserSubscription } from "@/lib/subscription";
 import { recordPayment, ensureAccessGrant, ensureTelegramGrant, ensureDiscordRole } from "@/lib/fulfillment";
 import { grantTradingViewAccess, revokeTradingViewAccess, tvAutoGrantEnabled } from "@/lib/tradingview";
 import { sendEmail } from "@/lib/email";
@@ -131,6 +131,11 @@ async function notifyActivation(input: ActivateInput, until: Date) {
 
 /**
  * ให้สิทธิ์ TradingView อัตโนมัติถ้าตั้งบอทไว้แล้ว
+ *
+ * บอทตอบกลับแค่ว่า "รับงานเข้าคิวแล้ว" (Selenium ใช้เวลาเป็นนาที) เราจึงยังไม่ปิดคิว
+ * ที่นี่ — สถานะจะถูกเปลี่ยนเป็น GRANTED ตอนบอทยิงผลกลับมาที่ /api/tradingview/callback
+ * ระหว่างนั้นรายการยังค้างในคิวให้แอดมินเห็น เผื่อบอทเงียบหายไปเลย
+ *
  * ไม่สำเร็จก็ปล่อยให้คิวค้างไว้ให้แอดมินกดเอง — ห้าม throw
  */
 export async function syncTradingViewGrant(userId: string): Promise<void> {
@@ -149,16 +154,21 @@ export async function syncTradingViewGrant(userId: string): Promise<void> {
     });
     if (!grant) return;
 
-    const res = await grantTradingViewAccess(user.tradingViewUsername);
+    // ให้สิทธิ์บน TradingView หมดอายุพร้อมแพ็กเกจ เผื่อ cron ฝั่งเราไม่ทำงานสักวัน
+    const { sub, isActive } = await getUserSubscription(userId);
+    const days =
+      isActive && sub?.currentPeriodEnd ? Math.max(1, daysUntil(sub.currentPeriodEnd)) : undefined;
+
+    const res = await grantTradingViewAccess(user.tradingViewUsername, days);
+
     if (res.ok) {
       await prisma.accessGrant.update({
         where: { id: grant.id },
         data: {
-          status: "GRANTED",
-          grantedAt: new Date(),
-          revokedAt: null,
           tradingViewUsername: user.tradingViewUsername,
-          note: "ให้สิทธิ์อัตโนมัติโดยบอท",
+          ...(res.queued
+            ? { note: "ส่งคำสั่งให้บอทแล้ว รอผลยืนยัน" }
+            : { status: "GRANTED", grantedAt: new Date(), revokedAt: null, note: "ให้สิทธิ์อัตโนมัติโดยบอท" }),
         },
       });
     } else if (!res.skipped) {
@@ -198,13 +208,21 @@ export async function expireSubscription(sub: Subscription): Promise<void> {
     const auto =
       tvAutoGrantEnabled && user?.tradingViewUsername
         ? await revokeTradingViewAccess(user.tradingViewUsername)
-        : { ok: false, skipped: true as const };
+        : { ok: false, skipped: true as const, queued: false };
+
+    // ถอนสำเร็จทันทีค่อยปิดคิว — ถ้าบอทแค่รับงานเข้าคิว ยังต้องรอ callback ยืนยัน
+    const done = auto.ok && !("queued" in auto && auto.queued);
 
     await prisma.accessGrant.updateMany({
       where: { userId: sub.userId, status: { in: ["PENDING", "GRANTED"] } },
-      data: auto.ok
+      data: done
         ? { status: "REVOKED", revokedAt: now, note: "ถอนสิทธิ์อัตโนมัติ (หมดอายุ)" }
-        : { status: "PENDING_REVOKE", note: "หมดอายุ — รอแอดมินถอนสิทธิ์บน TradingView" },
+        : {
+            status: "PENDING_REVOKE",
+            note: auto.ok
+              ? "หมดอายุ — ส่งคำสั่งถอนให้บอทแล้ว รอผลยืนยัน"
+              : "หมดอายุ — รอแอดมินถอนสิทธิ์บน TradingView",
+          },
     });
   } catch (e) {
     console.error("expire: tradingview step failed:", e);
