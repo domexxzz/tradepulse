@@ -10,7 +10,7 @@ export function Footer() {
       <div className="container-x grid gap-8 py-12 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand font-display text-sm font-bold text-background">
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand font-display text-sm font-bold text-brand-ink">
               {site.name.charAt(0)}
             </span>
             <span className="font-display text-lg font-bold">{site.name}</span>

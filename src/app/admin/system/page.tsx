@@ -18,7 +18,7 @@ export default async function SystemStatusPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-bold">สถานะระบบ</h1>
+        <h1 className="display text-[length:var(--display-sm)]">สถานะระบบ</h1>
         <p className="mt-1 text-sm text-muted">
           ตรวจสด ๆ ทุกครั้งที่เปิดหน้านี้ — รีเฟรชหน้าเพื่อเช็คใหม่
           {bad > 0 && <span className="text-down"> · มี {bad} ระบบที่ติดต่อไม่ได้</span>}
@@ -46,7 +46,7 @@ export default async function SystemStatusPage() {
         })}
       </div>
 
-      <div className="rounded-2xl border border-border bg-surface-2/50 p-5 text-xs leading-relaxed text-muted">
+      <div className="rounded-2xl border border-border bg-surface-2 p-5 text-xs leading-relaxed text-muted">
         <p className="flex items-center gap-1.5 font-medium text-foreground">
           <RefreshCw className="h-3.5 w-3.5" /> อ่านค่ายังไง
         </p>

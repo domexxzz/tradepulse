@@ -11,14 +11,14 @@ export default async function AdminSubscribersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-bold">ผู้รับข่าวสาร ({total})</h1>
+        <h1 className="display text-[length:var(--display-sm)]">ผู้รับข่าวสาร ({total})</h1>
         <p className="mt-1 text-sm text-muted">
           อีเมลจากคนที่สนใจแต่ยังไม่ได้สมัครแพ็กเกจ — ยังรับข่าวสารอยู่ {active} รายการ
         </p>
       </div>
 
       {subscribers.length === 0 ? (
-        <div className="card-surface rounded-2xl p-6 text-sm text-muted">
+        <div className="card-surface rounded-xl p-6 text-sm text-muted">
           ยังไม่มีใครสมัครรับข่าวสาร ฟอร์มอยู่ท้ายหน้าแรกของเว็บ
         </div>
       ) : (
@@ -35,7 +35,7 @@ export default async function AdminSubscribersPage() {
               </thead>
               <tbody>
                 {subscribers.map((s) => (
-                  <tr key={s.id} className="border-b border-border/60 last:border-0">
+                  <tr key={s.id} className="border-b border-border last:border-0">
                     <td className="px-5 py-3">
                       <span className="inline-flex items-center gap-2">
                         <Mail className="h-3.5 w-3.5 text-muted" />

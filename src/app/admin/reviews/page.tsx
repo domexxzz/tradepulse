@@ -7,10 +7,10 @@ export default async function AdminReviewsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="font-display text-2xl font-bold">รีวิว ({reviews.length})</h1>
+      <h1 className="display text-[length:var(--display-sm)]">รีวิว ({reviews.length})</h1>
 
       {reviews.length === 0 ? (
-        <div className="card-surface rounded-2xl p-6 text-sm text-muted">
+        <div className="card-surface rounded-xl p-6 text-sm text-muted">
           ยังไม่มีรีวิวในระบบ — section รีวิวบนหน้าแรกจะซ่อนไว้จนกว่าจะมีรีวิวที่อนุมัติแล้วอย่างน้อย 1 รายการ
         </div>
       ) : (

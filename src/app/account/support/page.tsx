@@ -6,8 +6,8 @@ export default function SupportPage() {
   const hasEmail = Boolean(site.contact.email);
   return (
     <div className="max-w-xl space-y-6">
-      <h1 className="font-display text-2xl font-bold">ช่วยเหลือ</h1>
-      <div className="card-surface rounded-2xl p-6">
+      <h1 className="display text-[length:var(--display-sm)]">ช่วยเหลือ</h1>
+      <div className="card-surface rounded-xl p-6">
         <MessageCircle className="h-8 w-8 text-brand" />
         <h2 className="mt-3 font-semibold">ติดต่อทีมงาน</h2>
         <p className="mt-1 text-sm text-muted">
@@ -16,14 +16,14 @@ export default function SupportPage() {
         {hasLineContact ? (
           <a
             href={site.contact.lineUrl}
-            className="mt-4 inline-block rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-background transition-colors hover:bg-brand-strong"
+            className="mt-4 inline-block rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-brand-ink transition-colors hover:bg-brand-strong"
           >
             ติดต่อผ่าน LINE
           </a>
         ) : hasEmail ? (
           <a
             href={`mailto:${site.contact.email}`}
-            className="mt-4 inline-block rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-background transition-colors hover:bg-brand-strong"
+            className="mt-4 inline-block rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-brand-ink transition-colors hover:bg-brand-strong"
           >
             อีเมล {site.contact.email}
           </a>
@@ -33,7 +33,7 @@ export default function SupportPage() {
       </div>
 
       {hasDiscord && (
-        <div className="card-surface rounded-2xl p-6">
+        <div className="card-surface rounded-xl p-6">
           <DiscordIcon className="h-8 w-8 text-brand" />
           <h2 className="mt-3 font-semibold">ชุมชน Discord</h2>
           <p className="mt-1 text-sm text-muted">

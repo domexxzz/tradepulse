@@ -11,19 +11,19 @@ export default async function PayPage({ params }: { params: Promise<{ id: string
   const session = await auth();
   const order = await prisma.slipOrder.findUnique({ where: { id } });
   if (!order || order.userId !== session!.user.id) {
-    return <div className="card-surface rounded-2xl p-6 text-sm text-muted">ไม่พบออเดอร์นี้</div>;
+    return <div className="card-surface rounded-xl p-6 text-sm text-muted">ไม่พบออเดอร์นี้</div>;
   }
   const plan = plans.find((p) => p.id === order.planCode);
   const qr = order.status === "PENDING" ? await promptpayQrDataUrl(order.amountTHB) : null;
 
   return (
     <div className="mx-auto max-w-lg space-y-6">
-      <h1 className="font-display text-2xl font-bold">ชำระเงินผ่าน PromptPay</h1>
+      <h1 className="display text-[length:var(--display-sm)]">ชำระเงินผ่าน PromptPay</h1>
 
-      <div className="card-surface rounded-2xl p-6">
+      <div className="card-surface rounded-xl p-6">
         <div className="flex items-center justify-between">
           <span className="text-muted">แพ็กเกจ {plan?.name ?? order.planCode}</span>
-          <span className="font-display text-2xl font-bold">{formatTHB(order.amountTHB)}</span>
+          <span className="display text-[length:var(--display-sm)]">{formatTHB(order.amountTHB)}</span>
         </div>
 
         {order.status === "APPROVED" ? (

@@ -38,7 +38,7 @@ export function UnsubscribeForm({ token, email }: { token: string; email: string
         <input type="hidden" name="token" value={token} />
         <button
           disabled={pending}
-          className="inline-flex h-11 w-full items-center justify-center rounded-full bg-brand text-sm font-semibold text-background transition-colors hover:bg-brand-strong disabled:opacity-50"
+          className="inline-flex h-11 w-full items-center justify-center rounded-full bg-brand text-sm font-semibold text-brand-ink transition-colors hover:bg-brand-strong disabled:opacity-50"
         >
           {pending ? "กำลังยกเลิก…" : "ยืนยันยกเลิก"}
         </button>

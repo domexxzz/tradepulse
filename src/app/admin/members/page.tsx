@@ -54,7 +54,7 @@ export default async function MembersPage({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="font-display text-2xl font-bold">สมาชิก ({total})</h1>
+        <h1 className="display text-[length:var(--display-sm)]">สมาชิก ({total})</h1>
         <form className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
           <input
@@ -68,7 +68,7 @@ export default async function MembersPage({
 
       <div className="card-surface overflow-x-auto rounded-2xl">
         <table className="w-full min-w-[900px] text-sm">
-          <thead className="border-b border-border/60 text-left text-muted">
+          <thead className="border-b border-border text-left text-muted">
             <tr>
               <th className="px-5 py-3 font-medium">ชื่อ / อีเมล</th>
               <th className="px-5 py-3 font-medium">ช่องทาง</th>
@@ -86,7 +86,7 @@ export default async function MembersPage({
               const planName = plans.find((p) => p.id === sub?.planCode)?.name ?? sub?.planCode;
 
               return (
-                <tr key={u.id} className="border-b border-border/40 align-top last:border-0">
+                <tr key={u.id} className="border-b border-border align-top last:border-0">
                   <td className="px-5 py-3">
                     <div className="font-medium">
                       {u.name ?? "—"}
@@ -180,7 +180,7 @@ export default async function MembersPage({
         </table>
       </div>
 
-      <div className="rounded-2xl border border-border bg-surface-2/50 p-4 text-xs leading-relaxed text-muted">
+      <div className="rounded-2xl border border-border bg-surface-2 p-4 text-xs leading-relaxed text-muted">
         <p className="font-medium text-foreground">เปิดสิทธิ์ให้ลูกค้าที่ซื้อนอกเว็บ</p>
         <p className="mt-1.5">
           ลูกค้าที่ทักมาทาง LINE / เพจ / TikTok แล้วโอนตรง ให้เลือกแพ็กเกจ + ช่องทางที่ได้เงินมา

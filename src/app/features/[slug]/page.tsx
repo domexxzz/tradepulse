@@ -160,7 +160,7 @@ export default async function FeatureDetailPage({
         <div className="mt-5 flex flex-wrap justify-center gap-3">
           <Link
             href="/#pricing"
-            className="inline-flex h-11 items-center rounded-full bg-brand px-7 text-sm font-semibold text-background transition-colors hover:bg-brand-strong"
+            className="inline-flex h-11 items-center rounded-full bg-brand px-7 text-sm font-semibold text-brand-ink transition-colors hover:bg-brand-strong"
           >
             ดูราคาแพ็กเกจ
           </Link>

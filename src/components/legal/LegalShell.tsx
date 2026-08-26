@@ -22,7 +22,7 @@ export function LegalShell({
       <header className="border-b border-border bg-surface">
         <div className="container-x flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center gap-2" aria-label={`${site.name} หน้าแรก`}>
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand font-display text-sm font-bold text-background">
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand font-display text-sm font-bold text-brand-ink">
               {site.name.charAt(0)}
             </span>
             <span className="font-display text-lg font-bold tracking-tight">{site.name}</span>
