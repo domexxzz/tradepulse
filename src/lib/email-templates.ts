@@ -90,6 +90,49 @@ export function receiptEmail(input: {
   };
 }
 
+/**
+ * แจ้งลูกค้าว่าเพิ่มสิทธิ์อินดิเคเตอร์บน TradingView ให้แล้ว
+ * แนบลิงก์เชิญกลุ่ม Telegram มาด้วยถ้ามี (ลิงก์ส่วนตัว ใช้ได้ครั้งเดียว)
+ */
+export function accessGrantedEmail(input: {
+  name?: string | null;
+  tvUsername: string;
+  until?: Date | null;
+  telegramInviteUrl?: string | null;
+}): EmailContent {
+  const until = input.until ? formatThaiDate(input.until) : null;
+  const tg = input.telegramInviteUrl
+    ? `<p style="margin:20px 0 0;">เข้ากลุ่มสัญญาณ Telegram ได้เลย — ลิงก์นี้เป็นลิงก์ส่วนตัวของคุณ ใช้ได้ครั้งเดียว ห้ามส่งต่อ</p>
+       ${button(input.telegramInviteUrl, "เข้ากลุ่ม Telegram")}`
+    : `<p style="margin:20px 0 0;">ลิงก์เข้ากลุ่ม Telegram ดูได้ในหน้าบัญชีของคุณ</p>
+       ${button(`${site.url}/account`, "ไปที่หน้าบัญชี")}`;
+
+  return {
+    subject: `เพิ่มอินดิเคเตอร์ให้แล้ว · ${input.tvUsername} — ${site.name}`,
+    html: shell(
+      `<p style="margin:0 0 12px;">${hi(input.name)}</p>
+       <p style="margin:0 0 20px;">เพิ่มสิทธิ์อินดิเคเตอร์ให้บัญชี TradingView ของคุณเรียบร้อยแล้ว</p>
+       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid ${BORDER};border-bottom:1px solid ${BORDER};margin:8px 0;">
+         ${row("TradingView username", input.tvUsername)}
+         ${until ? row("ใช้งานได้ถึง", until) : ""}
+       </table>
+       <p style="margin:20px 0 0;">เปิด TradingView แล้วดูที่ Indicators &rarr; Invite-only scripts จะเห็นอินดิเคเตอร์ของเราอยู่ในรายการ ถ้ายังไม่ขึ้นให้ล็อกเอาต์แล้วเข้าใหม่อีกครั้ง</p>
+       ${tg}`,
+      `เพิ่มอินดิเคเตอร์ให้บัญชี ${input.tvUsername} แล้ว`
+    ),
+    text: `${hi(input.name)}
+
+เพิ่มสิทธิ์อินดิเคเตอร์ให้บัญชี TradingView ของคุณแล้ว
+TradingView username: ${input.tvUsername}${until ? `
+ใช้งานได้ถึง: ${until}` : ""}
+
+เปิด TradingView -> Indicators -> Invite-only scripts
+${input.telegramInviteUrl ? `
+เข้ากลุ่ม Telegram (ลิงก์ส่วนตัว ใช้ได้ครั้งเดียว): ${input.telegramInviteUrl}` : `
+ลิงก์กลุ่ม Telegram ดูได้ที่ ${site.url}/account`}`,
+  };
+}
+
 /** เตือนก่อนหมดอายุ */
 export function expiringSoonEmail(input: {
   name?: string | null;

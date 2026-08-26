@@ -4,19 +4,63 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin";
 import { plans } from "@/config/plans";
 import { channelLabel, isRevenueChannel } from "@/config/channels";
-import { activateMembership, expireSubscriptionById, syncTradingViewGrant } from "@/lib/lifecycle";
+import {
+  activateMembership,
+  ensureTelegramInvite,
+  expireSubscriptionById,
+  syncTradingViewGrant,
+} from "@/lib/lifecycle";
 import { removeGroupMember, telegramGroupManaged } from "@/lib/telegram";
+import { sendEmail } from "@/lib/email";
+import { accessGrantedEmail } from "@/lib/email-templates";
+import { getUserSubscription } from "@/lib/subscription";
 
 export async function grantAccess(formData: FormData) {
   await requireAdmin();
   const id = String(formData.get("grantId") ?? "");
   if (!id) return;
-  await prisma.accessGrant.update({
+  const grant = await prisma.accessGrant.update({
     where: { id },
     data: { status: "GRANTED", grantedAt: new Date(), revokedAt: null },
   });
+
+  // แจ้งลูกค้าว่าอินดิเคเตอร์เข้าบัญชีแล้ว + แนบลิงก์กลุ่ม Telegram
+  // ห้ามให้ขั้นตอนแจ้งเตือนทำให้การให้สิทธิ์ล้ม จึงกลืน error ไว้ทั้งหมด
+  try {
+    await notifyAccessGranted(grant.userId, grant.tradingViewUsername);
+  } catch (e) {
+    console.error("notify access granted failed:", e);
+  }
+
   revalidatePath("/admin/access-queue");
   revalidatePath("/admin");
+}
+
+/** ส่งอีเมล "เพิ่มอินดิเคเตอร์ให้แล้ว" พร้อมลิงก์เชิญ Telegram ส่วนตัว */
+async function notifyAccessGranted(userId: string, tvUsername: string | null) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true, name: true, tradingViewUsername: true },
+  });
+  if (!user?.email) return;
+
+  // มีแพ็กเกจใช้งานอยู่ถึงจะมีสิทธิ์เข้ากลุ่ม — สร้างลิงก์เชิญให้ถ้ายังไม่มี
+  const { sub, isActive } = await getUserSubscription(userId);
+  if (isActive) await ensureTelegramInvite(userId);
+
+  const tg = await prisma.telegramGrant.findFirst({
+    where: { userId, status: { in: ["PENDING", "ADDED"] } },
+    orderBy: { createdAt: "desc" },
+    select: { inviteLink: true },
+  });
+
+  const mail = accessGrantedEmail({
+    name: user.name,
+    tvUsername: tvUsername ?? user.tradingViewUsername ?? "-",
+    until: isActive ? sub?.currentPeriodEnd ?? null : null,
+    telegramInviteUrl: tg?.inviteLink ?? null,
+  });
+  await sendEmail({ to: user.email, ...mail });
 }
 
 export async function revokeAccess(formData: FormData) {

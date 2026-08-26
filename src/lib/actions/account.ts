@@ -5,6 +5,7 @@ import { auth, signOut } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { syncTradingViewGrant } from "@/lib/lifecycle";
 import { hasActiveSubscription } from "@/lib/subscription";
+import { sendAdminAlert } from "@/lib/telegram";
 
 export async function signOutAction() {
   await signOut({ redirectTo: "/" });
@@ -38,8 +39,24 @@ export async function updateTradingView(
   });
 
   // กรอก username ทีหลังตอนจ่ายเงินไปแล้ว — ให้บอทลองเพิ่มสิทธิ์ทันที ไม่ต้องรอแอดมิน
-  if (await hasActiveSubscription(session.user.id)) {
+  const isActive = await hasActiveSubscription(session.user.id);
+  if (isActive) {
     await syncTradingViewGrant(session.user.id);
+  }
+
+  // แจ้งแอดมินว่ามี username เข้ามาใหม่ ต้องไปเพิ่มสิทธิ์บน TradingView
+  // ห้ามให้ขั้นตอนแจ้งเตือนทำให้การบันทึกล้ม จึงกลืน error ไว้
+  try {
+    const who = session.user.email ?? session.user.id;
+    await sendAdminAlert(
+      `📝 มี TradingView username เข้ามาใหม่
+สมาชิก: ${who}
+username: ${parsed.data}
+สถานะแพ็กเกจ: ${isActive ? "กำลังใช้งาน" : "ยังไม่มีแพ็กเกจที่ใช้งานอยู่"}
+เพิ่มสิทธิ์แล้วกด "ให้สิทธิ์แล้ว" ที่ /admin/access-queue`
+    );
+  } catch (e) {
+    console.error("notify admin (tv username) failed:", e);
   }
 
   revalidatePath("/account/tradingview");
