@@ -12,14 +12,22 @@ import { prisma } from "@/lib/prisma";
  * เลื่อนขั้นอย่างเดียว ไม่ลดขั้น — เอาอีเมลออกจากลิสต์แล้วสิทธิ์ยังอยู่
  * ถ้าต้องการถอนสิทธิ์ ให้แก้ role ในฐานข้อมูลหรือหน้าแอดมิน
  */
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
-  .split(",")
-  .map((s) => s.trim().toLowerCase())
-  .filter(Boolean);
+/**
+ * อ่าน env ตอนเรียกใช้ ไม่ใช่ตอนโหลดโมดูล
+ * ค่าที่อ่านระดับบนสุดของไฟล์มีโอกาสถูกฝังตั้งแต่ตอน build ทำให้แก้ env
+ * แล้วไม่มีผลจนกว่าจะ build ใหม่ทั้งก้อน
+ */
+function adminEmails(): string[] {
+  return (process.env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+}
 
 export function isBootstrapAdmin(email?: string | null): boolean {
-  if (!email || ADMIN_EMAILS.length === 0) return false;
-  return ADMIN_EMAILS.includes(email.toLowerCase());
+  if (!email) return false;
+  const list = adminEmails();
+  return list.length > 0 && list.includes(email.trim().toLowerCase());
 }
 
 /**
