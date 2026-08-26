@@ -54,19 +54,24 @@ export const tradingView = {
   symbol: process.env.NEXT_PUBLIC_TRADINGVIEW_SYMBOL || "FOREXCOM:XAUUSD",
   interval: process.env.NEXT_PUBLIC_TRADINGVIEW_INTERVAL || "30",
   /**
-   * ภาพ snapshot ของกราฟจริง (กดปุ่มกล้อง 📷 บน TradingView -> "คัดลอกลิงก์ภาพ")
-   * เป็นวิธีเดียวที่แสดงเส้นอินดิเคเตอร์ TradePulse บนเว็บได้ เพราะ layout เป็น private
-   * ตัวอย่าง: https://s3.tradingview.com/snapshots/x/XXXXXXXX.png
+   * ภาพกราฟจริงที่รันอินดิเคเตอร์ TradePulse
+   *
+   * ภาพเดิมใช้ลิงก์ snapshot ของ TradingView ซึ่งเป็นแถบยาวแบน (1814x436 = 4.16:1)
+   * เอามาวางเต็มความกว้างหน้าเว็บแล้วกลายเป็นริบบิ้นบาง ๆ ดูไม่สมส่วน
+   * ตัวนี้แคปใหม่จาก layout จริงในสัดส่วน 16:9 และซ่อน UI ของ TradingView ออกหมด
+   * (แถบพารามิเตอร์อินดิเคเตอร์, แถบเครื่องมือวาด, แถบไทม์เฟรมด้านล่าง)
+   *
+   * เปลี่ยนภาพใหม่: แคปให้ได้สัดส่วนใกล้ 16:9 แล้วแก้ snapshotAspect ให้ตรงด้วย
+   * ถ้าจะกลับไปใช้ลิงก์ snapshot ของ TradingView ก็ตั้งผ่าน env ได้เหมือนเดิม
    */
-  snapshotUrl:
-    process.env.NEXT_PUBLIC_TRADINGVIEW_SNAPSHOT_URL ||
-    "https://s3.tradingview.com/snapshots/e/EI34kpKu.png",
-  /** อัตราส่วนภาพ snapshot — กันภาพกระโดด (CLS) ตอนโหลด ต้องแก้ตามภาพใหม่ที่เปลี่ยน */
-  snapshotAspect: process.env.NEXT_PUBLIC_TRADINGVIEW_SNAPSHOT_ASPECT || "1814 / 436",
-  /** หน้า snapshot บน TradingView (ให้เครดิตที่มาของภาพ) */
+  snapshotUrl: process.env.NEXT_PUBLIC_TRADINGVIEW_SNAPSHOT_URL || "/images/chart-live.png",
+  /** อัตราส่วนภาพ — กันภาพกระโดด (CLS) ตอนโหลด ต้องแก้ตามภาพใหม่ที่เปลี่ยน */
+  snapshotAspect: process.env.NEXT_PUBLIC_TRADINGVIEW_SNAPSHOT_ASPECT || "16 / 9",
+  /** กดที่ภาพแล้วไปไหน — ภาพในเครื่องไม่มีหน้า snapshot จึงพาไปที่ layout กราฟจริงแทน */
   snapshotPageUrl:
     process.env.NEXT_PUBLIC_TRADINGVIEW_SNAPSHOT_PAGE_URL ||
-    "https://www.tradingview.com/x/EI34kpKu/",
+    process.env.NEXT_PUBLIC_TRADINGVIEW_CHART_URL ||
+    "https://th.tradingview.com/chart/AOJ68CcI/?symbol=FOREXCOM%3AXAUUSD",
 } as const;
 
 /** มีภาพ snapshot กราฟจริงให้แสดงหรือยัง */
