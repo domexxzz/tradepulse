@@ -15,10 +15,16 @@ export interface PromoState {
   monthlyTHB: number;
 }
 
-/** นับสมาชิกที่จ่ายเงินจริงแล้ว — คนที่ได้สิทธิ์ฟรี (0 บาท) ไม่กินที่นั่งโปร */
-export async function countPaidMembers(): Promise<number> {
+/**
+ * นับสมาชิกที่จ่ายเงินจริงแล้ว — คนที่ได้สิทธิ์ฟรี (0 บาท) ไม่กินที่นั่งโปร
+ * @param excludeUserId ไม่นับคนนี้ ใช้ตอนถามว่า "ก่อนหน้าคนนี้มีกี่คนแล้ว"
+ */
+export async function countPaidMembers(excludeUserId?: string): Promise<number> {
   const rows = await prisma.payment.findMany({
-    where: { status: "paid" },
+    where: {
+      status: "paid",
+      ...(excludeUserId ? { userId: { not: excludeUserId } } : {}),
+    },
     select: { userId: true },
     distinct: ["userId"],
   });
@@ -75,6 +81,10 @@ export async function plansForUser(userId: string): Promise<Plan[]> {
 /**
  * ล็อกราคาโปรให้สมาชิกตอนจ่ายเงินครั้งแรก
  * ล็อกครั้งเดียว ไม่ทับของเดิม เพื่อไม่ให้ราคาที่เคยให้ไว้เปลี่ยนย้อนหลัง
+ *
+ * ต้องนับที่นั่งแบบ "ไม่รวมตัวเอง" เพราะฟังก์ชันนี้ถูกเรียกหลัง recordPayment แล้ว
+ * ถ้านับรวมตัวเอง คนที่ 300 จะเห็น remaining = 0 แล้วหลุดการล็อก ทั้งที่เพิ่งจ่าย
+ * ราคาโปรไป — พอต่ออายุรอบหน้าจะโดนเก็บ 1,290 สวนกับที่หน้าเว็บสัญญาไว้
  */
 export async function lockPromoPriceIfEligible(userId: string): Promise<void> {
   const user = await prisma.user.findUnique({
@@ -83,8 +93,8 @@ export async function lockPromoPriceIfEligible(userId: string): Promise<void> {
   });
   if (user?.lockedMonthlyTHB) return;
 
-  const promo = await getPromoState();
-  if (!promo.active) return;
+  const takenBeforeThisUser = await countPaidMembers(userId);
+  if (takenBeforeThisUser >= PROMO_SEATS) return;
 
   await prisma.user.update({
     where: { id: userId },

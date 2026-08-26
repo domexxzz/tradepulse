@@ -4,6 +4,8 @@ import { activateMembership, runMembershipMaintenance } from "@/lib/lifecycle";
 import { getUserSubscription, isSubscriptionActive } from "@/lib/subscription";
 import { addMonths, daysUntil } from "@/lib/date";
 import { parseSlipDataUrl } from "@/lib/slip";
+import { countPaidMembers, getPromoState, monthlyPriceFor } from "@/lib/pricing";
+import { PROMO_SEATS, MONTHLY_PROMO, MONTHLY_REGULAR } from "@/config/plans";
 
 const prisma = new PrismaClient();
 const MARK = "uat-run";
@@ -173,5 +175,80 @@ describe("F-1 · สลิปซ้ำต้องถูกปฏิเสธท
 
     await mk(1);
     await expect(mk(2)).rejects.toThrow();
+  });
+});
+
+describe("P-1 · ที่นั่งโปรสุดท้ายต้องได้ราคาล็อกจริง", () => {
+  /** เติมสมาชิกที่จ่ายเงินแล้วให้เหลือที่นั่งโปรพอดี n ที่ */
+  async function fillSeatsLeaving(n: number) {
+    const already = await countPaidMembers();
+    const need = PROMO_SEATS - n - already;
+    if (need <= 0) return;
+
+    const users = Array.from({ length: need }, (_, i) => ({
+      email: `seat${i}.${MARK}@uat.test`,
+      name: `ที่นั่ง ${i}`,
+      passwordHash: "x",
+    }));
+    await prisma.user.createMany({ data: users });
+
+    const created = await prisma.user.findMany({
+      where: { email: { startsWith: "seat", endsWith: `${MARK}@uat.test` } },
+      select: { id: true },
+    });
+    await prisma.payment.createMany({
+      data: created.map((u) => ({
+        userId: u.id,
+        amountTHB: 990,
+        provider: "web",
+        status: "paid",
+      })),
+    });
+  }
+
+  it(`คนที่ ${PROMO_SEATS} ซึ่งกินที่นั่งสุดท้าย ยังถูกล็อกราคา ฿${MONTHLY_PROMO}`, async () => {
+    await fillSeatsLeaving(1);
+    expect(await countPaidMembers()).toBe(PROMO_SEATS - 1);
+
+    const last = await makeUser("seat-last");
+    await activateMembership({
+      userId: last.id,
+      planCode: "MONTH",
+      amountTHB: MONTHLY_PROMO,
+      providerRef: `uat_${last.id}`,
+      provider: "web",
+    });
+
+    // ที่นั่งเต็มพอดีแล้ว หน้าเว็บต้องขึ้นราคาปกติกับคนถัดไป
+    const promo = await getPromoState();
+    expect(promo.taken).toBe(PROMO_SEATS);
+    expect(promo.active).toBe(false);
+    expect(promo.monthlyTHB).toBe(MONTHLY_REGULAR);
+
+    // แต่คนที่เพิ่งจ่ายต้องถูกล็อกราคาโปรไว้แล้ว ไม่ใช่หลุดไปเป็นราคาปกติ
+    expect(await monthlyPriceFor(last.id)).toBe(MONTHLY_PROMO);
+    const row = await prisma.user.findUnique({
+      where: { id: last.id },
+      select: { lockedMonthlyTHB: true },
+    });
+    expect(row?.lockedMonthlyTHB).toBe(MONTHLY_PROMO);
+  });
+
+  it(`คนที่ ${PROMO_SEATS + 1} ไม่ได้ราคาโปร และโดนเก็บ ฿${MONTHLY_REGULAR}`, async () => {
+    const over = await makeUser("seat-over");
+    await activateMembership({
+      userId: over.id,
+      planCode: "MONTH",
+      amountTHB: MONTHLY_REGULAR,
+      providerRef: `uat_${over.id}`,
+      provider: "web",
+    });
+
+    const row = await prisma.user.findUnique({
+      where: { id: over.id },
+      select: { lockedMonthlyTHB: true },
+    });
+    expect(row?.lockedMonthlyTHB).toBeNull();
+    expect(await monthlyPriceFor(over.id)).toBe(MONTHLY_REGULAR);
   });
 });
