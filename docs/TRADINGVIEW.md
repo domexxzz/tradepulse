@@ -87,15 +87,17 @@ $C run 'cd /d "C:\Users\User\OneDrive\Desktop\Bot Tradingview" && pip install -r
   เอาไปใส่ `TV_BOT_URL` ได้เลย ไม่ต้องลงอะไรเพิ่ม (ต้องเปิด Funnel ใน ACL ของ tailnet ก่อน)
 - **cloudflared tunnel** — ใช้ได้เหมือนกัน แต่ต้องลงโปรแกรมเพิ่ม
 
-### ค่าที่ติดตั้งจริงไว้แล้วบนคอมเบส (26 ส.ค. 2569)
+### ค่าที่ติดตั้งจริงไว้แล้วบนคอมเบส (ตรวจกับเครื่องจริง 27 ส.ค. 2569)
 
 | อะไร | ค่า |
 |---|---|
 | บัญชีเจ้าของสคริปต์ | `Pyro_Bolt` |
 | สคริปต์ที่ขาย | `Test 2 — SMC Unified Suite [Pyro_Bolt]` (invite-only) |
 | โปรไฟล์ Chrome ของบอท | `C:\tv-bot-chrome` (ล็อกอิน TradingView ไว้แล้ว) |
-| scheduled task | `QVXTVBridge` (ขึ้นเองตอน login) |
-| log | `%LOCALAPPDATA%\Temp\tv_bridge.log` |
+| โฟลเดอร์บอท | `C:\Users\User\OneDrive\Desktop\Bot Tradingview` |
+| scheduled task | `TradePulseTVBridge` — trigger `At system start up`, run as `User` |
+| ตัวสั่งรัน | `C:\tv-bridge-run.bat` (ตั้ง UTF-8 + `python -u` ก่อนเรียก `tv_bridge.py`) |
+| log | `C:\tv-bridge.log` |
 | URL สาธารณะ | `https://asus.tail17bed7.ts.net` (Tailscale Funnel) |
 
 รีสตาร์ทบริดจ์: ต้องฆ่าโปรเซสที่ถือพอร์ต 8787 ก่อน แล้วค่อย `schtasks /end` + `/run`
@@ -114,8 +116,12 @@ $C run 'cd /d "C:\Users\User\OneDrive\Desktop\Bot Tradingview" && pip install -r
    Selenium จะเปิดไม่ได้ถ้ามีหน้าต่าง Chrome ของโปรไฟล์เดียวกันเปิดค้าง
    → ควรสร้างโปรไฟล์แยกไว้ให้บอทโดยเฉพาะ แล้วล็อกอินบัญชีเจ้าของสคริปต์ในนั้น
    (ตั้งผ่าน `CHROME_PROFILE_DIR` ที่เพิ่งทำให้เป็น env แล้ว)
-3. **บอทยังไม่ได้ตั้งเป็น scheduled task** — ตอนนี้มีแต่งานของ Sentiara
-   ถ้าจะให้บริดจ์ขึ้นเองหลังเครื่องบูต ต้องเพิ่ม task ใหม่
+3. **task เป็น `Interactive only`** — ตั้ง trigger ไว้ที่ system start up แล้วก็จริง
+   แต่ logon mode ยังเป็น interactive แปลว่าต้องมีคนล็อกอินค้างไว้บนเครื่อง
+   รีบูตแล้วไม่มีใครล็อกอิน บริดจ์จะไม่ขึ้น — เช็คได้ตลอดด้วย `/health`
+4. **path บอทอยู่ใน OneDrive** — OneDrive เคยล็อกไฟล์ log จนบริดจ์เขียนไม่ได้
+   จึงย้าย log ออกไปไว้ `C:\tv-bridge.log` ซึ่งอยู่นอก OneDrive
+   ถ้าจะย้ายโฟลเดอร์บอท อย่าลืมแก้ path ใน `C:\tv-bridge-run.bat` ด้วย
 
 ## ตั้งค่า
 
@@ -136,11 +142,89 @@ TRADEPULSE_CALLBACK_URL=https://โดเมนเว็บ/api/tradingview/call
 CHROME_USER_DATA_DIR=<โฟลเดอร์โปรไฟล์ Chrome ที่ล็อกอินค้างไว้>
 ```
 
-เครื่องที่รันบอทต้องเปิดตลอด และถ้าไม่มี public IP ให้ใช้ tunnel:
+เครื่องที่รันบอทต้องเปิดตลอด และถ้าไม่มี public IP ต้องมี tunnel
+คอมเบสใช้ **Tailscale Funnel** อยู่ (ไม่ใช่ cloudflared) เพราะเครื่องอยู่บน tailnet อยู่แล้ว:
 
 ```bash
-cloudflared tunnel --url http://localhost:8787
+tailscale funnel --bg 8787      # ได้ https://asus.tail17bed7.ts.net
+tailscale funnel status         # ดูว่ายังเปิดอยู่ไหม
 ```
+
+Funnel เปิดออกอินเทอร์เน็ตจริง ไม่ใช่แค่ใน tailnet — Vercel จึงเรียกถึงได้
+ต่างจากที่อยู่ `100.x` ซึ่งเรียกได้เฉพาะเครื่องบน tailnet เดียวกัน
+
+## เปิดใช้งานอัตโนมัติ — เช็กลิสต์
+
+เป้าหมาย: **ลูกค้ากรอก TradingView username แล้วบอทไปเพิ่มสิทธิ์ให้เองทันที**
+
+โค้ดฝั่งเว็บพร้อมแล้ว (`saveTradingViewUsername` เรียก `syncTradingViewGrant` ต่อทันที)
+ที่เหลือเป็นเรื่อง env ล้วน ๆ — ต้องครบ **ทั้งสามค่า** ไม่งั้นเงียบ
+
+| ค่า | ตั้งที่ไหน | ถ้าไม่ตั้งจะเป็นยังไง |
+|---|---|---|
+| `TV_BOT_URL` | Vercel | `tvAutoGrantEnabled = false` → `syncTradingViewGrant` return ทันที ไม่เกิดอะไรเลย |
+| `TV_BOT_SECRET` | Vercel **และ** `.env` ของบอท (ต้องตรงกัน) | เหมือนข้างบน / ถ้าไม่ตรงบอทตอบ `secret ไม่ถูกต้อง` |
+| `TRADEPULSE_CALLBACK_URL` | `.env` ของบอท | บอททำงานจริงแต่**ไม่รายงานผลกลับ** → คิวใน `/admin/access-queue` ค้าง PENDING ตลอด ทั้งที่ลูกค้าได้สิทธิ์ไปแล้ว |
+
+`tvAutoGrantEnabled` คือ `Boolean(TV_BOT_URL && TV_BOT_SECRET)` เฉย ๆ ไม่มีสวิตช์แยก
+ตั้งครบเมื่อไหร่ก็เปิดเอง ลบออกเมื่อไหร่ก็กลับไปเข้าคิวให้ทำมือ ออเดอร์ไม่พังทั้งสองทาง
+
+### ขั้นตอน
+
+**1. ฝั่งบอท (คอมเบส)** — ใส่ callback URL ใน `.env` ของบอท
+
+```
+TRADEPULSE_CALLBACK_URL=https://<โดเมนเว็บ>/api/tradingview/callback
+```
+
+แล้วรีสตาร์ทบริดจ์ (ดูวิธีในหัวข้อค่าที่ติดตั้งจริง — ต้องฆ่าโปรเซสที่ถือพอร์ต 8787 ก่อน)
+
+**2. ฝั่งเว็บ (Vercel)** — ใส่สองค่า แล้ว redeploy
+
+```bash
+vercel env add TV_BOT_URL       # https://asus.tail17bed7.ts.net  (ไม่มี / ปิดท้าย)
+vercel env add TV_BOT_SECRET    # ค่าเดียวกับ TV_BOT_SECRET ใน .env ของบอท
+```
+
+> env ไม่ใช่ `NEXT_PUBLIC_*` อ่านตอน runtime ก็จริง แต่ Vercel ต้อง redeploy
+> ให้ instance ใหม่รับค่าไปใช้ ตั้งเฉย ๆ แล้วไม่ deploy จะยังไม่มีผล
+
+### ตรวจว่าทำงานจริงไหม
+
+**ก. บริดจ์ยังอยู่ไหม**
+
+```bash
+curl https://asus.tail17bed7.ts.net/health
+```
+
+ต้องได้ประมาณนี้:
+
+```json
+{"ok": true, "queue": 0, "indicator": "Test 2 SMC Unified Suite", "callback": true}
+```
+
+- `callback: false` = **ยังไม่ได้ตั้ง `TRADEPULSE_CALLBACK_URL`** บอททำงานได้แต่ผลจะไม่กลับมาที่เว็บ
+- `queue` ค้างเลขเดิมนาน ๆ = มีงานติดอยู่ ไปดู `C:\tv-bridge.log`
+- ต่อไม่ติดเลย = คอมเบสปิด หรือ Funnel หลุด (`tailscale funnel status`)
+
+> ระหว่างบอทกำลังทำงาน `/health` จะไม่ตอบชั่วคราว เพราะ Selenium เป็นโค้ด blocking
+> ค้าง event loop ไว้ทั้งงาน — ไม่ใช่อาการล่ม
+
+**ข. secret กันจริงไหม** — ยิงโดยไม่ใส่ secret ต้องถูกปฏิเสธ
+
+```bash
+curl -X POST https://asus.tail17bed7.ts.net/grant \
+  -H 'Content-Type: application/json' -d '{"username":"x","days":1}'
+# {"ok": false, "error": "secret ไม่ถูกต้อง"}
+```
+
+**ค. ฝั่งเว็บเปิดหรือยัง** — เข้า `/admin/system` ดูแถว TradingView
+ถ้ายังไม่ได้ตั้ง env จะขึ้นว่า "ตั้ง TV_BOT_URL + TV_BOT_SECRET"
+
+**ง. ลองทั้งเส้นจริง** — สมัครบัญชีทดสอบ เปิดสิทธิ์ให้ แล้วกรอก TradingView
+username ที่ `/account` จากนั้นดู `C:\tv-bridge.log` ว่ามีงานเข้า
+และดู `/admin/access-queue` ว่าสถานะเปลี่ยนเป็น GRANTED ภายใน 1-2 นาที
+ถ้างานเข้าแต่สถานะไม่เปลี่ยน = callback ไม่ถึง กลับไปดูข้อ ก.
 
 ## ระบบเรียกบอทตอนไหน
 
