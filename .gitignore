@@ -59,3 +59,6 @@ next-env.d.ts
 /*.pine
 /pine/
 /.pine-backup/
+
+# build logs
+*.log
