@@ -96,12 +96,32 @@ $C run 'cd /d "C:\Users\User\OneDrive\Desktop\Bot Tradingview" && pip install -r
 | โปรไฟล์ Chrome ของบอท | `C:\tv-bot-chrome` (ล็อกอิน TradingView ไว้แล้ว) |
 | โฟลเดอร์บอท | `C:\Users\User\OneDrive\Desktop\Bot Tradingview` |
 | scheduled task | `TradePulseTVBridge` — trigger `At system start up`, run as `User` |
-| ตัวสั่งรัน | `C:\tv-bridge-run.bat` (ตั้ง UTF-8 + `python -u` ก่อนเรียก `tv_bridge.py`) |
-| log | `C:\tv-bridge.log` |
+| ตัวสั่งรัน | `C:\tv-bridge-run.bat` (ตั้ง UTF-8 แล้วเรียก `python.exe -u tv_bridge.py`) |
+| log | `C:\Users\User\tv-bridge.log` |
+| callback | ตั้งแล้ว ชี้ไป `https://tradepulse-lime-five.vercel.app/api/tradingview/callback` |
 | URL สาธารณะ | `https://asus.tail17bed7.ts.net` (Tailscale Funnel) |
 
-รีสตาร์ทบริดจ์: ต้องฆ่าโปรเซสที่ถือพอร์ต 8787 ก่อน แล้วค่อย `schtasks /end` + `/run`
+**รีสตาร์ทบริดจ์** — ต้องฆ่าโปรเซสที่ถือพอร์ต 8787 ก่อน แล้วค่อย `schtasks /end` + `/run`
 (`/end` อย่างเดียวฆ่าแค่ cmd.exe — ตัว python ยังถือพอร์ตอยู่ ตัวใหม่เลย bind ไม่ได้แล้วตายเงียบ)
+
+```powershell
+$c = Get-NetTCPConnection -LocalPort 8787 -State Listen -ErrorAction SilentlyContinue
+if ($c) { Stop-Process -Id ($c.OwningProcess | Select-Object -First 1) -Force }
+schtasks /end /tn TradePulseTVBridge
+schtasks /run /tn TradePulseTVBridge
+```
+
+เช็คว่าขึ้นจริงจาก `schtasks /query /tn TradePulseTVBridge /fo list /v`
+
+| Last Result | แปลว่า |
+|---|---|
+| `267009` (0x41301) | กำลังรันอยู่ — ปกติ |
+| `1` | `.bat` ล้ม มักเป็น python ไม่เจอใน PATH หรือเขียน log ไม่ได้ |
+| `0` | จบไปแล้ว = บริดจ์ไม่ได้รันต่อ ผิดปกติ |
+
+> `schtasks /run` ผ่าน SSH ใช้ได้ แต่การสตาร์ทโปรเซสตรง ๆ จาก SSH ไม่รอด —
+> โปรเซสจะตายตอน session ปิด และ `Win32_Process.Create` ก็รันใน session 0
+> ซึ่งเข้าไม่ถึงของที่ผูกกับ session ของผู้ใช้ ใช้ `schtasks` เท่านั้น
 
 > ระหว่างที่บอทกำลังทำงาน `/health` จะไม่ตอบ เพราะ Selenium เป็นโค้ด blocking
 > ที่ค้าง event loop ไว้ทั้งงาน — ไม่ใช่อาการล่ม
@@ -119,7 +139,15 @@ $C run 'cd /d "C:\Users\User\OneDrive\Desktop\Bot Tradingview" && pip install -r
 3. **task เป็น `Interactive only`** — ตั้ง trigger ไว้ที่ system start up แล้วก็จริง
    แต่ logon mode ยังเป็น interactive แปลว่าต้องมีคนล็อกอินค้างไว้บนเครื่อง
    รีบูตแล้วไม่มีใครล็อกอิน บริดจ์จะไม่ขึ้น — เช็คได้ตลอดด้วย `/health`
-4. **path บอทอยู่ใน OneDrive** — OneDrive เคยล็อกไฟล์ log จนบริดจ์เขียนไม่ได้
+4. **`.bat` ต้องเรียก python ด้วย path เต็ม** — python บนเครื่องนี้ติดตั้งแบบต่อผู้ใช้
+   (`C:\Users\User\AppData\Local\Programs\Python\Python313\python.exe`)
+   เวลา scheduled task รันนอก session ของผู้ใช้ PATH ไม่มี `python`
+   คำสั่งจะล้มเงียบ ๆ แล้ว task รายงาน `Last Result: 1` โดยไม่มีอะไรลง log เลย
+5. **ห้ามให้ log อยู่ที่ราก `C:\`** — เขียนที่รากไดรฟ์ต้องมีสิทธิ์แอดมิน
+   และไฟล์เดิมเคยถูกโปรเซสอื่นล็อกค้างจนปลดไม่ได้ พอ redirect ล้ม
+   `cmd` คืน exit 1 ทั้งชุด ทำให้ดูเหมือนบอทพังทั้งที่โค้ดไม่มีปัญหา
+   ตอนนี้ย้ายไป `C:\Users\User\tv-bridge.log` แล้ว
+6. **path บอทอยู่ใน OneDrive** — OneDrive เคยล็อกไฟล์ log จนบริดจ์เขียนไม่ได้
    จึงย้าย log ออกไปไว้ `C:\tv-bridge.log` ซึ่งอยู่นอก OneDrive
    ถ้าจะย้ายโฟลเดอร์บอท อย่าลืมแก้ path ใน `C:\tv-bridge-run.bat` ด้วย
 
@@ -171,20 +199,28 @@ Funnel เปิดออกอินเทอร์เน็ตจริง ไ
 
 ### ขั้นตอน
 
-**1. ฝั่งบอท (คอมเบส)** — ใส่ callback URL ใน `.env` ของบอท
+**1. ฝั่งบอท (คอมเบส) — ทำแล้ว ✅ (27 ส.ค. 2569)**
 
 ```
-TRADEPULSE_CALLBACK_URL=https://<โดเมนเว็บ>/api/tradingview/callback
+TRADEPULSE_CALLBACK_URL=https://tradepulse-lime-five.vercel.app/api/tradingview/callback
 ```
 
-แล้วรีสตาร์ทบริดจ์ (ดูวิธีในหัวข้อค่าที่ติดตั้งจริง — ต้องฆ่าโปรเซสที่ถือพอร์ต 8787 ก่อน)
+ยืนยันด้วย `/health` ว่าขึ้น `"callback": true` แล้ว
+ถ้าย้ายไปโดเมนของตัวเองเมื่อไหร่ ต้องกลับมาแก้ค่านี้แล้วรีสตาร์ทบริดจ์ด้วย
+ไฟล์สำรองก่อนแก้อยู่ที่ `C:\tv-bridge-env.bak` และ `C:\tv-bridge-run.bat.bak`
 
-**2. ฝั่งเว็บ (Vercel)** — ใส่สองค่า แล้ว redeploy
+**2. ฝั่งเว็บ (Vercel) — ยังไม่ได้ทำ ⬅ เหลือแค่ขั้นนี้ขั้นเดียว**
+
+ใส่สองค่า แล้ว redeploy
 
 ```bash
 vercel env add TV_BOT_URL       # https://asus.tail17bed7.ts.net  (ไม่มี / ปิดท้าย)
-vercel env add TV_BOT_SECRET    # ค่าเดียวกับ TV_BOT_SECRET ใน .env ของบอท
+vercel env add TV_BOT_SECRET    # ก๊อปจาก TV_BOT_SECRET ใน .env ของบอทบนคอมเบส
 ```
+
+`TV_BOT_SECRET` ตั้งไว้แล้วฝั่งบอท — เปิดดูได้ที่
+`C:\Users\User\OneDrive\Desktop\Bot Tradingview\.env` บนคอมเบส
+ต้องใส่ให้ตรงกันเป๊ะ ไม่งั้นบอทตอบ `secret ไม่ถูกต้อง` (401)
 
 > env ไม่ใช่ `NEXT_PUBLIC_*` อ่านตอน runtime ก็จริง แต่ Vercel ต้อง redeploy
 > ให้ instance ใหม่รับค่าไปใช้ ตั้งเฉย ๆ แล้วไม่ deploy จะยังไม่มีผล
