@@ -1,9 +1,9 @@
-# TradePulse
+# QVX
 
 เว็บขายสิทธิ์ใช้งานอินดิเคเตอร์วิเคราะห์ทองคำ (XAUUSD) บน TradingView แบบสมาชิกรายงวด
 พร้อมระบบชำระเงิน ส่งมอบสิทธิ์ และดูแลอายุสมาชิกอัตโนมัติ
 
-> TradePulse เป็นเครื่องมือช่วยวิเคราะห์เท่านั้น ไม่ใช่คำแนะนำการลงทุน
+> QVX เป็นเครื่องมือช่วยวิเคราะห์เท่านั้น ไม่ใช่คำแนะนำการลงทุน
 > ไม่รับบริหารเงินทุน และไม่รับประกันผลตอบแทน
 
 ## ระบบที่มี
@@ -27,8 +27,8 @@ Auth.js v5 · Stripe · Resend · deploy บน Vercel
 ## เริ่มใช้งานในเครื่อง
 
 ```bash
-docker run -d --name tradepulse-pg \
-  -e POSTGRES_PASSWORD=devpass -e POSTGRES_USER=tradepulse -e POSTGRES_DB=tradepulse \
+docker run -d --name qvx-pg \
+  -e POSTGRES_PASSWORD=devpass -e POSTGRES_USER=qvx -e POSTGRES_DB=qvx \
   -p 5433:5432 postgres:16-alpine
 
 cp .env.example .env      # แล้วกรอก DATABASE_URL / DIRECT_URL ตาม docs/SETUP.md

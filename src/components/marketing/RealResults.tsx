@@ -20,7 +20,7 @@ export function RealResults() {
               preload="metadata"
               playsInline
               poster="/images/result-xauusd.png"
-              aria-label="คลิปการใช้งานอินดิเคเตอร์ TradePulse บนกราฟทองคำ XAUUSD"
+              aria-label="คลิปการใช้งานอินดิเคเตอร์ QVX บนกราฟทองคำ XAUUSD"
             >
               <source src="/videos/demo.mp4" type="video/mp4" />
               เบราว์เซอร์ของคุณไม่รองรับการเล่นวิดีโอ
@@ -33,7 +33,7 @@ export function RealResults() {
           <figure className="card-surface flex flex-col overflow-hidden rounded-2xl p-1.5">
             <Image
               src="/images/result-xauusd.png"
-              alt="ภาพผลลัพธ์จากอินดิเคเตอร์ TradePulse บนกราฟ XAUUSD แสดงสัญญาณและแนวโน้มบน TradingView"
+              alt="ภาพผลลัพธ์จากอินดิเคเตอร์ QVX บนกราฟ XAUUSD แสดงสัญญาณและแนวโน้มบน TradingView"
               width={1814}
               height={921}
               className="h-auto w-full rounded-xl border border-border"
@@ -68,7 +68,7 @@ export function RealResults() {
           </div>
           <Image
             src="/images/performance-curve.png"
-            alt="เส้นผลการทำงานสะสมของระบบ TradePulse จากสัญญาณย้อนหลัง แสดงบน TradingView"
+            alt="เส้นผลการทำงานสะสมของระบบ QVX จากสัญญาณย้อนหลัง แสดงบน TradingView"
             width={1764}
             height={509}
             className="h-auto w-full rounded-xl border border-border"

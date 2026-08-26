@@ -28,7 +28,7 @@ if (!key.startsWith("sk_test_")) {
 
 const stripe = new Stripe(key);
 
-const PRODUCT_NAME = "TradePulse Membership";
+const PRODUCT_NAME = "QVX Membership";
 const plans = [
   { code: "MONTH", label: "รายเดือน", amount: 99000, interval: "month", count: 1, env: "STRIPE_PRICE_MONTH" },
   { code: "Q3", label: "ราย 3 เดือน", amount: 267000, interval: "month", count: 3, env: "STRIPE_PRICE_Q3" },
@@ -47,7 +47,7 @@ async function getProduct() {
 
 const results = [];
 for (const p of plans) {
-  const lookup = `tradepulse_${p.code.toLowerCase()}`;
+  const lookup = `qvx_${p.code.toLowerCase()}`;
   const found = await stripe.prices.list({ lookup_keys: [lookup], limit: 1 });
   let price = found.data[0];
   if (!price) {
@@ -56,7 +56,7 @@ for (const p of plans) {
       currency: "thb",
       unit_amount: p.amount,
       lookup_key: lookup,
-      nickname: `TradePulse ${p.label}`,
+      nickname: `QVX ${p.label}`,
       recurring: { interval: p.interval, interval_count: p.count },
     });
     console.log(`✅ สร้าง ${p.code}: ${price.id}`);

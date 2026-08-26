@@ -7,7 +7,7 @@ import { Field, SubmitBtn, ErrorBox, AuthShell } from "@/components/auth/AuthUI"
 export default function RegisterPage() {
   const [state, action, pending] = useActionState<AuthState, FormData>(registerUser, {});
   return (
-    <AuthShell title="สมัครสมาชิก" subtitle="เริ่มใช้งานอินดิเคเตอร์ TradePulse">
+    <AuthShell title="สมัครสมาชิก" subtitle="เริ่มใช้งานอินดิเคเตอร์ QVX">
       <form action={action} className="space-y-4">
         {state.error && <ErrorBox msg={state.error} />}
         <Field name="name" type="text" label="ชื่อ" placeholder="ชื่อของคุณ" />

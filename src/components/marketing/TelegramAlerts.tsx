@@ -44,7 +44,7 @@ export function TelegramAlerts() {
                 T
               </span>
               <div className="leading-tight">
-                <div className="text-sm font-semibold">TradePulse Signals</div>
+                <div className="text-sm font-semibold">QVX Signals</div>
                 <div className="text-[11px] text-muted">ห้อง M15 · เมื่อสักครู่</div>
               </div>
             </div>

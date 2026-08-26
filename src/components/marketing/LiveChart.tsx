@@ -27,7 +27,7 @@ export function LiveChart() {
       <div className="container-x">
         <SectionHeading
           eyebrow="กราฟจริง"
-          title="กราฟทองคำ XAUUSD ที่ติดตั้ง TradePulse"
+          title="กราฟทองคำ XAUUSD ที่ติดตั้ง QVX"
           subtitle="ดูภาพกราฟจริงที่รันอินดิเคเตอร์ของเรา พร้อมราคาตลาดแบบเรียลไทม์ในหน้าเดียว"
         />
 
@@ -39,7 +39,7 @@ export function LiveChart() {
               aria-label="เลือกมุมมองกราฟ"
             >
               {([
-                { value: "snapshot", label: "กราฟ TradePulse" },
+                { value: "snapshot", label: "กราฟ QVX" },
                 { value: "live", label: "ราคา Live" },
               ] as const).map((m) => (
                 <button
@@ -104,7 +104,7 @@ export function LiveChart() {
             >
               <Image
                 src={tradingView.snapshotUrl}
-                alt="กราฟ XAUUSD ที่ติดตั้งอินดิเคเตอร์ TradePulse แสดงสัญญาณ Long/Sell, โซน FVG และ Order Block"
+                alt="กราฟ XAUUSD ที่ติดตั้งอินดิเคเตอร์ QVX แสดงสัญญาณ Long/Sell, โซน FVG และ Order Block"
                 fill
                 sizes="(max-width: 1280px) 100vw, 1200px"
                 className="object-contain transition-transform duration-500 group-hover:scale-[1.02]"
@@ -121,9 +121,9 @@ export function LiveChart() {
 
         <p className="mt-3 text-center text-xs text-muted">
           {mode === "snapshot" && hasChartSnapshot
-            ? "ภาพจากกราฟจริงที่รันอินดิเคเตอร์ TradePulse • ตัวเลข Win Rate / Profit Factor / Net PnL บนภาพเป็นผลทดสอบย้อนหลัง (backtest) ของช่วงเวลาที่แสดง ไม่ใช่ผลเทรดจริง และไม่ใช่การรับประกันผลในอนาคต"
+            ? "ภาพจากกราฟจริงที่รันอินดิเคเตอร์ QVX • ตัวเลข Win Rate / Profit Factor / Net PnL บนภาพเป็นผลทดสอบย้อนหลัง (backtest) ของช่วงเวลาที่แสดง ไม่ใช่ผลเทรดจริง และไม่ใช่การรับประกันผลในอนาคต"
             : "ข้อมูลราคาเป็นของตลาดจริงจาก TradingView"}{" "}
-          • TradePulse ไม่มีส่วนเกี่ยวข้องกับ TradingView
+          • QVX ไม่มีส่วนเกี่ยวข้องกับ TradingView
         </p>
       </div>
     </section>

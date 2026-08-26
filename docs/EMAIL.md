@@ -23,7 +23,7 @@
 
 ```bash
 vercel env add RESEND_API_KEY     # re_...
-vercel env add EMAIL_FROM         # TradePulse <no-reply@โดเมนที่ verify แล้ว>
+vercel env add EMAIL_FROM         # QVX <no-reply@โดเมนที่ verify แล้ว>
 vercel env add EMAIL_REPLY_TO     # (ไม่บังคับ) อีเมลทีมงานจริง ให้ลูกค้ากด reply ถึงได้
 ```
 

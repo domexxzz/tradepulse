@@ -75,7 +75,7 @@ function FeatureMedia({ icon }: { icon: string }) {
         <Icon name={icon} className="h-8 w-8" />
       </span>
       <span className="absolute bottom-2.5 right-3 text-[10px] font-medium uppercase tracking-widest text-muted/70">
-        TradePulse
+        QVX
       </span>
     </div>
   );

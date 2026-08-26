@@ -3,11 +3,12 @@
  * ⚠️ ช่องทางติดต่อเว้นว่างไว้ (แสดงเฉพาะเมื่อกรอกค่าจริง) — ห้ามใส่ค่าปลอมบน production
  */
 export const site = {
-  name: "TradePulse",
-  fullName: "TradePulse",
+  name: "QVX",
+  /** ชื่อเต็มใช้ใน <title> และ metadata — ให้ตรงกับโดเมนเพื่อ SEO */
+  fullName: "QuantVisionX",
   tagline: "อินดิเคเตอร์วิเคราะห์ทองคำ XAUUSD บน TradingView",
   description:
-    "TradePulse รวม Trend, Buy/Sell Signal, Entry, TP/SL และ Risk Management ไว้ในระบบเดียว ช่วยให้เทรดเดอร์ทองคำวางแผนก่อนเข้าเทรดอย่างมีระบบ",
+    "QVX รวม Trend, Buy/Sell Signal, Entry, TP/SL และ Risk Management ไว้ในระบบเดียว ช่วยให้เทรดเดอร์ทองคำวางแผนก่อนเข้าเทรดอย่างมีระบบ",
 
   // ตั้งค่าจริงผ่าน env / แก้ตรงนี้เมื่อพร้อม launch
   url: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
@@ -42,7 +43,7 @@ export const hasLineContact = Boolean(site.contact.lineUrl);
 
 /**
  * กราฟ TradingView ที่เว็บนี้เชื่อมต่อ
- * - chartUrl: ลิงก์ layout จริงที่โหลดอินดิเคเตอร์ TradePulse ไว้แล้ว (เปิดในแท็บใหม่)
+ * - chartUrl: ลิงก์ layout จริงที่โหลดอินดิเคเตอร์ QVX ไว้แล้ว (เปิดในแท็บใหม่)
  *   หมายเหตุ: TradingView ตั้ง CSP `frame-ancestors 'none'` ทั้งเว็บ (ตรวจแล้วแม้หน้า public
  *   ที่ตอบ 200 ก็มี header นี้) จึง iframe หน้ากราฟไม่ได้ไม่ว่ากรณีใด
  *   บนเว็บเราจึงใช้ภาพ snapshot + Advanced Chart widget แล้วลิงก์ออกไปหน้ากราฟจริง
@@ -56,7 +57,7 @@ export const tradingView = {
   symbol: process.env.NEXT_PUBLIC_TRADINGVIEW_SYMBOL || "FOREXCOM:XAUUSD",
   interval: process.env.NEXT_PUBLIC_TRADINGVIEW_INTERVAL || "30",
   /**
-   * ภาพกราฟจริงที่รันอินดิเคเตอร์ TradePulse
+   * ภาพกราฟจริงที่รันอินดิเคเตอร์ QVX
    *
    * ภาพเดิมใช้ลิงก์ snapshot ของ TradingView ซึ่งเป็นแถบยาวแบน (1814x436 = 4.16:1)
    * เอามาวางเต็มความกว้างหน้าเว็บแล้วกลายเป็นริบบิ้นบาง ๆ ดูไม่สมส่วน

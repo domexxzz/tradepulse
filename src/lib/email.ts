@@ -6,7 +6,7 @@
  */
 const API_KEY = process.env.RESEND_API_KEY;
 
-/** ผู้ส่ง เช่น "TradePulse <no-reply@yourdomain.com>" — โดเมนต้อง verify กับ Resend ก่อน */
+/** ผู้ส่ง เช่น "QVX <no-reply@yourdomain.com>" — โดเมนต้อง verify กับ Resend ก่อน */
 const FROM = process.env.EMAIL_FROM;
 
 /** ให้ลูกค้ากด reply แล้วถึงทีมงานจริง (ไม่ตั้งก็ได้) */

@@ -7,7 +7,7 @@ import { Field, SubmitBtn, ErrorBox, AuthShell } from "@/components/auth/AuthUI"
 export default function LoginPage() {
   const [state, action, pending] = useActionState<AuthState, FormData>(loginUser, {});
   return (
-    <AuthShell title="เข้าสู่ระบบ" subtitle="ยินดีต้อนรับกลับสู่ TradePulse">
+    <AuthShell title="เข้าสู่ระบบ" subtitle="ยินดีต้อนรับกลับสู่ QVX">
       <form action={action} className="space-y-4">
         {state.error && <ErrorBox msg={state.error} />}
         <Field name="email" type="email" label="อีเมล" placeholder="you@example.com" />

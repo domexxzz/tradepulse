@@ -94,7 +94,7 @@ $C run 'cd /d "C:\Users\User\OneDrive\Desktop\Bot Tradingview" && pip install -r
 | บัญชีเจ้าของสคริปต์ | `Pyro_Bolt` |
 | สคริปต์ที่ขาย | `Test 2 — SMC Unified Suite [Pyro_Bolt]` (invite-only) |
 | โปรไฟล์ Chrome ของบอท | `C:\tv-bot-chrome` (ล็อกอิน TradingView ไว้แล้ว) |
-| scheduled task | `TradePulseTVBridge` (ขึ้นเองตอน login) |
+| scheduled task | `QVXTVBridge` (ขึ้นเองตอน login) |
 | log | `%LOCALAPPDATA%\Temp\tv_bridge.log` |
 | URL สาธารณะ | `https://asus.tail17bed7.ts.net` (Tailscale Funnel) |
 

@@ -59,7 +59,7 @@ export function Hero() {
               >
                 <Image
                   src={tradingView.snapshotUrl}
-                  alt="กราฟ XAUUSD ที่ติดตั้งอินดิเคเตอร์ TradePulse แสดงสัญญาณ BUY/SELL, ICT, CHoCH, โซน FVG และ Order Block"
+                  alt="กราฟ XAUUSD ที่ติดตั้งอินดิเคเตอร์ QVX แสดงสัญญาณ BUY/SELL, ICT, CHoCH, โซน FVG และ Order Block"
                   fill
                   priority
                   sizes="(max-width: 1024px) 100vw, 1024px"

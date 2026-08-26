@@ -71,7 +71,7 @@ export function Demo() {
               >
                 <Image
                   src={example.url}
-                  alt={`ตัวอย่างผลลัพธ์อินดิเคเตอร์ TradePulse บนกราฟ XAUUSD ${example.tf} — ${example.caption}`}
+                  alt={`ตัวอย่างผลลัพธ์อินดิเคเตอร์ QVX บนกราฟ XAUUSD ${example.tf} — ${example.caption}`}
                   fill
                   sizes="(max-width: 1280px) 100vw, 900px"
                   className="object-contain transition-transform duration-500 group-hover:scale-[1.02]"

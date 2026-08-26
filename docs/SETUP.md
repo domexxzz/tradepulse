@@ -7,11 +7,11 @@
 
 ```bash
 # 1) รัน Postgres สำหรับ dev
-docker run -d --name tradepulse-pg   -e POSTGRES_PASSWORD=devpass -e POSTGRES_USER=tradepulse -e POSTGRES_DB=tradepulse   -p 5433:5432 postgres:16-alpine
+docker run -d --name qvx-pg   -e POSTGRES_PASSWORD=devpass -e POSTGRES_USER=qvx -e POSTGRES_DB=qvx   -p 5433:5432 postgres:16-alpine
 
 # 2) ตั้งค่าใน .env (ทั้งสองค่าใช้ตัวเดียวกันได้ใน dev)
-#    DATABASE_URL="postgresql://tradepulse:devpass@localhost:5433/tradepulse?schema=public"
-#    DIRECT_URL="postgresql://tradepulse:devpass@localhost:5433/tradepulse?schema=public"
+#    DATABASE_URL="postgresql://qvx:devpass@localhost:5433/qvx?schema=public"
+#    DIRECT_URL="postgresql://qvx:devpass@localhost:5433/qvx?schema=public"
 
 npm install
 npx prisma migrate dev   # สร้างตาราง
@@ -19,7 +19,7 @@ node prisma/seed.mjs     # ใส่ plan + review ตัวอย่าง
 npm run dev              # http://localhost:3000
 ```
 
-หยุด/ลบฐานข้อมูล dev: `docker stop tradepulse-pg` / `docker rm -f tradepulse-pg`
+หยุด/ลบฐานข้อมูล dev: `docker stop qvx-pg` / `docker rm -f qvx-pg`
 
 ## คู่มือแยกตามระบบ
 
@@ -112,7 +112,7 @@ localhost หรือฐานข้อมูลที่ชื่อมี `ua
 
 ```bash
 brew install postgresql@16 && brew services start postgresql@16
-createuser -s tradepulse && createdb -O tradepulse tradepulse_uat
+createuser -s qvx && createdb -O qvx tradepulse_uat
 ```
 
 ครอบตรรกะที่พลาดแล้วเสียเงินจริง: การคิดวันหมดอายุ (`addMonths` สิ้นเดือน/ปีอธิกสุรทิน),
