@@ -4,10 +4,16 @@
  * ถ้าประกาศราคาใน JSON-LD ไม่ตรงกับที่แสดงจริง Google ถือว่าเป็นข้อมูลหลอก
  */
 import { site } from "@/config/site";
-import { plans } from "@/config/plans";
+import { plansFor } from "@/config/plans";
 import { faqs, allFeatures } from "@/config/features";
 
-export function homeJsonLd(): Record<string, unknown>[] {
+/**
+ * @param monthlyTHB ราคารายเดือนที่หน้าเว็บแสดงอยู่ตอนนั้น (ช่วงโปรคือราคาโปร)
+ *   ต้องส่งค่าเดียวกับที่ <Pricing> แสดง ไม่งั้น JSON-LD กับหน้าเว็บจะประกาศคนละราคา
+ */
+export function homeJsonLd(monthlyTHB: number): Record<string, unknown>[] {
+  const plans = plansFor(monthlyTHB);
+
   const organization = {
     "@context": "https://schema.org",
     "@type": "Organization",

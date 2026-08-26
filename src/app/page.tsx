@@ -22,6 +22,7 @@ import { MobileStickyCTA } from "@/components/marketing/MobileStickyCTA";
 import { ChatWidget } from "@/components/marketing/ChatWidget";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { homeJsonLd } from "@/lib/seo";
+import { getPromoState } from "@/lib/pricing";
 
 export const metadata = {
   alternates: { canonical: "/" },
@@ -44,10 +45,11 @@ export const revalidate = 300;
  * แถบจุดเด่น (ย้ายไปอยู่ใน Hero) และรายการสิทธิประโยชน์ที่ซ้ำกับหน้าราคา
  */
 
-export default function Home() {
+export default async function Home() {
+  const promo = await getPromoState();
   return (
     <>
-      <JsonLd data={homeJsonLd()} />
+      <JsonLd data={homeJsonLd(promo.monthlyTHB)} />
       <Background3D />
       <Navbar />
       <main>

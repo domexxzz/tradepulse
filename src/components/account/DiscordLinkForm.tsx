@@ -24,7 +24,7 @@ export function DiscordLinkForm({ current }: { current: string | null }) {
         <input
           name="discord"
           defaultValue={current ?? ""}
-          placeholder="เช่น tradepulse_user"
+          placeholder="เช่น qvx_user"
           className="w-full rounded-lg border border-border bg-surface-2 px-3.5 py-2.5 text-sm outline-none placeholder:text-muted focus:border-brand/60"
         />
         <span className="mt-1.5 block text-xs text-muted">
