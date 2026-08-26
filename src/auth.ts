@@ -14,12 +14,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     ...authConfig.callbacks,
     // ดึง role จาก DB ตอน sign-in (รันฝั่ง Node — prisma ใช้ได้)
     async jwt({ token, user }) {
-      if (user?.id) {
-        token.id = user.id;
-        token.role = await resolveRole(user.id);
-      } else if (token.id && !token.role) {
-        token.role = await resolveRole(token.id as string);
-      }
+      if (user?.id) token.id = user.id;
+
+      // อ่าน role จากฐานข้อมูลใหม่ทุกครั้ง ไม่ใช่เฉพาะตอน role ว่าง
+      // ของเดิมถ้า token มี role ติดอยู่แล้วจะไม่อ่านซ้ำเลยตลอดอายุ token (30 วัน)
+      // แปลว่าเลื่อนขั้น/ถอนสิทธิ์ในฐานข้อมูลแล้วไม่มีผลจนกว่า token จะหมดอายุ
+      if (token.id) token.role = await resolveRole(token.id as string);
+
       return token;
     },
   },
