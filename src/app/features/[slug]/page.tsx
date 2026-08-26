@@ -4,13 +4,17 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { site } from "@/config/site";
 import { allFeatures, getFeatureBySlug } from "@/config/features";
-import { plans } from "@/config/plans";
+import { plansFor } from "@/config/plans";
+import { getPromoState } from "@/lib/pricing";
 import { formatTHB } from "@/lib/utils";
 import { Icon } from "@/components/common/Icon";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { ArrowRight, ChevronRight } from "lucide-react";
 
 /** สร้างทุกหน้าไว้ล่วงหน้าตอน build — เนื้อหามาจากไฟล์ config ไม่เปลี่ยนระหว่างรัน */
+// ราคาบนหน้านี้ต้องตามโปรที่เหลืออยู่จริง จึงรีเฟรชด้วยจังหวะเดียวกับหน้าแรก
+export const revalidate = 300;
+
 export function generateStaticParams() {
   return allFeatures.map((f) => ({ slug: f.slug }));
 }
@@ -53,7 +57,7 @@ export default async function FeatureDetailPage({
     .filter((f) => f.group === feature.group && f.slug !== feature.slug)
     .slice(0, 3);
 
-  const cheapest = Math.min(...plans.map((p) => p.priceTHB));
+  const cheapest = Math.min(...plansFor((await getPromoState()).monthlyTHB).map((p) => p.priceTHB));
 
   return (
     <main className="container-x max-w-3xl py-14">

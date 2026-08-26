@@ -34,7 +34,7 @@ if (process.env.SEED_SAMPLE_REVIEWS === "true") {
   console.log("seeded sample reviews (ยังไม่อนุมัติ — อนุมัติเองที่ /admin/reviews)");
 }
 
-const adminEmails = (process.env.ADMIN_EMAILS ?? "demo@tradepulse.test")
+const adminEmails = (process.env.ADMIN_EMAILS ?? "demo@qvx.test")
   .split(",").map((s) => s.trim()).filter(Boolean);
 for (const email of adminEmails) {
   const u = await prisma.user.findUnique({ where: { email } });

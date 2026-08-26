@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { site } from "@/config/site";
 import { coreFeatures, advancedTools, coreIntro, advancedIntro, allFeatures } from "@/config/features";
-import { plans } from "@/config/plans";
+import { plansFor } from "@/config/plans";
+import { getPromoState } from "@/lib/pricing";
 import { formatTHB } from "@/lib/utils";
 import { Icon } from "@/components/common/Icon";
 import { JsonLd } from "@/components/seo/JsonLd";
@@ -10,6 +11,9 @@ import { ArrowRight } from "lucide-react";
 
 const title = "ฟีเจอร์ทั้งหมดของอินดิเคเตอร์";
 const description = `รวมทุกเครื่องมือใน ${site.name} — FVG, Order Block, Liquidity Sweep, Demand/Supply, BOS, CHoCH, สัญญาณ Buy/Sell และเครื่องมือขั้นสูงอีก 9 รายการ สำหรับวิเคราะห์กราฟ XAUUSD บน TradingView`;
+
+// ราคาบนหน้านี้ต้องตามโปรที่เหลืออยู่จริง จึงรีเฟรชด้วยจังหวะเดียวกับหน้าแรก
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   title,
@@ -42,8 +46,9 @@ function FeatureList({ items }: { items: typeof coreFeatures }) {
   );
 }
 
-export default function FeaturesIndexPage() {
-  const cheapest = Math.min(...plans.map((p) => p.priceTHB));
+export default async function FeaturesIndexPage() {
+  const promo = await getPromoState();
+  const cheapest = Math.min(...plansFor(promo.monthlyTHB).map((p) => p.priceTHB));
 
   return (
     <main className="container-x max-w-6xl py-14">
