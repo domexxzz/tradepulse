@@ -23,6 +23,8 @@ model User {
   passwordHash        String?
   role                String    @default("USER")
   tradingViewUsername String?
+  /** ราคารายเดือนที่ล็อกไว้ให้สมาชิกโปรโมชัน 300 คนแรก — ต่ออายุกี่รอบก็จ่ายเท่านี้ */
+  lockedMonthlyTHB Int?
   discordUserId   String?  @unique
   discordUsername String?
   // รู้ได้ตอนสมาชิกกดเข้ากลุ่มผ่านลิงก์ส่วนตัว — ใช้ตอนนำออกเมื่อหมดอายุ

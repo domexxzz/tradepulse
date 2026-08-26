@@ -1,5 +1,7 @@
 import { SectionHeading } from "@/components/ui/SectionHeading";
-import { plans, planIncludes } from "@/config/plans";
+import { plansFor, planIncludes } from "@/config/plans";
+import { getPromoState } from "@/lib/pricing";
+import { PromoSeats } from "./PromoSeats";
 import { paymentsEnabled, paymentMode } from "@/config/site";
 import { createQrOrder } from "@/lib/actions/payment";
 import { formatTHB } from "@/lib/utils";
@@ -7,7 +9,10 @@ import { CheckoutButton } from "./CheckoutButton";
 import { GuaranteeStrip, GuaranteeLine } from "./GuaranteeBadge";
 import { Check } from "lucide-react";
 
-export function Pricing() {
+export async function Pricing() {
+  const promo = await getPromoState();
+  const plans = plansFor(promo.monthlyTHB);
+
   return (
     <section id="pricing" className="section">
       <div className="container-x">
@@ -17,6 +22,8 @@ export function Pricing() {
           title="เลือกแพ็กเกจที่เหมาะกับคุณ"
           subtitle="ทุกแพ็กเกจได้ฟีเจอร์ครบเหมือนกัน ต่างกันที่ระยะเวลาและราคาเฉลี่ยต่อเดือน"
         />
+
+        <PromoSeats promo={promo} />
 
         <GuaranteeStrip />
 

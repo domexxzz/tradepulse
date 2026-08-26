@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { getUserSubscription } from "@/lib/subscription";
-import { plans, planIncludes } from "@/config/plans";
+import { plans, planIncludes, type Plan } from "@/config/plans";
+import { plansForUser } from "@/lib/pricing";
 import { paymentMode } from "@/config/site";
 import { formatTHB } from "@/lib/utils";
 import { formatThaiDate } from "@/lib/date";
@@ -9,10 +10,10 @@ import { CheckoutButton } from "@/components/marketing/CheckoutButton";
 import { GuaranteeLine } from "@/components/marketing/GuaranteeBadge";
 import { Check } from "lucide-react";
 
-function PlanCards() {
+function PlanCards({ plans: list }: { plans: Plan[] }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {plans.map((p) => {
+      {list.map((p) => {
         const cls = p.highlight
           ? "inline-flex h-11 w-full items-center justify-center rounded-full bg-brand text-sm font-semibold text-brand-ink transition-colors hover:bg-brand-strong"
           : "inline-flex h-11 w-full items-center justify-center rounded-full border border-brand/40 text-sm font-semibold text-brand transition-colors hover:bg-brand/10";
@@ -48,6 +49,7 @@ function PlanCards() {
 export default async function SubscriptionPage() {
   const session = await auth();
   const { sub, isActive, daysLeft } = await getUserSubscription(session!.user.id);
+  const userPlans = await plansForUser(session!.user.id);
   const plan = plans.find((p) => p.id === sub?.planCode);
 
   return (
@@ -82,7 +84,7 @@ export default async function SubscriptionPage() {
               โอนใหม่เพื่อต่ออายุการใช้งาน (ระบบ QR ไม่ตัดเงินอัตโนมัติ) —
               ต่อก่อนหมดวัน ระบบจะทบวันที่เหลือให้ ไม่เสียของเดิม
             </p>
-            <PlanCards />
+            <PlanCards plans={userPlans} />
           </div>
         </>
       ) : (
@@ -93,7 +95,7 @@ export default async function SubscriptionPage() {
               ? `แพ็กเกจก่อนหน้าหมดอายุเมื่อ ${sub.currentPeriodEnd ? formatThaiDate(sub.currentPeriodEnd) : "-"} — เลือกแพ็กเกจเพื่อกลับมาใช้งานต่อ`
               : "เลือกแพ็กเกจแล้วชำระผ่าน PromptPay (สแกน QR + แนบสลิป)"}
           </p>
-          <PlanCards />
+          <PlanCards plans={userPlans} />
         </div>
       )}
 

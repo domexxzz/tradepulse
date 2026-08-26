@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin";
 import { plans } from "@/config/plans";
+import { plansForUser } from "@/lib/pricing";
 import { activateMembership } from "@/lib/lifecycle";
 import { parseSlipDataUrl } from "@/lib/slip";
 import { verifySlip, slipAutoApprove, slipVerifyEnabled } from "@/lib/slip-verify";
@@ -17,7 +18,10 @@ export async function createQrOrder(formData: FormData) {
   if (!session?.user?.id) redirect("/login");
 
   const planCode = String(formData.get("planCode") ?? "");
-  const plan = plans.find((p) => p.id === planCode);
+  // ราคาต้องคิดจากของผู้ใช้คนนี้ ไม่ใช่แคตตาล็อกกลาง
+  // สมาชิกโปร 300 คนแรกถูกล็อกราคาไว้ ส่วนคนใหม่ได้ราคาปัจจุบัน
+  const userPlans = await plansForUser(session.user.id);
+  const plan = userPlans.find((p) => p.id === planCode);
   if (!plan) redirect("/#pricing");
 
   // กดปุ่มซ้ำ ๆ ไม่ควรได้ออเดอร์ค้างเป็นสิบใบ — ใบที่ยังไม่ได้แนบสลิปใช้ต่อได้เลย
@@ -170,6 +174,7 @@ export async function approveOrder(formData: FormData) {
   await approveOrderById(id, "แอดมินอนุมัติสลิป");
 
   revalidatePath("/admin/orders");
+  revalidatePath("/"); // ตัวนับที่นั่งโปรบนหน้าแรกต้องลดทันที
   revalidatePath("/admin");
 }
 

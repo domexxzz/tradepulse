@@ -5,6 +5,7 @@
  * ถ้าแยกกันเขียนจะหลุดบางขั้นตอนแน่นอน — เช่นเปิดสิทธิ์แล้วลืมให้ยศ Discord
  */
 import { prisma } from "@/lib/prisma";
+import { lockPromoPriceIfEligible } from "@/lib/pricing";
 import type { Subscription } from "@prisma/client";
 import { plans, type PlanInterval } from "@/config/plans";
 import { addMonths, daysUntil, formatThaiDate } from "@/lib/date";
@@ -96,6 +97,8 @@ export async function activateMembership(input: ActivateInput): Promise<Activate
   // แถมสิทธิ์ให้ฟรี (0 บาท) ไม่ต้องบันทึกเป็นรายได้
   if (input.amountTHB > 0) {
     await recordPayment(input.userId, input.amountTHB, input.providerRef, input.provider);
+    // จ่ายเงินจริงแล้วถึงจะกินที่นั่งโปรและได้ล็อกราคา — ของแถม 0 บาทไม่นับ
+    await lockPromoPriceIfEligible(input.userId);
   }
   await ensureAccessGrant(input.userId);
   await ensureTelegramInvite(input.userId);
