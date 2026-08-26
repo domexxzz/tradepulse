@@ -21,6 +21,12 @@ const KEY_ENTER = ["\r", "\n", "\u0004"];   // Enter หรือ Ctrl+D
 const KEY_INTERRUPT = "\u0003";            // Ctrl+C
 const KEY_BACKSPACE = ["\u007f", "\b"];         // Backspace
 
+function die(msg, fix) {
+  console.error(`\n✗ ${msg}`);
+  if (fix) console.error(`\n${fix}\n`);
+  process.exit(1);
+}
+
 function ask(question) {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   return new Promise((resolve) => rl.question(question, (a) => (rl.close(), resolve(a.trim()))));
@@ -73,14 +79,24 @@ function askSecret(question) {
   });
 }
 
-/** โชว์ปลายทางให้เห็นก่อนเขียน แต่ไม่โชว์รหัสผ่านของฐานข้อมูล */
-function describeTarget(url) {
+/**
+ * ตรวจ DATABASE_URL ให้จบตั้งแต่ต้น แล้วคืนชื่อ host ไว้โชว์ให้ยืนยัน
+ * (ไม่คืนรหัสผ่านของฐานข้อมูลออกมา)
+ *
+ * ต้องเช็คก่อนถามรหัสผ่าน ไม่ใช่ปล่อยให้ Prisma ไปพังตอนท้าย —
+ * ไม่งั้นคนพิมพ์รหัสผ่านสองรอบเสร็จแล้วค่อยรู้ว่า URL ผิดมาตั้งแต่แรก
+ */
+function parseTarget(url) {
+  let u;
   try {
-    const u = new URL(url);
-    return `${u.hostname}${u.port ? ":" + u.port : ""}${u.pathname}`;
+    u = new URL(url);
   } catch {
-    return "(อ่าน DATABASE_URL ไม่ออก)";
+    return { error: "อ่าน DATABASE_URL ไม่ออก — น่าจะยังไม่ได้ใส่ค่าจริง" };
   }
+  if (!["postgresql:", "postgres:"].includes(u.protocol)) {
+    return { error: `DATABASE_URL ขึ้นต้นด้วย "${u.protocol}//" ต้องเป็น postgresql:// หรือ postgres://` };
+  }
+  return { label: `${u.hostname}${u.port ? ":" + u.port : ""}${u.pathname}` };
 }
 
 async function main() {
@@ -90,7 +106,21 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`\nฐานข้อมูลปลายทาง: ${describeTarget(url)}\n`);
+  const target = parseTarget(url);
+  if (target.error) {
+    die(target.error, [
+      "  ใส่ connection string ตัวจริงลงไป อย่าวางข้อความตัวอย่างตรง ๆ",
+      "",
+      "  หาได้จาก Neon Console → โปรเจกต์ → Connect → Connection string",
+      "  หน้าตาประมาณนี้ (ตัวเลขจริงจะต่างไป):",
+      "    postgresql://ชื่อผู้ใช้:รหัส@ep-xxx-123.ap-southeast-1.aws.neon.tech/neondb?sslmode=require",
+      "",
+      "  ใช้ single quote ครอบ กัน zsh ตีความอักขระพิเศษในรหัสผ่าน:",
+      "    DATABASE_URL='postgresql://…' npm run admin",
+    ].join("\n"));
+  }
+
+  console.log(`\nฐานข้อมูลปลายทาง: ${target.label}\n`);
   const go = await ask("ใช่ฐานข้อมูลที่ต้องการแก้ไหม? พิมพ์ yes เพื่อไปต่อ: ");
   if (go.toLowerCase() !== "yes") {
     console.log("ยกเลิก ไม่ได้แตะข้อมูลอะไร");
