@@ -50,7 +50,10 @@ export async function loginUser(
   const email = String(formData.get("email") ?? "").toLowerCase().trim();
   const password = String(formData.get("password") ?? "");
   try {
-    await signIn("credentials", { email, password, redirectTo: "/account" });
+    // แอดมินพาไปหน้าจัดการระบบเลย ไม่ต้องพิมพ์ URL เอง
+    const existing = await prisma.user.findUnique({ where: { email }, select: { role: true } });
+    const redirectTo = existing?.role === "ADMIN" ? "/admin" : "/account";
+    await signIn("credentials", { email, password, redirectTo });
   } catch (e) {
     if (e instanceof AuthError) {
       return { error: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" };

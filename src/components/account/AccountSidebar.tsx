@@ -4,7 +4,7 @@
 // build ผ่านแต่พังตอนรันจริง ถ้าลืมบรรทัดนี้
 import {
   LayoutDashboard, CreditCard, LineChart, ReceiptText,
-  ScrollText, MessageCircle, Star, Hash,
+  ScrollText, MessageCircle, Star, Hash, ShieldCheck,
 } from "lucide-react";
 import { PortalNav, type NavLink } from "@/components/portal/PortalNav";
 
@@ -19,6 +19,15 @@ const links: NavLink[] = [
   { href: "/account/support", label: "ช่วยเหลือ", icon: MessageCircle },
 ];
 
-export function AccountSidebar() {
-  return <PortalNav links={links} />;
+/**
+ * แอดมินเห็นทางเข้าหน้าจัดการระบบด้วย
+ * ก่อนหน้านี้พอร์ทัลไม่มีลิงก์ไป /admin เลย แอดมินที่ล็อกอินเข้ามาจึงหาทางเข้าไม่เจอ
+ * ต้องพิมพ์ URL เองซึ่งไม่มีทางรู้ได้
+ */
+export function AccountSidebar({ isAdmin = false }: { isAdmin?: boolean }) {
+  const items: NavLink[] = isAdmin
+    ? [...links, { href: "/admin", label: "หน้าแอดมิน", icon: ShieldCheck }]
+    : links;
+
+  return <PortalNav links={items} />;
 }

@@ -8,7 +8,7 @@ export default async function AccountLayout({ children }: { children: React.Reac
   if (!session?.user) redirect("/login");
 
   return (
-    <PortalShell who={session.user.name ?? session.user.email ?? ""} sidebar={<AccountSidebar />}>
+    <PortalShell who={session.user.name ?? session.user.email ?? ""} sidebar={<AccountSidebar isAdmin={session.user.role === "ADMIN"} />}>
       {children}
     </PortalShell>
   );
