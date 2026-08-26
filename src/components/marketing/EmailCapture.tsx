@@ -14,7 +14,7 @@ export function EmailCapture() {
   const [state, action, pending] = useActionState<SubscribeState, FormData>(subscribeEmail, {});
 
   return (
-    <section id="newsletter" className="py-20">
+    <section id="newsletter" className="section-md">
       <div className="container-x">
         <div className="mx-auto max-w-3xl rounded-3xl border border-border bg-surface p-8 sm:p-10">
           {state.ok ? (

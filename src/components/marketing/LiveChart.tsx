@@ -23,7 +23,7 @@ export function LiveChart() {
   const [activeInterval, setActiveInterval] = useState<string>(tradingView.interval);
 
   return (
-    <section id="chart" className="py-20">
+    <section id="chart" className="section">
       <div className="container-x">
         <SectionHeading
           eyebrow="กราฟจริง"

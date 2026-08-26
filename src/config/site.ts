@@ -17,16 +17,18 @@ export const site = {
     email: process.env.NEXT_PUBLIC_CONTACT_EMAIL || "",
   },
 
-  // ใช้ "/#..." เพื่อให้ลิงก์ใน Footer ใช้ได้จากทุกหน้า ไม่ใช่เฉพาะหน้าแรก
+  /**
+   * เมนูหลัก — 6 รายการพอ
+   *
+   * ของเดิมมี 10 รายการ ซึ่งเกินกว่าที่ตาจะกวาดได้ในครั้งเดียว และมีลิงก์ที่ชี้ไป
+   * section ที่ไม่มีอยู่แล้ว เหลือไว้เฉพาะจุดที่คนจริง ๆ อยากกระโดดไป
+   * ใช้ "/#..." เพื่อให้ลิงก์ใน Footer ใช้ได้จากทุกหน้า ไม่ใช่เฉพาะหน้าแรก
+   */
   nav: [
     { label: "ฟีเจอร์", href: "/#features" },
-    { label: "กราฟ", href: "/#chart" },
-    { label: "วิธีทำงาน", href: "/#how" },
-    { label: "เดโม", href: "/#demo" },
+    { label: "กราฟจริง", href: "/#chart" },
     { label: "ผลลัพธ์", href: "/#results" },
     { label: "สัญญาณสด", href: "/#signals" },
-    { label: "Telegram", href: "/#telegram" },
-    { label: "ชุมชน", href: "/#community" },
     { label: "ราคา", href: "/#pricing" },
     { label: "คำถามพบบ่อย", href: "/#faq" },
   ],

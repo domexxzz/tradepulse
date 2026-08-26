@@ -1,34 +1,73 @@
 @import "tailwindcss";
 
 /* ============================================================
-   TradePulse — Design tokens (calm dark-green, premium)
+   TradePulse — ระบบดีไซน์ เขียว-ดำ
+   ------------------------------------------------------------
+   หลักที่ยึด:
+   1. เขียวคือ "เสียงเน้น" ไม่ใช่สีพื้น — ใช้กับปุ่มหลัก ตัวเลขสำคัญ
+      และสถานะขาขึ้นเท่านั้น ที่เหลือเป็นเทาอมเขียว
+      (ของเดิมเขียวอยู่ทุกหัวข้อทุกไอคอน จนไม่มีอะไรเด่นเลยสักอย่าง)
+   2. ดำมีชั้น — พื้นหลังเข้มสุด แล้วไล่สว่างขึ้นตามความใกล้สายตา
+   3. ระยะห่างบอกลำดับความสำคัญ ไม่ใช่เท่ากันหมดทุก section
    ============================================================ */
 :root {
-  --background: #08100b;
-  --surface: #101a12;
-  --surface-2: #142018;   /* surface-soft */
-  --border: #1e2c22;
-  --foreground: #f3f7f1;
-  --muted: #91a095;
+  /* ---- พื้น: ดำอมเขียว ไล่เป็นชั้น ---- */
+  --background: #060a07;
+  --surface: #0c120e;
+  --surface-2: #111a14;
+  --surface-3: #16211a;
 
-  --brand: #65e62c;
-  --brand-strong: #7df04a;
-  --brand-deep: #3eae20;
+  /* ---- เส้น: บางมากเป็นค่าเริ่มต้น เข้มขึ้นเมื่อต้องการแบ่งจริง ---- */
+  --border: #18231b;
+  --border-strong: #24332a;
 
-  --up: #65e62c;
-  --down: #d85b5b;
+  /* ---- ตัวอักษร: ขาวอมเขียวนิด ๆ ให้เข้ากับพื้น ---- */
+  --foreground: #eef4ec;
+  --muted: #869488;
+  --faint: #5d6b61;
+
+  /* ---- เขียว: ใช้น้อยแต่ใช้ให้ดัง ---- */
+  --brand: #6ee34a;
+  --brand-strong: #8bf06b;
+  --brand-deep: #3d9c24;
+  --brand-ink: #071005;        /* ตัวอักษรบนพื้นเขียว */
+  --brand-wash: #0f1d0c;       /* พื้นเขียวจาง ๆ สำหรับป้าย */
+
+  --up: #6ee34a;
+  --down: #ef6b6b;
+
+  /* ---- สเกลตัวอักษร ---- */
+  --text-2xs: .6875rem;
+  --text-xs: .75rem;
+  --text-sm: .875rem;
+  --text-base: 1rem;
+  --text-lg: 1.0625rem;
+  --display-sm: clamp(1.5rem, 1.2rem + 1.4vw, 2rem);
+  --display-md: clamp(1.9rem, 1.4rem + 2.4vw, 2.9rem);
+  --display-lg: clamp(2.4rem, 1.5rem + 4.4vw, 4.4rem);
+
+  /* ---- จังหวะของ section ---- */
+  --sp-hero: clamp(6rem, 4rem + 9vw, 9.5rem);
+  --sp-lg: clamp(5rem, 3.5rem + 6vw, 8rem);
+  --sp-md: clamp(3.5rem, 2.8rem + 3.4vw, 5.5rem);
+  --sp-sm: clamp(2.25rem, 2rem + 1.4vw, 3rem);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
+  --color-faint: var(--faint);
   --color-brand: var(--brand);
   --color-brand-strong: var(--brand-strong);
   --color-brand-deep: var(--brand-deep);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-wash: var(--brand-wash);
   --color-up: var(--up);
   --color-down: var(--down);
 
@@ -42,95 +81,125 @@ body {
   background: transparent;
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
-  font-size: 1rem;          /* 16px base */
-  line-height: 1.7;         /* readable Thai */
+  font-size: var(--text-base);
+  line-height: 1.75;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* keyboard focus */
-:focus-visible {
-  outline: 2px solid var(--brand);
-  outline-offset: 2px;
-  border-radius: 4px;
+:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 4px; }
+::selection { background: rgba(110, 227, 74, .22); color: var(--foreground); }
+
+/* ตัวเลขที่ต้องเทียบกันเป็นคอลัมน์ต้องกว้างเท่ากัน */
+.tnum { font-variant-numeric: tabular-nums; }
+
+.container-x { width: 100%; max-width: 1180px; margin-inline: auto; padding-inline: 1.25rem; }
+.container-tight { width: 100%; max-width: 780px; margin-inline: auto; padding-inline: 1.25rem; }
+
+/* ============================================================
+   จังหวะของ section — ระยะห่างบอกลำดับความสำคัญ
+   ============================================================ */
+.section { padding-block: var(--sp-lg); }
+.section-md { padding-block: var(--sp-md); }
+.section-sm { padding-block: var(--sp-sm); }
+
+/* เส้นคั่นบาง ๆ ที่จางหายทั้งสองข้าง — แบ่งโดยไม่ตัดสายตา */
+.rule {
+  height: 1px; border: 0;
+  background: linear-gradient(90deg, transparent, var(--border-strong) 18%, var(--border-strong) 82%, transparent);
 }
 
-::selection { background: rgba(101, 230, 44, 0.25); color: var(--foreground); }
-
-.container-x { width: 100%; max-width: 1200px; margin-inline: auto; padding-inline: 1.25rem; }
+/* ============================================================
+   ตัวอักษร
+   ============================================================ */
+.display {
+  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-weight: 700;
+  letter-spacing: -.022em;
+  line-height: 1.1;
+  text-wrap: balance;
+}
+.eyebrow {
+  font-size: var(--text-xs); font-weight: 600;
+  letter-spacing: .2em; text-transform: uppercase; color: var(--brand);
+}
+.lede { color: var(--muted); font-size: var(--text-lg); line-height: 1.72; }
 
 .text-gradient-brand {
-  background: linear-gradient(96deg, var(--brand-strong), var(--brand));
+  background: linear-gradient(100deg, var(--brand-strong), var(--brand) 55%, var(--brand-deep));
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 
+/* ============================================================
+   พื้นผิว
+   ============================================================ */
 .card-surface { background: var(--surface); border: 1px solid var(--border); }
 .card-soft { background: var(--surface-2); border: 1px solid var(--border); }
 
-/* subtle backdrop (no heavy glow) */
-.hero-backdrop {
-  background: radial-gradient(70% 60% at 50% -10%, rgba(101, 230, 44, 0.07), transparent 70%);
+/* การ์ดที่ยกขึ้นมาเมื่อชี้ — ใช้เฉพาะการ์ดที่กดได้ */
+.card-lift { transition: border-color .25s ease, transform .25s ease, background-color .25s ease; }
+.card-lift:hover { border-color: var(--border-strong); transform: translateY(-2px); background: var(--surface-2); }
+
+/* ป้ายเขียวจาง */
+.pill-brand {
+  background: var(--brand-wash);
+  border: 1px solid color-mix(in srgb, var(--brand) 22%, transparent);
+  color: var(--brand);
 }
 
-/* ticker marquee (kept, honors reduced-motion) */
+/* ============================================================
+   พื้นหลัง — เรียบลง ของเดิมมี orb 3 ก้อน + grid + grain + particles
+   ทับกันจนขุ่น ตอนนี้เหลือไล่เฉดเดียวกับตารางบาง ๆ ที่จางหายไปเอง
+   ============================================================ */
+.bg3d {
+  position: fixed; inset: 0; z-index: -10; pointer-events: none; overflow: hidden;
+  background:
+    radial-gradient(72% 46% at 50% -8%, rgba(110, 227, 74, .10), transparent 68%),
+    radial-gradient(38% 32% at 88% 12%, rgba(110, 227, 74, .045), transparent 70%),
+    linear-gradient(180deg, #08100b 0%, #060c08 48%, #050806 100%);
+}
+.bg3d__grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(110, 227, 74, .035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(110, 227, 74, .035) 1px, transparent 1px);
+  background-size: 64px 64px;
+  -webkit-mask-image: radial-gradient(ellipse 80% 52% at 50% 12%, #000 20%, transparent 88%);
+  mask-image: radial-gradient(ellipse 80% 52% at 50% 12%, #000 20%, transparent 88%);
+}
+.bg3d__grain {
+  position: absolute; inset: 0; opacity: .03;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.hero-backdrop { background: none; }
+
+/* ============================================================
+   การเคลื่อนไหว — น้อยและมีเหตุผล
+   ============================================================ */
 @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 .animate-marquee { animation: marquee 30s linear infinite; }
+
+.marquee-mask {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+}
+.marquee-track { display: flex; width: max-content; gap: 1rem; animation: marquee 52s linear infinite; }
+.marquee-track:hover { animation-play-state: paused; }
+
+/* ค่อย ๆ ปรากฏตอนโหลดหน้า ใช้กับ hero อย่างเดียว */
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.rise { animation: rise .7s cubic-bezier(.22,.61,.36,1) both; }
+.rise-1 { animation-delay: .05s; }
+.rise-2 { animation-delay: .14s; }
+.rise-3 { animation-delay: .23s; }
+.rise-4 { animation-delay: .32s; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after {
-    animation-duration: 0.001ms !important;
+    animation-duration: .001ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
+    transition-duration: .001ms !important;
   }
+  .rise { animation: none; opacity: 1; transform: none; }
 }
-
-/* ============================================================
-   3D background — layered (glow orbs + grid + grain + particles)
-   ============================================================ */
-.bg3d {
-  position: fixed;
-  inset: 0;
-  z-index: -10;
-  pointer-events: none;
-  overflow: hidden;
-  background:
-    radial-gradient(60% 50% at 50% -5%, rgba(101, 230, 44, 0.14), transparent 62%),
-    radial-gradient(45% 40% at 85% 18%, rgba(64, 200, 150, 0.07), transparent 60%),
-    linear-gradient(180deg, #0c1710 0%, #0a140e 55%, #08110c 100%);
-}
-.bg3d__grid {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(101, 230, 44, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(101, 230, 44, 0.05) 1px, transparent 1px);
-  background-size: 42px 42px;
-  -webkit-mask-image: radial-gradient(ellipse 85% 60% at 50% 28%, #000 35%, transparent 100%);
-  mask-image: radial-gradient(ellipse 85% 60% at 50% 28%, #000 35%, transparent 100%);
-}
-.bg3d__grain {
-  position: absolute;
-  inset: 0;
-  opacity: 0.045;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-.bg3d__orb { position: absolute; border-radius: 9999px; filter: blur(66px); opacity: 0.8; }
-.bg3d__orb--a { top: -8%; left: 6%; width: 380px; height: 380px; background: rgba(101, 230, 44, 0.26); animation: floatG 18s ease-in-out infinite; }
-.bg3d__orb--b { top: 20%; right: 2%; width: 320px; height: 320px; background: rgba(64, 200, 150, 0.22); animation: floatG 22s ease-in-out infinite reverse; }
-.bg3d__orb--c { bottom: -12%; left: 42%; width: 300px; height: 300px; background: rgba(60, 168, 30, 0.20); animation: floatG 26s ease-in-out infinite; }
-@keyframes floatG {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(28px, -22px) scale(1.08); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .bg3d__orb { animation: none; }
-}
-
-/* graph marquee */
-.marquee-mask {
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
-  mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
-}
-.marquee-track { display: flex; width: max-content; gap: 1.25rem; animation: marquee 44s linear infinite; }
-.marquee-track:hover { animation-play-state: paused; }

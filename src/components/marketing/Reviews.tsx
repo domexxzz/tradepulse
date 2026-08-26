@@ -37,7 +37,7 @@ export async function Reviews() {
   const avg = reviews.reduce((s, r) => s + r.rating, 0) / reviews.length;
 
   return (
-    <section id="reviews" className="border-y border-border bg-surface py-20">
+    <section id="reviews" className="border-y border-border bg-surface section">
       <div className="container-x">
         <SectionHeading
           eyebrow="เสียงจากสมาชิก"

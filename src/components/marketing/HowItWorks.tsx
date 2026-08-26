@@ -3,7 +3,7 @@ import { steps } from "@/config/features";
 
 export function HowItWorks() {
   return (
-    <section id="how" className="border-y border-border bg-surface py-20">
+    <section id="how" className="border-y border-border bg-surface section">
       <div className="container-x">
         <SectionHeading
           eyebrow="วิธีทำงาน"

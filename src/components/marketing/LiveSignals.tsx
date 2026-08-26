@@ -56,7 +56,7 @@ export function LiveSignals() {
   }, []);
 
   return (
-    <section id="signals" className="border-y border-border bg-surface py-20">
+    <section id="signals" className="border-y border-border bg-surface section-md">
       <div className="container-x">
         <SectionHeading
           eyebrow="สัญญาณสด"

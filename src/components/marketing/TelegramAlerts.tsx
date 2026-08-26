@@ -10,7 +10,7 @@ const points = [
 
 export function TelegramAlerts() {
   return (
-    <section id="telegram" className="border-y border-border bg-surface py-20">
+    <section id="telegram" className="border-y border-border bg-surface section">
       <div className="container-x grid items-center gap-12 lg:grid-cols-2">
         <div>
           <p className="mb-3 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-brand">

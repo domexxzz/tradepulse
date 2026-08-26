@@ -21,21 +21,27 @@ export function Navbar() {
       className={cn(
         "fixed inset-x-0 top-0 z-50 transition-colors duration-300",
         scrolled || open
-          ? "border-b border-border bg-background/90 backdrop-blur-md"
+          ? "border-b border-border bg-background/80 backdrop-blur-xl"
           : "border-b border-transparent bg-transparent"
       )}
     >
       <nav className="container-x flex h-16 items-center justify-between" aria-label="เมนูหลัก">
         <a href="#top" className="flex items-center gap-2" aria-label={`${site.name} หน้าแรก`}>
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand font-display text-sm font-bold text-background">
+          <span className="grid h-8 w-8 place-items-center rounded-[.6rem] bg-brand font-display text-sm font-bold text-brand-ink">
             {site.name.charAt(0)}
           </span>
-          <span className="font-display text-lg font-bold tracking-tight">{site.name}</span>
+          <span className="font-display text-[1.05rem] font-semibold tracking-tight">{site.name}</span>
         </a>
 
-        <div className="hidden items-center gap-6 lg:flex">
+        <div className="hidden items-center gap-7 lg:flex">
           {site.nav.map((n) => (
-            <a key={n.href} href={n.href} className="text-sm text-muted transition-colors hover:text-foreground">
+            <a
+              key={n.href}
+              href={n.href}
+              className="relative py-1 text-sm text-muted transition-colors hover:text-foreground
+                         after:absolute after:inset-x-0 after:-bottom-0.5 after:h-px after:origin-left
+                         after:scale-x-0 after:bg-brand after:transition-transform hover:after:scale-x-100"
+            >
               {n.label}
             </a>
           ))}

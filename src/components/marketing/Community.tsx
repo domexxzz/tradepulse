@@ -7,7 +7,7 @@ const DISCORD_BLURPLE = "#5865F2";
 
 export function Community() {
   return (
-    <section id="community" className="py-20">
+    <section id="community" className="section-md">
       <div className="container-x grid items-center gap-12 lg:grid-cols-2">
         <div>
           <p className="mb-3 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-brand">
