@@ -95,8 +95,20 @@ STRIPE_PRICE_YEAR=price_...
 ### เทสต์
 
 ```bash
-npm test        # รันครั้งเดียว
+npm test          # ตรรกะล้วน ไม่ต้องมีฐานข้อมูล (25 เคส)
+npm run test:uat  # ชนฐานข้อมูลจริง — ต้องชี้ DATABASE_URL ไปฐานข้อมูลทดสอบเท่านั้น (8 เคส)
 npm run test:watch
+```
+
+`test:uat` เรียกฟังก์ชันเดียวกับที่เว็บใช้จริง (`activateMembership`, `runMembershipMaintenance`)
+ไม่ใช่ของจำลอง จึงจับได้ถ้าตรรกะเงินหรือวันหมดอายุเพี้ยน
+มันลบผู้ใช้ที่อีเมลมีคำว่า `uat-run` ทิ้งทั้งก่อนและหลังรัน — **ห้ามชี้ไป production**
+
+ถ้าเครื่องไม่มี Docker ใช้ Postgres จาก Homebrew แทนได้:
+
+```bash
+brew install postgresql@16 && brew services start postgresql@16
+createuser -s tradepulse && createdb -O tradepulse tradepulse_uat
 ```
 
 ครอบตรรกะที่พลาดแล้วเสียเงินจริง: การคิดวันหมดอายุ (`addMonths` สิ้นเดือน/ปีอธิกสุรทิน),
