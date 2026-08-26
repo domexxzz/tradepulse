@@ -4,7 +4,7 @@ import { FeatureCard } from "@/components/marketing/FeatureCard";
 
 export function CoreFeatures() {
   return (
-    <section id="features" className="py-20">
+    <section id="features" className="section">
       <div className="container-x">
         <SectionHeading
           eyebrow="ฟีเจอร์หลัก"

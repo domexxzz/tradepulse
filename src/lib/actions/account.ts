@@ -3,6 +3,8 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { auth, signOut } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { syncTradingViewGrant } from "@/lib/lifecycle";
+import { hasActiveSubscription } from "@/lib/subscription";
 
 export async function signOutAction() {
   await signOut({ redirectTo: "/" });
@@ -34,6 +36,11 @@ export async function updateTradingView(
     where: { userId: session.user.id, status: "PENDING" },
     data: { tradingViewUsername: parsed.data },
   });
+
+  // กรอก username ทีหลังตอนจ่ายเงินไปแล้ว — ให้บอทลองเพิ่มสิทธิ์ทันที ไม่ต้องรอแอดมิน
+  if (await hasActiveSubscription(session.user.id)) {
+    await syncTradingViewGrant(session.user.id);
+  }
 
   revalidatePath("/account/tradingview");
   return { ok: true };

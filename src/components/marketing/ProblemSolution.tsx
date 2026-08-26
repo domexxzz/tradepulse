@@ -4,7 +4,7 @@ import { ArrowRight } from "lucide-react";
 
 export function ProblemSolution() {
   return (
-    <section className="py-20">
+    <section className="section">
       <div className="container-x">
         <SectionHeading
           eyebrow="ทำไมต้อง TradePulse"

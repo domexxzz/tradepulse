@@ -2,7 +2,7 @@ import { AlertTriangle } from "lucide-react";
 
 export function Disclaimer() {
   return (
-    <section aria-label="คำเตือนความเสี่ยง" className="py-14">
+    <section aria-label="คำเตือนความเสี่ยง" className="section-sm">
       <div className="container-x">
         <div className="mx-auto max-w-4xl rounded-2xl border border-border bg-surface p-6">
           <div className="flex items-start gap-3">

@@ -11,9 +11,10 @@ export default async function TradingViewPage() {
   });
 
   const statusText: Record<string, string> = {
-    PENDING: "รอแอดมินอนุมัติสิทธิ์",
-    GRANTED: "ได้รับสิทธิ์แล้ว",
-    REVOKED: "สิทธิ์ถูกยกเลิก",
+    PENDING: "กำลังดำเนินการเพิ่มสิทธิ์ให้",
+    PENDING_REVOKE: "หมดอายุ — กำลังถอนสิทธิ์",
+    GRANTED: "ได้รับสิทธิ์แล้ว ใช้งานบน TradingView ได้เลย",
+    REVOKED: "สิทธิ์ถูกยกเลิก (ต่ออายุเพื่อใช้งานต่อ)",
   };
 
   return (
@@ -21,7 +22,8 @@ export default async function TradingViewPage() {
       <div>
         <h1 className="font-display text-2xl font-bold">เชื่อมต่อ TradingView</h1>
         <p className="mt-1 text-sm text-muted">
-          กรอก Username บน TradingView เพื่อให้แอดมินเพิ่มสิทธิ์ใช้งานอินดิเคเตอร์ (invite-only)
+          กรอก Username บน TradingView เพื่อรับสิทธิ์ใช้งานอินดิเคเตอร์ (invite-only)
+          — สิทธิ์จะถูกเพิ่มให้หลังยืนยันการชำระเงิน
         </p>
       </div>
 
@@ -31,6 +33,11 @@ export default async function TradingViewPage() {
         <div className="card-surface rounded-2xl p-5">
           <div className="text-sm text-muted">สถานะสิทธิ์ล่าสุด</div>
           <div className="mt-1 font-semibold">{statusText[grant.status] ?? grant.status}</div>
+          {grant.status === "PENDING" && (
+            <p className="mt-1.5 text-xs text-muted">
+              ปกติไม่เกิน 24 ชั่วโมง — ถ้านานกว่านั้นแจ้งทีมงานได้ที่หน้าช่วยเหลือ
+            </p>
+          )}
         </div>
       )}
 

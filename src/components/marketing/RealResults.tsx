@@ -4,7 +4,7 @@ import { ExternalLink } from "lucide-react";
 
 export function RealResults() {
   return (
-    <section id="results" className="py-20">
+    <section id="results" className="section">
       <div className="container-x">
         <SectionHeading
           eyebrow="โปร่งใส · พิสูจน์ได้"

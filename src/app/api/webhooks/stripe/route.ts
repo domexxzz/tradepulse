@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
-import { upsertSubscription, recordPayment, ensureAccessGrant, ensureTelegramGrant } from "@/lib/fulfillment";
+import { upsertSubscription, recordPayment, ensureAccessGrant, ensureDiscordRole } from "@/lib/fulfillment";
+import { syncTradingViewGrant, ensureTelegramInvite } from "@/lib/lifecycle";
 
 export async function POST(req: Request) {
   if (!stripe) return NextResponse.json({ error: "stripe disabled" }, { status: 503 });
@@ -30,7 +31,10 @@ export async function POST(req: Request) {
         await upsertSubscription(userId, planCode, sub);
         if (s.amount_total) await recordPayment(userId, Math.round(s.amount_total / 100), s.id);
         await ensureAccessGrant(userId);
-        await ensureTelegramGrant(userId);
+        await ensureTelegramInvite(userId);
+        // ทางสลิปทำสองอย่างนี้ให้อยู่แล้ว ทาง Stripe ต้องได้เหมือนกันไม่งั้นสมาชิกได้ของไม่ครบ
+        if (planCode) await ensureDiscordRole(userId, planCode);
+        await syncTradingViewGrant(userId);
       }
       break;
     }

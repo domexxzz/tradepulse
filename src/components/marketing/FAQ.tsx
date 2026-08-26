@@ -4,7 +4,7 @@ import { ChevronDown } from "lucide-react";
 
 export function FAQ() {
   return (
-    <section id="faq" className="border-y border-border bg-surface py-20">
+    <section id="faq" className="border-y border-border bg-surface section">
       <div className="container-x">
         <SectionHeading eyebrow="คำถามพบบ่อย" title="คำถามที่พบบ่อย" />
         <div className="mx-auto mt-10 max-w-3xl space-y-3">

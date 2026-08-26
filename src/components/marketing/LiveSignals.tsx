@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Lock } from "lucide-react";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +12,7 @@ interface Signal {
   symbol: string | null;
   entry: string | null;
   tp: string | null;
+  tp2: string | null;
   sl: string | null;
   createdAt: string;
 }
@@ -26,6 +29,7 @@ function ago(iso: string) {
 
 export function LiveSignals() {
   const [signals, setSignals] = useState<Signal[]>([]);
+  const [masked, setMasked] = useState(true);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -36,6 +40,7 @@ export function LiveSignals() {
         const data = await res.json();
         if (alive) {
           setSignals(Array.isArray(data.signals) ? data.signals : []);
+          setMasked(data.masked !== false);
           setLoaded(true);
         }
       } catch {
@@ -51,7 +56,7 @@ export function LiveSignals() {
   }, []);
 
   return (
-    <section id="signals" className="border-y border-border bg-surface py-20">
+    <section id="signals" className="border-y border-border bg-surface section-md">
       <div className="container-x">
         <SectionHeading
           eyebrow="สัญญาณสด"
@@ -94,7 +99,8 @@ export function LiveSignals() {
                   <span className="rounded-md border border-border px-2 py-0.5 text-xs text-muted">{s.timeframe}</span>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
                     {s.entry && <span>Entry <b className="text-foreground">{s.entry}</b></span>}
-                    {s.tp && <span>TP <b className="text-up">{s.tp}</b></span>}
+                    {s.tp && <span>{s.tp2 ? "TP1" : "TP"} <b className="text-up">{s.tp}</b></span>}
+                    {s.tp2 && <span>TP2 <b className="text-up">{s.tp2}</b></span>}
                     {s.sl && <span>SL <b className="text-down">{s.sl}</b></span>}
                   </div>
                   <span className="ml-auto text-xs text-muted">{ago(s.createdAt)}</span>
@@ -103,6 +109,21 @@ export function LiveSignals() {
             })
           )}
         </div>
+
+        {loaded && masked && signals.length > 0 && (
+          <div className="mx-auto mt-6 flex max-w-3xl flex-wrap items-center justify-center gap-x-3 gap-y-2 rounded-2xl border border-brand/25 bg-brand/5 px-5 py-4 text-center">
+            <Lock className="h-4 w-4 shrink-0 text-brand" />
+            <span className="text-sm text-muted">
+              ราคาเข้า เป้าทำกำไร และจุดตัดขาดทุน เปิดให้เฉพาะสมาชิก
+            </span>
+            <Link
+              href="#pricing"
+              className="rounded-full bg-brand px-5 py-1.5 text-sm font-semibold text-background transition-colors hover:bg-brand-strong"
+            >
+              ดูแพ็กเกจ
+            </Link>
+          </div>
+        )}
       </div>
     </section>
   );

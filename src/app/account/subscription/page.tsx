@@ -3,6 +3,7 @@ import { getUserSubscription } from "@/lib/subscription";
 import { plans, planIncludes } from "@/config/plans";
 import { paymentMode } from "@/config/site";
 import { formatTHB } from "@/lib/utils";
+import { formatThaiDate } from "@/lib/date";
 import { createQrOrder } from "@/lib/actions/payment";
 import { CheckoutButton } from "@/components/marketing/CheckoutButton";
 import { GuaranteeLine } from "@/components/marketing/GuaranteeBadge";
@@ -46,7 +47,7 @@ function PlanCards() {
 
 export default async function SubscriptionPage() {
   const session = await auth();
-  const { sub, isActive } = await getUserSubscription(session!.user.id);
+  const { sub, isActive, daysLeft } = await getUserSubscription(session!.user.id);
   const plan = plans.find((p) => p.id === sub?.planCode);
 
   return (
@@ -64,20 +65,34 @@ export default async function SubscriptionPage() {
               {plan && <div className="font-display text-xl font-bold">{formatTHB(plan.priceTHB)}</div>}
             </div>
             <div className="mt-4 space-y-1 text-sm text-muted">
-              <div>สถานะ: <span className="text-up">{sub.status}</span></div>
-              {sub.currentPeriodEnd && <div>ใช้ได้ถึง: {new Date(sub.currentPeriodEnd).toLocaleDateString("th-TH")}</div>}
+              <div>สถานะ: <span className="text-up">กำลังใช้งาน</span></div>
+              {sub.currentPeriodEnd && (
+                <div>
+                  ใช้ได้ถึง: {formatThaiDate(sub.currentPeriodEnd)}
+                  {daysLeft !== null && (
+                    <span className={daysLeft <= 3 ? " text-down" : ""}> · เหลือ {Math.max(0, daysLeft)} วัน</span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
           <div>
             <h2 className="font-semibold">ต่ออายุ / เปลี่ยนแพ็กเกจ</h2>
-            <p className="mb-4 mt-1 text-sm text-muted">โอนใหม่เพื่อต่ออายุการใช้งาน (ระบบ QR ไม่ตัดเงินอัตโนมัติ)</p>
+            <p className="mb-4 mt-1 text-sm text-muted">
+              โอนใหม่เพื่อต่ออายุการใช้งาน (ระบบ QR ไม่ตัดเงินอัตโนมัติ) —
+              ต่อก่อนหมดวัน ระบบจะทบวันที่เหลือให้ ไม่เสียของเดิม
+            </p>
             <PlanCards />
           </div>
         </>
       ) : (
         <div>
-          <h2 className="font-semibold">เลือกแพ็กเกจ</h2>
-          <p className="mb-4 mt-1 text-sm text-muted">เลือกแพ็กเกจแล้วชำระผ่าน PromptPay (สแกน QR + แนบสลิป)</p>
+          <h2 className="font-semibold">{sub ? "แพ็กเกจหมดอายุแล้ว — ต่ออายุได้เลย" : "เลือกแพ็กเกจ"}</h2>
+          <p className="mb-4 mt-1 text-sm text-muted">
+            {sub
+              ? `แพ็กเกจก่อนหน้าหมดอายุเมื่อ ${sub.currentPeriodEnd ? formatThaiDate(sub.currentPeriodEnd) : "-"} — เลือกแพ็กเกจเพื่อกลับมาใช้งานต่อ`
+              : "เลือกแพ็กเกจแล้วชำระผ่าน PromptPay (สแกน QR + แนบสลิป)"}
+          </p>
           <PlanCards />
         </div>
       )}

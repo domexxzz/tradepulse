@@ -3,11 +3,13 @@ import { grantAccess, revokeAccess } from "@/lib/actions/admin";
 
 const statusStyle: Record<string, string> = {
   PENDING: "text-amber-400 border-amber-400/30 bg-amber-400/10",
+  PENDING_REVOKE: "text-down border-down/30 bg-down/10",
   GRANTED: "text-up border-up/30 bg-up/10",
-  REVOKED: "text-down border-down/30 bg-down/10",
+  REVOKED: "text-muted border-border bg-surface-2",
 };
 const statusLabel: Record<string, string> = {
   PENDING: "รออนุมัติ",
+  PENDING_REVOKE: "หมดอายุ — รอถอนสิทธิ์",
   GRANTED: "อนุมัติแล้ว",
   REVOKED: "ยกเลิก",
 };
@@ -24,6 +26,7 @@ export default async function AccessQueuePage() {
         <h1 className="font-display text-2xl font-bold">คิวอนุมัติสิทธิ์ TradingView</h1>
         <p className="mt-1 text-sm text-muted">
           อนุมัติแล้วให้ไปเพิ่ม username ในสคริปต์ invite-only บน TradingView ด้วยตนเอง
+          — รายการ &quot;หมดอายุ — รอถอนสิทธิ์&quot; มาจากงานประจำวัน ให้ลบ username ออกจากสคริปต์แล้วกด &quot;ยกเลิก&quot;
         </p>
       </div>
 

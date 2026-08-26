@@ -11,7 +11,7 @@ export function BacktestStats() {
     .join(" · ");
 
   return (
-    <section id="stats" className="py-20">
+    <section id="stats" className="section-md">
       <div className="container-x">
         <SectionHeading
           eyebrow="สถิติผลงาน"

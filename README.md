@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TradePulse
 
-## Getting Started
+เว็บขายสิทธิ์ใช้งานอินดิเคเตอร์วิเคราะห์ทองคำ (XAUUSD) บน TradingView แบบสมาชิกรายงวด
+พร้อมระบบชำระเงิน ส่งมอบสิทธิ์ และดูแลอายุสมาชิกอัตโนมัติ
 
-First, run the development server:
+> TradePulse เป็นเครื่องมือช่วยวิเคราะห์เท่านั้น ไม่ใช่คำแนะนำการลงทุน
+> ไม่รับบริหารเงินทุน และไม่รับประกันผลตอบแทน
+
+## ระบบที่มี
+
+| ส่วน | รายละเอียด |
+|---|---|
+| หน้าขาย | 20 section — กราฟสด TradingView, ฟีเจอร์ 18 รายการ, สัญญาณสด, รีวิวจริง, ราคา, FAQ |
+| SEO | หน้าฟีเจอร์รายตัว 18 หน้า, sitemap, robots, OG image, structured data |
+| สมาชิก | สมัคร/เข้าสู่ระบบ (อีเมล + Google/LINE), ลืมรหัสผ่าน, พอร์ทัลจัดการบัญชี |
+| ชำระเงิน | PromptPay QR + แนบสลิป (ค่าเริ่มต้น) หรือ Stripe subscription |
+| ส่งมอบสิทธิ์ | อินดิเคเตอร์ TradingView, ยศ Discord ตามแพ็กเกจ, กลุ่มสัญญาณ Telegram |
+| อายุสมาชิก | ต่ออายุทบวันที่เหลือ, เตือนล่วงหน้า 3 วัน, ปิดสิทธิ์อัตโนมัติเมื่อหมดอายุ |
+| แอดมิน | ตรวจสลิป, คิวสิทธิ์, จัดการสมาชิก, รีวิว, ผู้รับข่าวสาร |
+| สัญญาณ | รับจาก TradingView Alert → เก็บลงเว็บ + ส่งเข้า Telegram แยกตาม timeframe |
+
+## Tech stack
+
+Next.js 16 (App Router) · TypeScript · Tailwind CSS v4 · Prisma + PostgreSQL ·
+Auth.js v5 · Stripe · Resend · deploy บน Vercel
+
+## เริ่มใช้งานในเครื่อง
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+docker run -d --name tradepulse-pg \
+  -e POSTGRES_PASSWORD=devpass -e POSTGRES_USER=tradepulse -e POSTGRES_DB=tradepulse \
+  -p 5433:5432 postgres:16-alpine
+
+cp .env.example .env      # แล้วกรอก DATABASE_URL / DIRECT_URL ตาม docs/SETUP.md
+npm install
+npx prisma migrate dev
+node prisma/seed.mjs
+npm run dev               # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## เอกสาร
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| หัวข้อ | ไฟล์ |
+|---|---|
+| ติดตั้ง ตั้งค่า และ deploy | [docs/SETUP.md](docs/SETUP.md) |
+| วงจรชีวิตสมาชิก + cron ปิดสิทธิ์ | [docs/LIFECYCLE.md](docs/LIFECYCLE.md) |
+| ระบบอีเมล | [docs/EMAIL.md](docs/EMAIL.md) |
+| สลิป PromptPay + ตรวจสลิปอัตโนมัติ | [docs/SLIP.md](docs/SLIP.md) |
+| ให้สิทธิ์ TradingView อัตโนมัติ | [docs/TRADINGVIEW.md](docs/TRADINGVIEW.md) |
+| สัญญาณเข้ากลุ่ม Telegram | [docs/TELEGRAM.md](docs/TELEGRAM.md) |
+| ยศ Discord ตามแพ็กเกจ | [docs/DISCORD.md](docs/DISCORD.md) |
+| แดชบอร์ดแอดมิน | [docs/ADMIN.md](docs/ADMIN.md) |
+| Stripe | [docs/PAYMENTS.md](docs/PAYMENTS.md) |
+| แผนโปรดักต์ตั้งต้น | [PLAN.md](PLAN.md) |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## แก้เนื้อหาเว็บ
 
-## Learn More
+แก้ที่ไฟล์เดียวแล้วเปลี่ยนทั้งเว็บ:
 
-To learn more about Next.js, take a look at the following resources:
+- `src/config/site.ts` — ชื่อแบรนด์ ช่องทางติดต่อ เมนู ลิงก์กราฟ
+- `src/config/plans.ts` — แพ็กเกจและราคา
+- `src/config/features.ts` — ฟีเจอร์ 18 รายการ (มี `slug` = URL หน้ารายตัว) FAQ และเนื้อหาอื่น
+- `src/config/stats.ts` — สถิติ backtest (ซ่อนไว้จนกว่าจะกรอกตัวเลขจริง)
+- `src/app/globals.css` — สีธีม
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## ก่อนขึ้น production ต้องตั้งอย่างน้อยนี้
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+DATABASE_URL, DIRECT_URL       ฐานข้อมูล
+NEXTAUTH_SECRET                เข้ารหัส session
+NEXT_PUBLIC_SITE_URL           โดเมนจริง (ใช้ในอีเมลและ SEO)
+PROMPTPAY_ID                   รับเงิน
+CRON_SECRET                    ⚠️ ไม่ตั้ง = สมาชิกไม่มีวันหมดอายุ
+RESEND_API_KEY, EMAIL_FROM     ใบเสร็จ + ลืมรหัสผ่าน
+ADMIN_EMAILS                   ตั้งแอดมินคนแรก
+```
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+ตัวแปรทั้งหมดพร้อมคำอธิบายอยู่ใน [.env.example](.env.example)

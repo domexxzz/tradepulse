@@ -10,7 +10,7 @@ const points = [
 
 export function TelegramAlerts() {
   return (
-    <section id="telegram" className="border-y border-border bg-surface py-20">
+    <section id="telegram" className="border-y border-border bg-surface section">
       <div className="container-x grid items-center gap-12 lg:grid-cols-2">
         <div>
           <p className="mb-3 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-brand">
@@ -32,7 +32,9 @@ export function TelegramAlerts() {
           <div className="mt-8">
             <Button href="#pricing" size="lg">สมัครเพื่อเข้ากลุ่ม Telegram</Button>
           </div>
-          <p className="mt-3 text-xs text-muted">🔒 เข้ากลุ่มได้เฉพาะสมาชิก — ทีมงานจะส่งลิงก์เชิญกลุ่มให้หลังสมัคร</p>
+          <p className="mt-3 text-xs text-muted">
+            🔒 เข้ากลุ่มได้เฉพาะสมาชิก — ลิงก์เข้ากลุ่มอยู่ในหน้าบัญชีของคุณทันทีหลังยืนยันการชำระเงิน
+          </p>
         </div>
 
         <div className="mx-auto w-full max-w-sm">

@@ -1,14 +1,14 @@
-import { BgParticles } from "./BgParticles";
-
-/** พื้นหลังตกแต่งแบบเลเยอร์ (glow orbs + grid + grain + particles) — โทนเขียว */
+/**
+ * พื้นหลัง — ไล่เฉดเขียวเข้ม + ตารางบางที่จางหายไปเอง + เกรนบาง ๆ
+ *
+ * ของเดิมมี orb เบลอ 3 ก้อนลอยไปมา + ตาราง + เกรน + จุดวิ่งอีกชุด ทับกัน 4 ชั้น
+ * ผลคือพื้นหลังขุ่นและดึงสายตาแข่งกับเนื้อหา — เอาออกให้เหลือเท่าที่ให้ความลึกจริง
+ * (จุดวิ่งยัง import ไว้ที่ BgParticles ถ้าอยากเอากลับมาก็เติมได้ในบรรทัดเดียว)
+ */
 export function Background3D() {
   return (
     <div className="bg3d" aria-hidden>
-      <div className="bg3d__orb bg3d__orb--a" />
-      <div className="bg3d__orb bg3d__orb--b" />
-      <div className="bg3d__orb bg3d__orb--c" />
       <div className="bg3d__grid" />
-      <BgParticles />
       <div className="bg3d__grain" />
     </div>
   );

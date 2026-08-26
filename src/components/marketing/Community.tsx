@@ -7,7 +7,7 @@ const DISCORD_BLURPLE = "#5865F2";
 
 export function Community() {
   return (
-    <section id="community" className="py-20">
+    <section id="community" className="section-md">
       <div className="container-x grid items-center gap-12 lg:grid-cols-2">
         <div>
           <p className="mb-3 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-brand">
@@ -56,13 +56,13 @@ export function Community() {
               <AccessRow
                 icon={<Lock className="h-5 w-5" />}
                 title="ห้องเฉพาะสมาชิก"
-                desc="ปลดล็อกตามแพ็กเกจที่สมัคร ทีมงานให้สิทธิ์หลังตรวจสอบการชำระเงิน"
+                desc="ปลดล็อกตามแพ็กเกจที่สมัคร หลังยืนยันการชำระเงินและผูกบัญชี Discord"
                 tone="locked"
               />
             </div>
 
             <p className="mt-4 border-t border-border pt-4 text-xs text-muted">
-              แจ้งชื่อผู้ใช้ Discord กับทีมงานหลังสมัคร เพื่อรับสิทธิ์เข้าห้องสมาชิก
+              ผูกบัญชี Discord ได้เองในหน้าบัญชี → เมนู Discord แล้วรับยศเข้าห้องสมาชิกทันที
             </p>
           </div>
         </div>

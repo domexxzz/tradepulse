@@ -3,14 +3,11 @@ import { Navbar } from "@/components/common/Navbar";
 import { Footer } from "@/components/common/Footer";
 import { Hero } from "@/components/marketing/Hero";
 import { MarketTicker } from "@/components/marketing/MarketTicker";
-import { GraphCarousel } from "@/components/marketing/GraphCarousel";
 import { LiveChart } from "@/components/marketing/LiveChart";
-import { TrustStrip } from "@/components/marketing/TrustStrip";
 import { ProblemSolution } from "@/components/marketing/ProblemSolution";
 import { HowItWorks } from "@/components/marketing/HowItWorks";
 import { CoreFeatures } from "@/components/marketing/CoreFeatures";
 import { AllFeatures } from "@/components/marketing/AllFeatures";
-import { Demo } from "@/components/marketing/Demo";
 import { RealResults } from "@/components/marketing/RealResults";
 import { BacktestStats } from "@/components/marketing/BacktestStats";
 import { TelegramAlerts } from "@/components/marketing/TelegramAlerts";
@@ -18,39 +15,60 @@ import { Community } from "@/components/marketing/Community";
 import { LiveSignals } from "@/components/marketing/LiveSignals";
 import { Reviews } from "@/components/marketing/Reviews";
 import { Pricing } from "@/components/marketing/Pricing";
-import { Benefits } from "@/components/marketing/Benefits";
 import { FAQ } from "@/components/marketing/FAQ";
 import { EmailCapture } from "@/components/marketing/EmailCapture";
 import { Disclaimer } from "@/components/marketing/Disclaimer";
 import { MobileStickyCTA } from "@/components/marketing/MobileStickyCTA";
 import { ChatWidget } from "@/components/marketing/ChatWidget";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { homeJsonLd } from "@/lib/seo";
+
+export const metadata = {
+  alternates: { canonical: "/" },
+};
 
 export const revalidate = 300;
+
+/**
+ * ลำดับของหน้าแรก — เล่าเป็นเรื่องเดียว ไม่ใช่กองรวมกัน
+ *
+ *   เห็นของ (Hero + กราฟจริง)
+ *   → ราคาวิ่งอยู่จริง (ticker)
+ *   → ทำไมต้องใช้ (ปัญหา → วิธีแก้ → ใช้ยังไง)
+ *   → มีอะไรบ้าง (ฟีเจอร์หลัก → เครื่องมือเสริม)
+ *   → พิสูจน์ (กราฟสด → คลิป → สัญญาณเข้า Telegram → สัญญาณสด)
+ *   → คนอื่นว่าไง (ชุมชน → รีวิว)
+ *   → ตัดสินใจ (ราคา → คำถาม → รับข่าวสาร)
+ *
+ * ตัดออกไป 4 อัน: การ์ดกราฟข้อมูลสมมติ, เดโมที่ซ้ำกับกราฟสด,
+ * แถบจุดเด่น (ย้ายไปอยู่ใน Hero) และรายการสิทธิประโยชน์ที่ซ้ำกับหน้าราคา
+ */
 
 export default function Home() {
   return (
     <>
+      <JsonLd data={homeJsonLd()} />
       <Background3D />
       <Navbar />
       <main>
         <Hero />
         <MarketTicker />
-        <GraphCarousel />
-        <LiveChart />
-        <TrustStrip />
+
         <ProblemSolution />
         <HowItWorks />
+
         <CoreFeatures />
         <AllFeatures />
-        <Demo />
+
+        <LiveChart />
         <RealResults />
         <BacktestStats />
         <TelegramAlerts />
-        <Community />
         <LiveSignals />
+
+        <Community />
         <Reviews />
         <Pricing />
-        <Benefits />
         <FAQ />
         <EmailCapture />
         <Disclaimer />

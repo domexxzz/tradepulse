@@ -17,16 +17,18 @@ export const site = {
     email: process.env.NEXT_PUBLIC_CONTACT_EMAIL || "",
   },
 
-  // ใช้ "/#..." เพื่อให้ลิงก์ใน Footer ใช้ได้จากทุกหน้า ไม่ใช่เฉพาะหน้าแรก
+  /**
+   * เมนูหลัก — 6 รายการพอ
+   *
+   * ของเดิมมี 10 รายการ ซึ่งเกินกว่าที่ตาจะกวาดได้ในครั้งเดียว และมีลิงก์ที่ชี้ไป
+   * section ที่ไม่มีอยู่แล้ว เหลือไว้เฉพาะจุดที่คนจริง ๆ อยากกระโดดไป
+   * ใช้ "/#..." เพื่อให้ลิงก์ใน Footer ใช้ได้จากทุกหน้า ไม่ใช่เฉพาะหน้าแรก
+   */
   nav: [
     { label: "ฟีเจอร์", href: "/#features" },
-    { label: "กราฟ", href: "/#chart" },
-    { label: "วิธีทำงาน", href: "/#how" },
-    { label: "เดโม", href: "/#demo" },
+    { label: "กราฟจริง", href: "/#chart" },
     { label: "ผลลัพธ์", href: "/#results" },
     { label: "สัญญาณสด", href: "/#signals" },
-    { label: "Telegram", href: "/#telegram" },
-    { label: "ชุมชน", href: "/#community" },
     { label: "ราคา", href: "/#pricing" },
     { label: "คำถามพบบ่อย", href: "/#faq" },
   ],
@@ -54,19 +56,27 @@ export const tradingView = {
   symbol: process.env.NEXT_PUBLIC_TRADINGVIEW_SYMBOL || "FOREXCOM:XAUUSD",
   interval: process.env.NEXT_PUBLIC_TRADINGVIEW_INTERVAL || "30",
   /**
-   * ภาพ snapshot ของกราฟจริง (กดปุ่มกล้อง 📷 บน TradingView -> "คัดลอกลิงก์ภาพ")
-   * เป็นวิธีเดียวที่แสดงเส้นอินดิเคเตอร์ TradePulse บนเว็บได้ เพราะ layout เป็น private
-   * ตัวอย่าง: https://s3.tradingview.com/snapshots/x/XXXXXXXX.png
+   * ภาพกราฟจริงที่รันอินดิเคเตอร์ TradePulse
+   *
+   * ภาพเดิมใช้ลิงก์ snapshot ของ TradingView ซึ่งเป็นแถบยาวแบน (1814x436 = 4.16:1)
+   * เอามาวางเต็มความกว้างหน้าเว็บแล้วกลายเป็นริบบิ้นบาง ๆ ดูไม่สมส่วน
+   * ตัวนี้แคปใหม่จาก layout จริงในสัดส่วน 16:9 ธีมมืดให้เข้ากับเว็บ
+   * และซ่อน UI ของ TradingView ออกหมด (แถบพารามิเตอร์อินดิเคเตอร์,
+   * แถบเครื่องมือวาด, แถบไทม์เฟรมด้านล่าง, ป้ายราคาซื้อ/ขาย)
+   *
+   * เปลี่ยนภาพใหม่: แคปให้ได้สัดส่วนใกล้ 16:9 แล้วแก้ snapshotAspect ให้ตรงด้วย
+   * และต้อง **เปลี่ยนชื่อไฟล์ด้วยทุกครั้ง** — Next.js แคชภาพที่ optimize แล้วตาม URL
+   * ทับไฟล์ชื่อเดิมจะยังได้ภาพเก่าทั้งบน dev และบน production
+   * ถ้าจะกลับไปใช้ลิงก์ snapshot ของ TradingView ก็ตั้งผ่าน env ได้เหมือนเดิม
    */
-  snapshotUrl:
-    process.env.NEXT_PUBLIC_TRADINGVIEW_SNAPSHOT_URL ||
-    "https://s3.tradingview.com/snapshots/e/EI34kpKu.png",
-  /** อัตราส่วนภาพ snapshot — กันภาพกระโดด (CLS) ตอนโหลด ต้องแก้ตามภาพใหม่ที่เปลี่ยน */
-  snapshotAspect: process.env.NEXT_PUBLIC_TRADINGVIEW_SNAPSHOT_ASPECT || "1814 / 436",
-  /** หน้า snapshot บน TradingView (ให้เครดิตที่มาของภาพ) */
+  snapshotUrl: process.env.NEXT_PUBLIC_TRADINGVIEW_SNAPSHOT_URL || "/images/chart-xauusd-dark.png",
+  /** อัตราส่วนภาพ — กันภาพกระโดด (CLS) ตอนโหลด ต้องแก้ตามภาพใหม่ที่เปลี่ยน */
+  snapshotAspect: process.env.NEXT_PUBLIC_TRADINGVIEW_SNAPSHOT_ASPECT || "16 / 9",
+  /** กดที่ภาพแล้วไปไหน — ภาพในเครื่องไม่มีหน้า snapshot จึงพาไปที่ layout กราฟจริงแทน */
   snapshotPageUrl:
     process.env.NEXT_PUBLIC_TRADINGVIEW_SNAPSHOT_PAGE_URL ||
-    "https://www.tradingview.com/x/EI34kpKu/",
+    process.env.NEXT_PUBLIC_TRADINGVIEW_CHART_URL ||
+    "https://th.tradingview.com/chart/AOJ68CcI/?symbol=FOREXCOM%3AXAUUSD",
 } as const;
 
 /** มีภาพ snapshot กราฟจริงให้แสดงหรือยัง */

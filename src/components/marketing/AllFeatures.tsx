@@ -5,7 +5,7 @@ import { FeatureCard } from "@/components/marketing/FeatureCard";
 /** Part 2 — เครื่องมือเสริม/ขั้นสูง (9 รายการ) ต่อเนื่องจากฟีเจอร์หลัก */
 export function AllFeatures() {
   return (
-    <section id="advanced-tools" className="py-20">
+    <section id="advanced-tools" className="section-md">
       <div className="container-x">
         <SectionHeading
           eyebrow="เครื่องมือขั้นสูง"

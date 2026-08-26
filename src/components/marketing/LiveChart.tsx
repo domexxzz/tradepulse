@@ -23,7 +23,7 @@ export function LiveChart() {
   const [activeInterval, setActiveInterval] = useState<string>(tradingView.interval);
 
   return (
-    <section id="chart" className="py-20">
+    <section id="chart" className="section">
       <div className="container-x">
         <SectionHeading
           eyebrow="กราฟจริง"
@@ -92,13 +92,13 @@ export function LiveChart() {
 
         <div className="mt-4 overflow-hidden rounded-2xl border border-border card-surface p-1.5">
           {mode === "snapshot" && hasChartSnapshot ? (
-            // ภาพกราฟแบนมาก (~4:1) — บนมือถือจึงตรึงความสูงแล้วให้เลื่อนแนวนอนแทนการย่อจนอ่านไม่ออก
-            <div className="overflow-x-auto sm:overflow-x-visible">
+            // ภาพเป็น 16:9 แล้ว ย่อเต็มความกว้างได้เลย ไม่ต้องเลื่อนแนวนอนเหมือนภาพแถบยาวแบบเดิม
+            <div>
             <a
               href={tradingView.snapshotPageUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="group relative block h-[240px] w-auto overflow-hidden rounded-xl sm:h-auto sm:w-full"
+              className="group relative block w-full overflow-hidden rounded-xl"
               style={{ aspectRatio: tradingView.snapshotAspect }}
               aria-label="เปิดภาพกราฟเต็มบน TradingView"
             >
@@ -118,12 +118,6 @@ export function LiveChart() {
             </div>
           )}
         </div>
-
-        {mode === "snapshot" && hasChartSnapshot && (
-          <p className="mt-2 text-center text-[11px] text-muted sm:hidden">
-            เลื่อนซ้าย–ขวาเพื่อดูกราฟทั้งหมด
-          </p>
-        )}
 
         <p className="mt-3 text-center text-xs text-muted">
           {mode === "snapshot" && hasChartSnapshot

@@ -1,4 +1,6 @@
 import Image from "next/image";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import type { Feature } from "@/config/features";
 import { Icon } from "@/components/common/Icon";
 
@@ -8,7 +10,7 @@ import { Icon } from "@/components/common/Icon";
  * ใส่ screenshot จริงได้โดยกำหนด feature.image = "/images/features/xxx.png"
  */
 export function FeatureCard({ feature }: { feature: Feature }) {
-  const { title, desc, howto, icon, image } = feature;
+  const { title, slug, desc, howto, icon, image } = feature;
 
   return (
     <article className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-surface/60 transition-colors hover:border-brand/40">
@@ -42,6 +44,14 @@ export function FeatureCard({ feature }: { feature: Feature }) {
           <p className="text-[11px] font-semibold uppercase tracking-wide text-brand">วิธีใช้</p>
           <p className="mt-1.5 text-[13px] leading-relaxed text-foreground/85">{howto}</p>
         </div>
+
+        <Link
+          href={`/features/${slug}`}
+          className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-brand hover:underline"
+        >
+          อ่านรายละเอียด
+          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+        </Link>
       </div>
     </article>
   );

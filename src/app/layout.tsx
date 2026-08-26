@@ -32,7 +32,17 @@ export const metadata: Metadata = {
     locale: "th_TH",
     type: "website",
   },
-  robots: { index: true, follow: true },
+  twitter: {
+    card: "summary_large_image",
+    title: `${site.fullName} | ${site.tagline}`,
+    description: site.description,
+  },
+  alternates: { canonical: "/" },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large" },
+  },
 };
 
 export default function RootLayout({

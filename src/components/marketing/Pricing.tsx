@@ -9,9 +9,10 @@ import { Check } from "lucide-react";
 
 export function Pricing() {
   return (
-    <section id="pricing" className="py-20">
+    <section id="pricing" className="section">
       <div className="container-x">
         <SectionHeading
+          align="center"
           eyebrow="ราคา"
           title="เลือกแพ็กเกจที่เหมาะกับคุณ"
           subtitle="ทุกแพ็กเกจได้ฟีเจอร์ครบเหมือนกัน ต่างกันที่ระยะเวลาและราคาเฉลี่ยต่อเดือน"
@@ -22,32 +23,40 @@ export function Pricing() {
         <div className="mt-12 grid gap-5 lg:grid-cols-4">
           {plans.map((p) => {
             const primaryBtn =
-              "inline-flex h-11 w-full items-center justify-center rounded-full bg-brand text-sm font-semibold text-background transition-colors hover:bg-brand-strong";
+              "inline-flex h-11 w-full items-center justify-center rounded-full bg-brand text-sm font-semibold text-brand-ink transition-colors hover:bg-brand-strong";
             const outlineBtn =
-              "inline-flex h-11 w-full items-center justify-center rounded-full border border-brand/40 text-sm font-semibold text-brand transition-colors hover:bg-brand/10";
+              "inline-flex h-11 w-full items-center justify-center rounded-full border border-border-strong text-sm font-medium text-foreground transition-colors hover:border-brand/50 hover:text-brand hover:bg-brand-wash";
             const cls = p.highlight ? primaryBtn : outlineBtn;
             return (
               <div
                 key={p.id}
-                className={`relative flex flex-col rounded-2xl border p-6 ${
-                  p.highlight ? "border-brand/60 bg-surface" : "border-border card-surface"
+                className={`relative flex flex-col rounded-2xl border p-6 transition-colors ${
+                  p.highlight
+                    ? "border-brand/45 bg-surface-2 shadow-[0_24px_70px_-40px_rgba(110,227,74,.45)] lg:-my-3 lg:py-9"
+                    : "border-border bg-surface hover:border-border-strong"
                 }`}
               >
                 {p.badge && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-brand px-3 py-1 text-xs font-semibold text-background">
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-brand px-3 py-1 text-xs font-semibold text-brand-ink">
                     {p.badge}
                   </span>
                 )}
-                <h3 className="font-display text-lg font-semibold">{p.name}</h3>
-                <div className="mt-4 font-display text-3xl font-bold">{formatTHB(p.priceTHB)}</div>
-                <p className="mt-1 text-sm text-muted">เฉลี่ย {formatTHB(p.perMonthTHB)}/เดือน</p>
-                <p className="mt-0.5 text-xs text-muted">{p.billingNote}</p>
+                <h3 className="text-sm font-medium text-muted">{p.name}</h3>
+                <div className="mt-3 flex items-baseline gap-1.5">
+                  <span className="display tnum text-[length:var(--display-sm)]">
+                    {formatTHB(p.perMonthTHB)}
+                  </span>
+                  <span className="text-sm text-muted">/เดือน</span>
+                </div>
+                <p className="mt-2 text-sm text-muted tnum">
+                  จ่าย {formatTHB(p.priceTHB)} · {p.billingNote}
+                </p>
                 {p.savingsTHB > 0 ? (
-                  <p className="mt-2 inline-flex w-fit rounded-full bg-brand/10 px-2.5 py-0.5 text-xs font-medium text-brand">
+                  <p className="pill-brand tnum mt-3 inline-flex w-fit rounded-full px-2.5 py-0.5 text-xs font-medium">
                     ประหยัด {formatTHB(p.savingsTHB)}
                   </p>
                 ) : (
-                  <span className="mt-2 h-[22px]" aria-hidden />
+                  <span className="mt-3 h-[22px]" aria-hidden />
                 )}
 
                 <div className="mt-6">

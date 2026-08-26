@@ -42,12 +42,20 @@ export async function upsertSubscription(
   }
 }
 
-/** บันทึกใบเสร็จแบบกันซ้ำ (idempotent ตาม providerRef) */
-export async function recordPayment(userId: string, amountTHB: number, providerRef: string) {
+/**
+ * บันทึกใบเสร็จแบบกันซ้ำ (idempotent ตาม providerRef)
+ * provider = ช่องทางที่ได้เงินมา (stripe / web / line / facebook / tiktok ...)
+ */
+export async function recordPayment(
+  userId: string,
+  amountTHB: number,
+  providerRef: string,
+  provider = "stripe"
+) {
   const exists = await prisma.payment.findFirst({ where: { providerRef } });
   if (exists) return;
   await prisma.payment.create({
-    data: { userId, amountTHB, provider: "stripe", providerRef, status: "paid" },
+    data: { userId, amountTHB, provider, providerRef, status: "paid" },
   });
 }
 

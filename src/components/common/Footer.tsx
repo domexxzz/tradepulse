@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { site, hasLineContact, hasDiscord, discordInviteUrl } from "@/config/site";
 
 export function Footer() {
@@ -23,6 +24,7 @@ export function Footer() {
             {site.nav.map((n) => (
               <li key={n.href}><a href={n.href} className="hover:text-foreground">{n.label}</a></li>
             ))}
+            <li><Link href="/features" className="hover:text-foreground">ฟีเจอร์ทั้งหมด (รายตัว)</Link></li>
           </ul>
         </nav>
 
