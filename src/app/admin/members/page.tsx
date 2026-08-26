@@ -4,6 +4,7 @@ import { plans } from "@/config/plans";
 import { isSubscriptionActive } from "@/lib/subscription";
 import { daysUntil, formatThaiDate } from "@/lib/date";
 import { adminActivateMembership, adminExpireMembership } from "@/lib/actions/admin";
+import { SALE_CHANNELS } from "@/config/channels";
 import { Search } from "lucide-react";
 
 const PER_PAGE = 30;
@@ -129,18 +130,35 @@ export default async function MembersPage({
                   <td className="px-5 py-3 text-xs text-muted">{formatThaiDate(u.createdAt)}</td>
                   <td className="px-5 py-3">
                     <div className="flex flex-col items-end gap-2">
-                      <form action={adminActivateMembership} className="flex items-center gap-1.5">
+                      <form action={adminActivateMembership} className="flex flex-wrap items-center justify-end gap-1.5">
                         <input type="hidden" name="userId" value={u.id} />
-                        <input type="hidden" name="amountTHB" value="0" />
                         <select
                           name="planCode"
                           defaultValue="MONTH"
+                          aria-label="แพ็กเกจ"
                           className="rounded-lg border border-border bg-surface-2 px-2 py-1 text-xs outline-none focus:border-brand/50"
                         >
                           {plans.map((p) => (
                             <option key={p.id} value={p.id}>{p.name}</option>
                           ))}
                         </select>
+                        <select
+                          name="channel"
+                          defaultValue="line"
+                          aria-label="ช่องทางที่ได้เงินมา"
+                          className="rounded-lg border border-border bg-surface-2 px-2 py-1 text-xs outline-none focus:border-brand/50"
+                        >
+                          {SALE_CHANNELS.map((c) => (
+                            <option key={c.id} value={c.id}>{c.label}</option>
+                          ))}
+                        </select>
+                        <input
+                          name="amountTHB"
+                          inputMode="numeric"
+                          placeholder="ยอด (ว่าง = ราคาป้าย)"
+                          aria-label="ยอดเงินที่ได้รับจริง"
+                          className="w-32 rounded-lg border border-border bg-surface-2 px-2 py-1 text-xs outline-none placeholder:text-muted focus:border-brand/50"
+                        />
                         <button className="rounded-full bg-up/15 px-3 py-1.5 text-xs font-medium text-up hover:bg-up/25">
                           เปิด/ต่ออายุ
                         </button>
@@ -162,10 +180,18 @@ export default async function MembersPage({
         </table>
       </div>
 
-      <p className="text-xs text-muted">
-        ปุ่ม &quot;เปิด/ต่ออายุ&quot; ให้สิทธิ์ฟรีโดยไม่บันทึกเป็นรายได้ (ใช้กรณีโอนนอกระบบหรือชดเชย)
-        — ต่ออายุจะทบวันที่เหลือให้อัตโนมัติ
-      </p>
+      <div className="rounded-2xl border border-border bg-surface-2/50 p-4 text-xs leading-relaxed text-muted">
+        <p className="font-medium text-foreground">เปิดสิทธิ์ให้ลูกค้าที่ซื้อนอกเว็บ</p>
+        <p className="mt-1.5">
+          ลูกค้าที่ทักมาทาง LINE / เพจ / TikTok แล้วโอนตรง ให้เลือกแพ็กเกจ + ช่องทางที่ได้เงินมา
+          แล้วกด &quot;เปิด/ต่ออายุ&quot; — ระบบจะเปิดสิทธิ์ทุกช่องทางให้เหมือนซื้อผ่านเว็บทุกประการ
+          (อินดิเคเตอร์ · Discord · Telegram · อีเมลใบเสร็จ · วันหมดอายุ)
+        </p>
+        <p className="mt-1.5">
+          ช่องยอดเงินเว้นว่าง = ใช้ราคาป้ายของแพ็กเกจนั้น · เลือก &quot;แถมให้&quot; เมื่อไม่คิดเงิน (ไม่นับเป็นรายได้)
+          · ต่ออายุจะทบวันที่เหลือให้อัตโนมัติ
+        </p>
+      </div>
 
       {pages > 1 && (
         <div className="flex items-center justify-center gap-3 text-sm">

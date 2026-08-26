@@ -151,6 +151,7 @@ async function approveOrderById(orderId: string, source: string): Promise<void> 
     planCode: order.planCode,
     amountTHB: order.amountTHB,
     providerRef: `slip_${order.id}`,
+    provider: "web",
     source,
   });
 

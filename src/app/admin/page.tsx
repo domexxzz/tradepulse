@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { formatTHB } from "@/lib/utils";
 import { formatThaiDate, daysUntil } from "@/lib/date";
 import { ACTIVE_STATUSES } from "@/lib/subscription";
+import { channelLabel } from "@/config/channels";
 import { Users, CreditCard, ClipboardList, Wallet, Receipt, CalendarClock } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -40,6 +41,16 @@ export default async function AdminDashboard() {
     { label: "รายได้รวม", value: formatTHB(revenue._sum.amountTHB ?? 0), icon: Wallet, href: "/admin/orders" },
   ];
 
+  // รายได้แยกตามช่องทาง — ลูกค้าเข้ามาหลายทาง (เว็บ / LINE / เพจ / TikTok)
+  // ถ้าดูแต่ยอดรวมจะไม่รู้ว่าควรลงแรงกับช่องทางไหน
+  const byChannel = await prisma.payment.groupBy({
+    by: ["provider"],
+    where: { status: "paid" },
+    _sum: { amountTHB: true },
+    _count: { _all: true },
+  });
+  const totalRevenue = revenue._sum.amountTHB ?? 0;
+
   const [queue, expiring] = await Promise.all([
     prisma.accessGrant.findMany({
       where: { status: { in: ["PENDING", "PENDING_REVOKE"] } },
@@ -68,6 +79,34 @@ export default async function AdminDashboard() {
           </Link>
         ))}
       </div>
+
+      {byChannel.length > 0 && (
+        <section>
+          <h2 className="mb-3 font-semibold">รายได้แยกตามช่องทาง</h2>
+          <div className="card-surface divide-y divide-border/50 overflow-hidden rounded-2xl">
+            {[...byChannel]
+              .sort((a, b) => (b._sum.amountTHB ?? 0) - (a._sum.amountTHB ?? 0))
+              .map((c) => {
+                const amount = c._sum.amountTHB ?? 0;
+                const pct = totalRevenue > 0 ? Math.round((amount / totalRevenue) * 100) : 0;
+                return (
+                  <div key={c.provider} className="px-5 py-3">
+                    <div className="flex items-center justify-between gap-3 text-sm">
+                      <span className="font-medium">{channelLabel(c.provider)}</span>
+                      <span className="shrink-0">
+                        <b>{formatTHB(amount)}</b>
+                        <span className="ml-2 text-xs text-muted">{c._count._all} รายการ · {pct}%</span>
+                      </span>
+                    </div>
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-2">
+                      <div className="h-full rounded-full bg-brand" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </section>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section>

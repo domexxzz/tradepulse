@@ -39,6 +39,8 @@ export interface ActivateInput {
   providerRef: string;
   /** ที่มาของการเปิดสิทธิ์ ใช้ในข้อความแจ้งแอดมิน */
   source?: string;
+  /** ช่องทางที่ได้เงินมา — เก็บลงใบเสร็จเพื่อดูว่าช่องทางไหนขายดี */
+  provider?: string;
 }
 
 export interface ActivateResult {
@@ -91,9 +93,9 @@ export async function activateMembership(input: ActivateInput): Promise<Activate
         },
       });
 
-  // แอดมินแถมสิทธิ์ให้ฟรี (0 บาท) ไม่ต้องบันทึกเป็นรายได้
+  // แถมสิทธิ์ให้ฟรี (0 บาท) ไม่ต้องบันทึกเป็นรายได้
   if (input.amountTHB > 0) {
-    await recordPayment(input.userId, input.amountTHB, input.providerRef);
+    await recordPayment(input.userId, input.amountTHB, input.providerRef, input.provider);
   }
   await ensureAccessGrant(input.userId);
   await ensureTelegramInvite(input.userId);

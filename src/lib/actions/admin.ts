@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin";
 import { plans } from "@/config/plans";
+import { channelLabel, isRevenueChannel } from "@/config/channels";
 import { activateMembership, expireSubscriptionById, syncTradingViewGrant } from "@/lib/lifecycle";
 import { removeGroupMember, telegramGroupManaged } from "@/lib/telegram";
 
@@ -106,21 +107,37 @@ export async function revokeTelegram(formData: FormData) {
 /* จัดการอายุสมาชิกด้วยมือ — ใช้ตอนโอนนอกระบบ ชดเชย หรือแก้เคสพิเศษ      */
 /* ------------------------------------------------------------------ */
 
-/** เปิด/ต่ออายุแพ็กเกจให้สมาชิกโดยไม่ผ่านออเดอร์ (amountTHB = 0 คือแถมให้ ไม่นับเป็นรายได้) */
+/**
+ * เปิด/ต่ออายุแพ็กเกจให้สมาชิกโดยไม่ผ่านออเดอร์บนเว็บ
+ *
+ * ใช้กับลูกค้าที่ทักมาทาง LINE / เพจ / TikTok แล้วโอนตรง ซึ่งเป็นช่องทางหลักช่องทางหนึ่ง
+ * บันทึกยอดจริงและช่องทางไว้ด้วย ไม่งั้นรายได้รวมจะต่ำกว่าความจริง
+ * และตอบไม่ได้ว่าช่องทางไหนขายดี — เลือก "แถมให้" เมื่อไม่คิดเงิน
+ */
 export async function adminActivateMembership(formData: FormData) {
   await requireAdmin();
   const userId = String(formData.get("userId") ?? "");
   const planCode = String(formData.get("planCode") ?? "");
-  const amountTHB = Math.max(0, Number(formData.get("amountTHB") ?? 0) || 0);
-  if (!userId || !plans.some((p) => p.id === planCode)) return;
+  const channel = String(formData.get("channel") ?? "transfer");
+  const plan = plans.find((p) => p.id === planCode);
+  if (!userId || !plan) return;
+
+  // ไม่กรอกยอด = ใช้ราคาป้ายของแพ็กเกจนั้น (กรณีปกติ) · แถมให้ = 0 เสมอ
+  const raw = String(formData.get("amountTHB") ?? "").trim();
+  const amountTHB = !isRevenueChannel(channel)
+    ? 0
+    : raw === ""
+      ? plan.priceTHB
+      : Math.max(0, Math.round(Number(raw) || 0));
 
   await activateMembership({
     userId,
     planCode,
     amountTHB,
+    provider: channel,
     // เวลาในคีย์ทำให้เปิดสิทธิ์ซ้ำได้ (ต่ออายุหลายรอบ) โดยยังกันบันทึกซ้ำของรอบเดิม
     providerRef: `manual_${userId}_${Date.now()}`,
-    source: "แอดมินเปิดสิทธิ์เอง",
+    source: `แอดมินเปิดสิทธิ์เอง · ${channelLabel(channel)}`,
   });
 
   revalidatePath("/admin/members");
