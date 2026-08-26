@@ -78,7 +78,7 @@ describe("C-2 · แถมให้ฟรีต้องไม่ปนกับ
 });
 
 describe("E-4 · ต่ออายุต้องทบวันที่เหลือ", () => {
-  it("เหลือ 5 วันแล้วต่อรายเดือน ต้องได้ ~35 วัน ไม่ใช่ 30", async () => {
+  it("เหลือ 5 วันแล้วต่อรายเดือน ต้องนับต่อจากวันหมดอายุเดิม ไม่ใช่เริ่มนับใหม่", async () => {
     const user = await makeUser("renew");
     await activateMembership({ userId: user.id, planCode: "MONTH", amountTHB: 990, providerRef: `uat_r1_${user.id}`, provider: "web" });
 
@@ -89,9 +89,15 @@ describe("E-4 · ต่ออายุต้องทบวันที่เห
     const res = await activateMembership({ userId: user.id, planCode: "MONTH", amountTHB: 990, providerRef: `uat_r2_${user.id}`, provider: "line" });
 
     expect(res.extended).toBe(true);
-    const left = daysUntil((await getUserSubscription(user.id)).sub!.currentPeriodEnd!);
-    expect(left).toBeGreaterThanOrEqual(34);
-    expect(left).toBeLessThanOrEqual(36);
+    const end = (await getUserSubscription(user.id)).sub!.currentPeriodEnd!;
+
+    // ต้องนับต่อจากวันหมดอายุเดิมเป๊ะ ๆ
+    // (เทียบค่าตรง ไม่ใช้ช่วงจำนวนวัน เพราะเดือนสั้นยาวไม่เท่ากัน —
+    //  ของเดิมยืนยัน 34-36 วัน ซึ่งล้มทุกเดือน ก.พ. ปีปกติ ที่ได้ 5+28=33 วัน)
+    expect(end.toISOString()).toBe(addMonths(fiveDays, 1).toISOString());
+
+    // และต้องมากกว่าการเปิดใหม่จากวันนี้ = พิสูจน์ว่าทบวันที่เหลือให้จริง ไม่ใช่ทับทิ้ง
+    expect(daysUntil(end)).toBeGreaterThan(daysUntil(addMonths(new Date(), 1)));
 
     // ต่ออายุแล้วต้องเตือนได้ใหม่ในรอบถัดไป
     const sub = await prisma.subscription.findFirst({ where: { userId: user.id } });

@@ -14,5 +14,7 @@ export default defineConfig({
     testTimeout: 30000,
     hookTimeout: 30000,
     fileParallelism: false,
+    // ด่านกันชน production — ทำงานก่อนไฟล์ UAT ทุกไฟล์
+    globalSetup: ["./uat/guard.ts"],
   },
 });
