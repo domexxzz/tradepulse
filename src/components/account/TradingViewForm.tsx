@@ -5,7 +5,7 @@ import { updateTradingView, type TvState } from "@/lib/actions/account";
 export function TradingViewForm({ current }: { current: string }) {
   const [state, action, pending] = useActionState<TvState, FormData>(updateTradingView, {});
   return (
-    <form action={action} className="card-surface rounded-2xl p-6 space-y-4">
+    <form action={action} className="card-surface rounded-xl p-6 space-y-4">
       {state.error && (
         <div className="rounded-lg border border-down/30 bg-down/10 px-3.5 py-2.5 text-sm text-down">{state.error}</div>
       )}
@@ -26,7 +26,7 @@ export function TradingViewForm({ current }: { current: string }) {
       </label>
       <button
         disabled={pending}
-        className="h-11 rounded-full bg-gradient-to-r from-brand-strong to-brand-deep px-6 text-sm font-semibold text-black transition-all hover:brightness-110 disabled:opacity-60"
+        className="h-11 rounded-full bg-brand px-6 text-sm font-semibold text-brand-ink transition-all hover:brightness-110 disabled:opacity-60"
       >
         {pending ? "กำลังบันทึก…" : "บันทึก"}
       </button>

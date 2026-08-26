@@ -32,13 +32,13 @@ export function SlipUploadForm({ orderId }: { orderId: string }) {
         type="file"
         accept="image/*"
         onChange={onFile}
-        className="block w-full text-sm text-muted file:mr-3 file:rounded-full file:border-0 file:bg-brand file:px-4 file:py-2 file:text-sm file:font-semibold file:text-background hover:file:bg-brand-strong"
+        className="block w-full text-sm text-muted file:mr-3 file:rounded-full file:border-0 file:bg-brand file:px-4 file:py-2 file:text-sm file:font-semibold file:text-brand-ink hover:file:bg-brand-strong"
       />
       {preview && <img src={preview} alt="ตัวอย่างสลิป" className="max-h-64 rounded-xl border border-border" />}
       <button
         type="submit"
         disabled={pending || !preview}
-        className="h-11 w-full rounded-full bg-brand text-sm font-semibold text-background transition-colors hover:bg-brand-strong disabled:opacity-50"
+        className="h-11 w-full rounded-full bg-brand text-sm font-semibold text-brand-ink transition-colors hover:bg-brand-strong disabled:opacity-50"
       >
         {pending ? "กำลังส่ง…" : "ส่งสลิปยืนยันการโอน"}
       </button>

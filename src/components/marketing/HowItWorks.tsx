@@ -13,7 +13,7 @@ export function HowItWorks() {
         <ol className="mt-12 grid gap-6 md:grid-cols-3">
           {steps.map((s) => (
             <li key={s.no} className="card-soft rounded-2xl p-6">
-              <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand font-display text-lg font-bold text-background">
+              <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand font-display text-lg font-bold text-brand-ink">
                 {s.no}
               </span>
               <h3 className="mt-4 font-display text-lg font-semibold">{s.title}</h3>

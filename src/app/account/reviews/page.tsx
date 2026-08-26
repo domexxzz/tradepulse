@@ -19,14 +19,14 @@ export default async function AccountReviewsPage() {
   return (
     <div className="max-w-xl space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-bold">รีวิวของฉัน</h1>
+        <h1 className="display text-[length:var(--display-sm)]">รีวิวของฉัน</h1>
         <p className="mt-1.5 text-sm text-muted">
           เล่าประสบการณ์ใช้งานจริงให้คนที่กำลังตัดสินใจได้อ่าน รีวิวจะขึ้นหน้าเว็บหลังทีมงานตรวจ
         </p>
       </div>
 
       {existing && (
-        <div className="card-surface rounded-2xl p-5">
+        <div className="card-surface rounded-xl p-5">
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -60,14 +60,14 @@ export default async function AccountReviewsPage() {
           }
         />
       ) : (
-        <div className="card-surface rounded-2xl p-6">
+        <div className="card-surface rounded-xl p-6">
           <h2 className="font-semibold">ยังส่งรีวิวไม่ได้</h2>
           <p className="mt-1.5 text-sm text-muted">
             เรารับรีวิวจากสมาชิกที่เคยสมัครแพ็กเกจแล้วเท่านั้น เพื่อให้รีวิวบนหน้าเว็บมาจากคนที่ใช้งานจริง
           </p>
           <Link
             href="/account/subscription"
-            className="mt-4 inline-flex h-10 items-center justify-center rounded-full bg-brand px-5 text-sm font-semibold text-background transition-colors hover:bg-brand-strong"
+            className="mt-4 inline-flex h-10 items-center justify-center rounded-full bg-brand px-5 text-sm font-semibold text-brand-ink transition-colors hover:bg-brand-strong"
           >
             ดูแพ็กเกจ
           </Link>

@@ -51,7 +51,7 @@ export function ChatWidget() {
       {open && (
         <div className="fixed bottom-24 right-4 z-50 flex w-[360px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl md:bottom-20">
           <div className="flex items-center gap-3 border-b border-border bg-surface-2 px-4 py-3">
-            <span className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-brand-strong to-brand-deep font-display text-sm font-bold text-background">
+            <span className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-brand-strong to-brand-deep font-display text-sm font-bold text-brand-ink">
               {site.name.charAt(0)}
             </span>
             <div className="leading-tight">
@@ -69,7 +69,7 @@ export function ChatWidget() {
                 <div
                   className={
                     m.role === "user"
-                      ? "max-w-[85%] rounded-2xl rounded-br-sm bg-brand px-3.5 py-2 text-sm text-background"
+                      ? "max-w-[85%] rounded-2xl rounded-br-sm bg-brand px-3.5 py-2 text-sm text-brand-ink"
                       : "max-w-[90%] rounded-2xl rounded-bl-sm bg-surface-2 px-3.5 py-2 text-sm"
                   }
                 >
@@ -115,7 +115,7 @@ export function ChatWidget() {
                 placeholder="พิมพ์ข้อความ…"
                 className="h-10 flex-1 rounded-full border border-border bg-surface-2 px-4 text-sm outline-none placeholder:text-muted focus:border-brand/60"
               />
-              <button type="submit" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand text-background hover:bg-brand-strong" aria-label="ส่ง">
+              <button type="submit" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand text-brand-ink hover:bg-brand-strong" aria-label="ส่ง">
                 <Send className="h-4 w-4" />
               </button>
             </form>
@@ -126,7 +126,7 @@ export function ChatWidget() {
       <button
         onClick={() => setOpen((v) => !v)}
         aria-label="เปิดแชท"
-        className="fixed bottom-24 right-4 z-50 grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-brand-strong to-brand-deep text-background shadow-[0_10px_30px_-6px_rgba(101,230,44,0.5)] transition-transform hover:scale-105 md:bottom-5"
+        className="fixed bottom-24 right-4 z-50 grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-brand-strong to-brand-deep text-brand-ink shadow-[0_10px_30px_-6px_rgba(101,230,44,0.5)] transition-transform hover:scale-105 md:bottom-5"
       >
         {open ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
         {!open && <span className="absolute right-1 top-1 h-3 w-3 rounded-full border-2 border-background bg-brand" />}

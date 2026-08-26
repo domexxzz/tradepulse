@@ -36,10 +36,10 @@ export default async function OrdersHistoryPage() {
 
   return (
     <div className="max-w-2xl space-y-6">
-      <h1 className="font-display text-2xl font-bold">ประวัติออเดอร์</h1>
+      <h1 className="display text-[length:var(--display-sm)]">ประวัติออเดอร์</h1>
 
       {orders.length === 0 ? (
-        <div className="card-surface rounded-2xl p-6 text-center text-sm text-muted">
+        <div className="card-surface rounded-xl p-6 text-center text-sm text-muted">
           ยังไม่มีออเดอร์ — <Link href="/#pricing" className="text-brand hover:underline">เลือกแพ็กเกจ</Link>
         </div>
       ) : (
@@ -61,7 +61,7 @@ export default async function OrdersHistoryPage() {
                 )}
                 <div className="ml-auto">
                   {o.status === "PENDING" ? (
-                    <Link href={`/account/pay/${o.id}`} className="rounded-full bg-brand px-4 py-2 text-xs font-semibold text-background hover:bg-brand-strong">
+                    <Link href={`/account/pay/${o.id}`} className="rounded-full bg-brand px-4 py-2 text-xs font-semibold text-brand-ink hover:bg-brand-strong">
                       ชำระเงิน
                     </Link>
                   ) : o.status === "SUBMITTED" ? (

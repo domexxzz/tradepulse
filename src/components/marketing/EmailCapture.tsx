@@ -29,7 +29,7 @@ export function EmailCapture() {
               <div className="mt-6 flex flex-wrap justify-center gap-3">
                 <Link
                   href="#pricing"
-                  className="inline-flex h-11 items-center rounded-full bg-brand px-6 text-sm font-semibold text-background transition-colors hover:bg-brand-strong"
+                  className="inline-flex h-11 items-center rounded-full bg-brand px-6 text-sm font-semibold text-brand-ink transition-colors hover:bg-brand-strong"
                 >
                   ดูแพ็กเกจ
                 </Link>
@@ -110,7 +110,7 @@ export function EmailCapture() {
 
                 <button
                   disabled={pending}
-                  className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-full bg-brand text-sm font-semibold text-background transition-colors hover:bg-brand-strong disabled:opacity-50"
+                  className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-full bg-brand text-sm font-semibold text-brand-ink transition-colors hover:bg-brand-strong disabled:opacity-50"
                 >
                   {pending ? "กำลังบันทึก…" : "รับข่าวสาร"}
                 </button>

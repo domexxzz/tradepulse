@@ -42,7 +42,7 @@ export function Demo() {
                       aria-pressed={active === i}
                       className={cn(
                         "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
-                        active === i ? "bg-brand text-background" : "text-muted hover:text-foreground"
+                        active === i ? "bg-brand text-brand-ink" : "text-muted hover:text-foreground"
                       )}
                     >
                       {ex.label}

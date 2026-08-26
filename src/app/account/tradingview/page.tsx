@@ -20,7 +20,7 @@ export default async function TradingViewPage() {
   return (
     <div className="max-w-xl space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-bold">เชื่อมต่อ TradingView</h1>
+        <h1 className="display text-[length:var(--display-sm)]">เชื่อมต่อ TradingView</h1>
         <p className="mt-1 text-sm text-muted">
           กรอก Username บน TradingView เพื่อรับสิทธิ์ใช้งานอินดิเคเตอร์ (invite-only)
           — สิทธิ์จะถูกเพิ่มให้หลังยืนยันการชำระเงิน
@@ -30,7 +30,7 @@ export default async function TradingViewPage() {
       <TradingViewForm current={user?.tradingViewUsername ?? ""} />
 
       {grant && (
-        <div className="card-surface rounded-2xl p-5">
+        <div className="card-surface rounded-xl p-5">
           <div className="text-sm text-muted">สถานะสิทธิ์ล่าสุด</div>
           <div className="mt-1 font-semibold">{statusText[grant.status] ?? grant.status}</div>
           {grant.status === "PENDING" && (
@@ -41,7 +41,7 @@ export default async function TradingViewPage() {
         </div>
       )}
 
-      <div className="rounded-xl border border-border/60 bg-surface-2/50 p-4 text-xs text-muted">
+      <div className="rounded-xl border border-border bg-surface-2 p-4 text-xs text-muted">
         วิธีหา Username: เข้า TradingView แล้วคลิกโปรไฟล์มุมขวาบน ชื่อที่ขึ้นต้นด้วย @ คือ username ของคุณ
       </div>
     </div>

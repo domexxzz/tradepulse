@@ -25,14 +25,14 @@ export default async function AccountDiscordPage() {
   return (
     <div className="max-w-xl space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-bold">Discord</h1>
+        <h1 className="display text-[length:var(--display-sm)]">Discord</h1>
         <p className="mt-1.5 text-sm text-muted">
           ผูกบัญชี Discord ไว้ ระบบจะให้ยศเข้าห้องเฉพาะสมาชิกให้อัตโนมัติตามแพ็กเกจของคุณ
         </p>
       </div>
 
       {!discordBotEnabled ? (
-        <div className="card-surface rounded-2xl p-6">
+        <div className="card-surface rounded-xl p-6">
           <h2 className="font-semibold">ระบบให้ยศอัตโนมัติยังไม่เปิดใช้งาน</h2>
           <p className="mt-1.5 text-sm text-muted">
             ระหว่างนี้เข้าเซิร์ฟเวอร์แล้วแจ้งชื่อผู้ใช้ Discord กับทีมงาน เพื่อรับสิทธิ์ห้องสมาชิก
@@ -51,7 +51,7 @@ export default async function AccountDiscordPage() {
       ) : (
         <>
           {linked && (
-            <div className="card-surface rounded-2xl p-5">
+            <div className="card-surface rounded-xl p-5">
               <div className="flex flex-wrap items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-up" />
                 <span className="text-sm font-medium">ผูกกับ {user?.discordUsername}</span>

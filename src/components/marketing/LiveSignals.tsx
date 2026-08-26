@@ -118,7 +118,7 @@ export function LiveSignals() {
             </span>
             <Link
               href="#pricing"
-              className="rounded-full bg-brand px-5 py-1.5 text-sm font-semibold text-background transition-colors hover:bg-brand-strong"
+              className="rounded-full bg-brand px-5 py-1.5 text-sm font-semibold text-brand-ink transition-colors hover:bg-brand-strong"
             >
               ดูแพ็กเกจ
             </Link>

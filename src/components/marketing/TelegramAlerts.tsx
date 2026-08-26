@@ -40,7 +40,7 @@ export function TelegramAlerts() {
         <div className="mx-auto w-full max-w-sm">
           <div className="rounded-2xl border border-border bg-background p-4 shadow-[0_20px_60px_-30px_rgba(0,0,0,0.6)]">
             <div className="flex items-center gap-2.5">
-              <span className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-brand-strong to-brand-deep font-display text-sm font-bold text-background">
+              <span className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-brand-strong to-brand-deep font-display text-sm font-bold text-brand-ink">
                 T
               </span>
               <div className="leading-tight">

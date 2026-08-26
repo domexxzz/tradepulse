@@ -14,15 +14,15 @@ function PlanCards() {
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {plans.map((p) => {
         const cls = p.highlight
-          ? "inline-flex h-11 w-full items-center justify-center rounded-full bg-brand text-sm font-semibold text-background transition-colors hover:bg-brand-strong"
+          ? "inline-flex h-11 w-full items-center justify-center rounded-full bg-brand text-sm font-semibold text-brand-ink transition-colors hover:bg-brand-strong"
           : "inline-flex h-11 w-full items-center justify-center rounded-full border border-brand/40 text-sm font-semibold text-brand transition-colors hover:bg-brand/10";
         return (
           <div key={p.id} className={`relative flex flex-col rounded-2xl border p-5 ${p.highlight ? "border-brand/60 bg-surface" : "border-border card-surface"}`}>
             {p.badge && (
-              <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-brand px-3 py-1 text-xs font-semibold text-background">{p.badge}</span>
+              <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-brand px-3 py-1 text-xs font-semibold text-brand-ink">{p.badge}</span>
             )}
             <h3 className="font-display text-lg font-semibold">{p.name}</h3>
-            <div className="mt-3 font-display text-2xl font-bold">{formatTHB(p.priceTHB)}</div>
+            <div className="mt-3 display text-[length:var(--display-sm)]">{formatTHB(p.priceTHB)}</div>
             <p className="mt-1 text-xs text-muted">เฉลี่ย {formatTHB(p.perMonthTHB)}/เดือน</p>
             {p.savingsTHB > 0 && (
               <p className="mt-2 inline-flex w-fit rounded-full bg-brand/10 px-2.5 py-0.5 text-xs font-medium text-brand">ประหยัด {formatTHB(p.savingsTHB)}</p>
@@ -52,7 +52,7 @@ export default async function SubscriptionPage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="font-display text-2xl font-bold">แพ็คเกจของฉัน</h1>
+      <h1 className="display text-[length:var(--display-sm)]">แพ็คเกจของฉัน</h1>
 
       {isActive && sub ? (
         <>
@@ -60,9 +60,9 @@ export default async function SubscriptionPage() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm text-muted">แพ็คเกจปัจจุบัน</div>
-                <div className="font-display text-xl font-bold">{plan?.name ?? sub.planCode}</div>
+                <div className="display text-lg">{plan?.name ?? sub.planCode}</div>
               </div>
-              {plan && <div className="font-display text-xl font-bold">{formatTHB(plan.priceTHB)}</div>}
+              {plan && <div className="display text-lg">{formatTHB(plan.priceTHB)}</div>}
             </div>
             <div className="mt-4 space-y-1 text-sm text-muted">
               <div>สถานะ: <span className="text-up">กำลังใช้งาน</span></div>

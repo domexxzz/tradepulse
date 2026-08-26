@@ -98,7 +98,7 @@ export default async function OrdersPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-bold">ออเดอร์ / ตรวจสลิป</h1>
+        <h1 className="display text-[length:var(--display-sm)]">ออเดอร์ / ตรวจสลิป</h1>
         <p className="mt-1 text-sm text-muted">
           ตรวจสลิปที่สมาชิกแนบมา แล้วกด &quot;อนุมัติ&quot; เพื่อเปิดสิทธิ์อัตโนมัติ
           {slipVerifyEnabled
@@ -124,7 +124,7 @@ export default async function OrdersPage({
       </div>
 
       {orders.length === 0 ? (
-        <div className="card-surface rounded-2xl p-6 text-sm text-muted">ไม่มีออเดอร์ในหมวดนี้</div>
+        <div className="card-surface rounded-xl p-6 text-sm text-muted">ไม่มีออเดอร์ในหมวดนี้</div>
       ) : (
         <div className="space-y-3">
           {orders.map((o) => {

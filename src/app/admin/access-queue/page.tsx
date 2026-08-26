@@ -23,7 +23,7 @@ export default async function AccessQueuePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-bold">คิวอนุมัติสิทธิ์ TradingView</h1>
+        <h1 className="display text-[length:var(--display-sm)]">คิวอนุมัติสิทธิ์ TradingView</h1>
         <p className="mt-1 text-sm text-muted">
           อนุมัติแล้วให้ไปเพิ่ม username ในสคริปต์ invite-only บน TradingView ด้วยตนเอง
           — รายการ &quot;หมดอายุ — รอถอนสิทธิ์&quot; มาจากงานประจำวัน ให้ลบ username ออกจากสคริปต์แล้วกด &quot;ยกเลิก&quot;
@@ -31,11 +31,11 @@ export default async function AccessQueuePage() {
       </div>
 
       {grants.length === 0 ? (
-        <div className="card-surface rounded-2xl p-6 text-sm text-muted">ยังไม่มีคำขอสิทธิ์</div>
+        <div className="card-surface rounded-xl p-6 text-sm text-muted">ยังไม่มีคำขอสิทธิ์</div>
       ) : (
         <div className="card-surface overflow-x-auto rounded-2xl">
           <table className="w-full min-w-[640px] text-sm">
-            <thead className="border-b border-border/60 text-left text-muted">
+            <thead className="border-b border-border text-left text-muted">
               <tr>
                 <th className="px-5 py-3 font-medium">สมาชิก</th>
                 <th className="px-5 py-3 font-medium">TradingView</th>
@@ -46,7 +46,7 @@ export default async function AccessQueuePage() {
             </thead>
             <tbody>
               {grants.map((g) => (
-                <tr key={g.id} className="border-b border-border/40 last:border-0">
+                <tr key={g.id} className="border-b border-border last:border-0">
                   <td className="px-5 py-3">
                     <div className="font-medium">{g.user.name ?? "—"}</div>
                     <div className="text-xs text-muted">{g.user.email}</div>

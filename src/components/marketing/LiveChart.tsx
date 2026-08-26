@@ -49,7 +49,7 @@ export function LiveChart() {
                   aria-pressed={mode === m.value}
                   className={cn(
                     "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
-                    mode === m.value ? "bg-brand text-background" : "text-muted hover:text-foreground"
+                    mode === m.value ? "bg-brand text-brand-ink" : "text-muted hover:text-foreground"
                   )}
                 >
                   {m.label}
@@ -81,7 +81,7 @@ export function LiveChart() {
                 aria-pressed={activeInterval === tf.value}
                 className={cn(
                   "rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
-                  activeInterval === tf.value ? "bg-brand text-background" : "text-muted hover:text-foreground"
+                  activeInterval === tf.value ? "bg-brand text-brand-ink" : "text-muted hover:text-foreground"
                 )}
               >
                 {tf.label}

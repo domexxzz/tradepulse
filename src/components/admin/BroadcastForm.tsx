@@ -61,7 +61,7 @@ export function BroadcastForm({ recipients }: { recipients: number }) {
 
       <button
         disabled={pending || recipients === 0}
-        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-brand text-sm font-semibold text-background transition-colors hover:bg-brand-strong disabled:opacity-50"
+        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-brand text-sm font-semibold text-brand-ink transition-colors hover:bg-brand-strong disabled:opacity-50"
       >
         <Send className="h-4 w-4" />
         {pending ? "กำลังส่ง…" : `ส่งถึงผู้รับ ${recipients} คน`}
