@@ -222,6 +222,8 @@ model Subscriber {
   source         String    @default("landing")
   createdAt      DateTime  @default(now())
   unsubscribedAt DateTime?
+  /** โทเคนสำหรับลิงก์ยกเลิกในอีเมล — ไม่ต้องล็อกอินก็กดยกเลิกได้ */
+  unsubscribeToken String? @unique
 
   @@index([createdAt])
 }

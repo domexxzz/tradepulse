@@ -20,6 +20,8 @@ export interface SendEmailInput {
   html: string;
   /** ข้อความสำรองสำหรับอีเมลที่ปิดการแสดง HTML */
   text?: string;
+  /** header เพิ่มเติม เช่น List-Unsubscribe ของอีเมลข่าวสาร */
+  headers?: Record<string, string>;
 }
 
 export interface SendEmailResult {
@@ -29,7 +31,7 @@ export interface SendEmailResult {
 }
 
 /** ส่งอีเมลหนึ่งฉบับ — คืน skipped=true เมื่อยังไม่ได้ตั้งค่าระบบอีเมล */
-export async function sendEmail({ to, subject, html, text }: SendEmailInput): Promise<SendEmailResult> {
+export async function sendEmail({ to, subject, html, text, headers }: SendEmailInput): Promise<SendEmailResult> {
   if (!emailEnabled) return { ok: false, skipped: true };
 
   try {
@@ -46,6 +48,7 @@ export async function sendEmail({ to, subject, html, text }: SendEmailInput): Pr
         html,
         ...(text ? { text } : {}),
         ...(REPLY_TO ? { reply_to: REPLY_TO } : {}),
+        ...(headers ? { headers } : {}),
       }),
     });
 

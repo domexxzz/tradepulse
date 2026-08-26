@@ -142,3 +142,46 @@ export function passwordResetEmail(input: { name?: string | null; url: string; m
     text: `${hi(input.name)}\n\nตั้งรหัสผ่านใหม่ที่ลิงก์นี้ (ใช้ได้ ${input.minutes} นาที):\n${input.url}\n\nถ้าไม่ได้เป็นคนขอ ไม่ต้องทำอะไรครับ`,
   };
 }
+
+/**
+ * อีเมลข่าวสารถึงผู้ที่สมัครรับข่าว
+ * ต้องมีลิงก์ยกเลิกเสมอ — เป็นข้อกำหนดของ PDPA และทำให้อีเมลไม่ตกถังสแปม
+ */
+export function newsletterEmail(input: {
+  subject: string;
+  /** เนื้อหาแบบข้อความธรรมดา ขึ้นย่อหน้าใหม่ด้วยการเว้นบรรทัด */
+  body: string;
+  unsubscribeUrl: string;
+}): EmailContent {
+  const paragraphs = input.body
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => `<p style="margin:0 0 14px;">${escapeHtml(p).replace(/\n/g, "<br>")}</p>`)
+    .join("");
+
+  const html = shell(
+    `${paragraphs}
+     ${button(site.url, "เปิดเว็บไซต์")}
+     <p style="margin:24px 0 0;padding-top:16px;border-top:1px solid ${BORDER};color:${MUTED};font-size:12px;line-height:1.6;">
+       คุณได้รับอีเมลนี้เพราะเคยสมัครรับข่าวสารจาก ${site.name}<br>
+       <a href="${input.unsubscribeUrl}" style="color:${MUTED};text-decoration:underline;">ยกเลิกรับข่าวสาร</a>
+     </p>`,
+    input.subject
+  );
+
+  const text = `${input.body}
+
+---
+ยกเลิกรับข่าวสาร: ${input.unsubscribeUrl}`;
+  return { subject: input.subject, html, text };
+}
+
+/** กัน HTML แปลกปลอมจากข้อความที่แอดมินพิมพ์ */
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}

@@ -1,5 +1,6 @@
 "use server";
 import { z } from "zod";
+import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 
 export type SubscribeState = { ok?: boolean; error?: string };
@@ -40,7 +41,7 @@ export async function subscribeEmail(
       where: { email },
       // เคยกดยกเลิกไว้แล้วสมัครใหม่ ให้กลับมารับข่าวสารอีกครั้ง
       update: { unsubscribedAt: null },
-      create: { email, source },
+      create: { email, source, unsubscribeToken: randomUUID() },
     });
   } catch {
     return { error: "ระบบขัดข้องชั่วคราว ลองใหม่อีกครั้งครับ" };
