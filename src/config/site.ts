@@ -63,9 +63,11 @@ export const tradingView = {
    * แถบเครื่องมือวาด, แถบไทม์เฟรมด้านล่าง, ป้ายราคาซื้อ/ขาย)
    *
    * เปลี่ยนภาพใหม่: แคปให้ได้สัดส่วนใกล้ 16:9 แล้วแก้ snapshotAspect ให้ตรงด้วย
+   * และต้อง **เปลี่ยนชื่อไฟล์ด้วยทุกครั้ง** — Next.js แคชภาพที่ optimize แล้วตาม URL
+   * ทับไฟล์ชื่อเดิมจะยังได้ภาพเก่าทั้งบน dev และบน production
    * ถ้าจะกลับไปใช้ลิงก์ snapshot ของ TradingView ก็ตั้งผ่าน env ได้เหมือนเดิม
    */
-  snapshotUrl: process.env.NEXT_PUBLIC_TRADINGVIEW_SNAPSHOT_URL || "/images/chart-live.png",
+  snapshotUrl: process.env.NEXT_PUBLIC_TRADINGVIEW_SNAPSHOT_URL || "/images/chart-xauusd-dark.png",
   /** อัตราส่วนภาพ — กันภาพกระโดด (CLS) ตอนโหลด ต้องแก้ตามภาพใหม่ที่เปลี่ยน */
   snapshotAspect: process.env.NEXT_PUBLIC_TRADINGVIEW_SNAPSHOT_ASPECT || "16 / 9",
   /** กดที่ภาพแล้วไปไหน — ภาพในเครื่องไม่มีหน้า snapshot จึงพาไปที่ layout กราฟจริงแทน */
