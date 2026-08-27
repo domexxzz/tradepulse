@@ -18,7 +18,6 @@ import { Pricing } from "@/components/marketing/Pricing";
 import { FAQ } from "@/components/marketing/FAQ";
 import { EmailCapture } from "@/components/marketing/EmailCapture";
 import { Disclaimer } from "@/components/marketing/Disclaimer";
-import { MobileStickyCTA } from "@/components/marketing/MobileStickyCTA";
 import { AdBanners } from "@/components/marketing/AdBanners";
 import { ChatWidget } from "@/components/marketing/ChatWidget";
 import { JsonLd } from "@/components/seo/JsonLd";
@@ -77,7 +76,6 @@ export default async function Home() {
         <Disclaimer />
       </main>
       <Footer />
-      <MobileStickyCTA />
       <AdBanners promo={promo} />
       <ChatWidget />
     </>
