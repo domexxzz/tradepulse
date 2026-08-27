@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { site } from "@/config/site";
@@ -27,9 +28,18 @@ export function Navbar() {
     >
       <nav className="container-x flex h-16 items-center justify-between" aria-label="เมนูหลัก">
         <a href="#top" className="flex items-center gap-2" aria-label={`${site.name} หน้าแรก`}>
-          <span className="grid h-8 w-8 place-items-center rounded-[.6rem] bg-brand font-display text-sm font-bold text-brand-ink">
-            {site.name.charAt(0)}
-          </span>
+          {/* โลโก้พื้นใส — ข้างในหกเหลี่ยมโปร่ง พื้นเว็บทะลุขึ้นมาเอง
+              ไม่ใส่กรอบหรือพื้นหลังทับ เพราะตัวโลโก้มีกรอบหกเหลี่ยมอยู่แล้ว
+              alt ว่างเพราะข้อความ "QVX" ข้าง ๆ บอกชื่อแบรนด์อยู่แล้ว
+              ถ้าใส่ alt ซ้ำ screen reader จะอ่านชื่อสองรอบ */}
+          <Image
+            src="/images/brand/qvx-logo-hex-v1.png"
+            alt=""
+            width={36}
+            height={36}
+            priority
+            className="h-9 w-9"
+          />
           <span className="font-display text-[1.05rem] font-semibold tracking-tight">{site.name}</span>
         </a>
 

@@ -1,9 +1,19 @@
+import { readFileSync } from "fs";
+import { join } from "path";
 import { ImageResponse } from "next/og";
 import { site } from "@/config/site";
 
 export const alt = `${site.name} — ${site.tagline}`;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
+
+/**
+ * ฝังโลโก้เป็น data URI — ImageResponse อ่าน path ในเครื่องเองไม่ได้
+ * ต้องเป็น URL เต็มหรือ data URI เท่านั้น ใช้ไฟล์ย่อ 180px เพื่อไม่ให้ base64 บวม
+ */
+const logoDataUri = `data:image/png;base64,${readFileSync(
+  join(process.cwd(), "public/images/brand/qvx-logo-hex-180.png")
+).toString("base64")}`;
 
 /**
  * ภาพพรีวิวตอนแชร์ลิงก์ (Facebook, LINE, X)
@@ -28,22 +38,8 @@ export default function OpengraphImage() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          <div
-            style={{
-              width: 72,
-              height: 72,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: 20,
-              background: "#65e62c",
-              color: "#08100b",
-              fontSize: 44,
-              fontWeight: 700,
-            }}
-          >
-            {site.name.charAt(0)}
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element -- ImageResponse รองรับแค่ img ธรรมดา */}
+          <img src={logoDataUri} width={84} height={84} alt="" />
           <div style={{ fontSize: 46, fontWeight: 700, letterSpacing: -1 }}>{site.name}</div>
         </div>
 

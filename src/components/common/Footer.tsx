@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { site, hasLineContact, hasDiscord, discordInviteUrl } from "@/config/site";
 
@@ -10,9 +11,14 @@ export function Footer() {
       <div className="container-x grid gap-8 py-12 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand font-display text-sm font-bold text-brand-ink">
-              {site.name.charAt(0)}
-            </span>
+            {/* โลโก้เดียวกับ Navbar — alt ว่างเพราะมีชื่อแบรนด์เป็นข้อความอยู่ข้าง ๆ แล้ว */}
+            <Image
+              src="/images/brand/qvx-logo-hex-v1.png"
+              alt=""
+              width={36}
+              height={36}
+              className="h-9 w-9"
+            />
             <span className="font-display text-lg font-bold">{site.name}</span>
           </div>
           <p className="mt-3 max-w-xs text-sm text-muted">{site.tagline}</p>
