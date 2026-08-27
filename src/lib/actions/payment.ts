@@ -83,6 +83,7 @@ export async function submitSlip(_prev: SlipState, formData: FormData): Promise<
     base64: parsed.slip.base64,
     mime: parsed.slip.mime,
     expectAmountTHB: order.amountTHB,
+    orderCreatedAt: order.createdAt,
   });
 
   // เลขอ้างอิงซ้ำ = สลิปเดิมถ่ายรูปใหม่มาส่ง

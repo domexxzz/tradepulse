@@ -23,7 +23,7 @@ export function LiveChart() {
   const [activeInterval, setActiveInterval] = useState<string>(tradingView.interval);
 
   return (
-    <section id="chart" className="section">
+    <div id="chart" className="mt-10 sm:mt-12">
       <div className="container-x">
         <SectionHeading
           eyebrow="กราฟจริง"
@@ -126,6 +126,6 @@ export function LiveChart() {
           • QVX ไม่มีส่วนเกี่ยวข้องกับ TradingView
         </p>
       </div>
-    </section>
+    </div>
   );
 }

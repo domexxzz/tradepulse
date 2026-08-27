@@ -2,10 +2,10 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 const plans = [
-  { code: "MONTH", name: "รายเดือน", priceTHB: 990, interval: "month", sortOrder: 1 },
-  { code: "Q3", name: "ราย 3 เดือน", priceTHB: 2670, interval: "3month", sortOrder: 2 },
-  { code: "H6", name: "ราย 6 เดือน", priceTHB: 4740, interval: "6month", sortOrder: 3 },
-  { code: "YEAR", name: "รายปี", priceTHB: 7990, interval: "year", sortOrder: 4 },
+  { code: "MONTH", name: "รายเดือน", priceTHB: 1290, interval: "month", sortOrder: 1 },
+  { code: "Q3", name: "ราย 3 เดือน", priceTHB: 3870, interval: "3month", sortOrder: 2 },
+  { code: "H6", name: "ราย 6 เดือน", priceTHB: 7740, interval: "6month", sortOrder: 3 },
+  { code: "YEAR", name: "รายปี", priceTHB: 15480, interval: "year", sortOrder: 4 },
 ];
 
 /**

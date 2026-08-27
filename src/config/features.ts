@@ -4,6 +4,12 @@ export interface Feature {
   title: string;
   /** ใช้เป็น URL หน้า /features/[slug] — เปลี่ยนแล้วลิงก์เดิมจะพัง ระวังด้วย */
   slug: string;
+  /**
+   * ชื่อย่อแบบที่อินดิเคเตอร์เขียนไว้บนกราฟ (FVG, OB, LQ...) ใช้ในแถบเลือกฟีเจอร์
+   * บนจอเล็ก ที่ชื่อเต็มยาวเกินกว่าจะวางเรียงกันได้ — ตั้งใจให้ตรงกับป้ายบนชาร์ต
+   * เพื่อให้แถบนั้นอ่านเหมือน legend ของอินดิเคเตอร์เอง
+   */
+  short: string;
   desc: string;
   howto: string;
   icon: string;
@@ -22,6 +28,7 @@ const coreFeaturesAll: Feature[] = [
   {
     title: "FVG — Fair Value Gap",
     slug: "fvg",
+    short: "FVG",
     icon: "SeparatorHorizontal",
     image: "/images/features/fvg-snap.webp",
     desc: "แสดงบริเวณที่ราคาเคลื่อนที่เร็วและทิ้งช่องว่างไว้ ใช้เฝ้าดูจังหวะที่ราคาอาจกลับมาทดสอบหรือเกิดปฏิกิริยา",
@@ -30,6 +37,7 @@ const coreFeaturesAll: Feature[] = [
   {
     title: "OB — Order Block",
     slug: "order-block",
+    short: "OB",
     icon: "Boxes",
     image: "/images/features/order-block.webp",
     desc: "แสดงโซนที่เคยเกิดแรงซื้อหรือแรงขายชัดเจน ใช้เป็นบริเวณสำคัญสำหรับเฝ้าดูการตอบสนองของราคา",
@@ -38,6 +46,7 @@ const coreFeaturesAll: Feature[] = [
   {
     title: "LQ — Liquidity & Sweep",
     slug: "liquidity-sweep",
+    short: "LQ",
     icon: "Droplets",
     image: "/images/features/liquidity-sweep-snap.webp",
     desc: "ช่วยมองเห็นจุดสภาพคล่อง และจังหวะที่ราคากวาดระดับสำคัญก่อนกลับตัว",
@@ -46,6 +55,7 @@ const coreFeaturesAll: Feature[] = [
   {
     title: "DM-SP — Demand / Supply Zone",
     slug: "demand-supply-zone",
+    short: "DM-SP",
     icon: "LayoutGrid",
     image: "/images/features/demand-supply-zone-snap.webp",
     desc: "แสดง Demand Zone และ Supply Zone ซึ่งเป็นบริเวณที่ราคาเคยมีแรงซื้อหรือแรงขายเด่นชัด",
@@ -54,6 +64,7 @@ const coreFeaturesAll: Feature[] = [
   {
     title: "BOS — Break of Structure",
     slug: "break-of-structure",
+    short: "BOS",
     icon: "GitBranch",
     image: "/images/features/break-of-structure-snap.webp",
     desc: "แสดงเมื่อราคาทะลุโครงสร้างสำคัญ ช่วยให้เห็นว่าราคาอาจยังมีแรงเดินต่อในทิศทางเดิม",
@@ -62,6 +73,7 @@ const coreFeaturesAll: Feature[] = [
   {
     title: "CHoCH / MSS — Change of Character",
     slug: "change-of-character",
+    short: "CHoCH",
     icon: "Shuffle",
     image: "/images/features/change-of-character-snap.webp",
     desc: "แสดงเมื่อโครงสร้างราคาเริ่มเปลี่ยนไปจากทิศทางเดิม เป็นสัญญาณเตือนว่าตลาดอาจกำลังเปลี่ยนแนวโน้ม",
@@ -70,6 +82,7 @@ const coreFeaturesAll: Feature[] = [
   {
     title: "Buy / Sell Scalping",
     slug: "buy-sell-scalping",
+    short: "Scalping",
     icon: "Zap",
     image: "/images/features/buy-sell-scalping-snap.webp",
     desc: "สัญญาณ Buy / Sell สำหรับช่วยหาจังหวะเทรดระยะสั้นบนกราฟทองคำ โดยแสดงเมื่อระบบพบเงื่อนไขที่เข้าเกณฑ์",
@@ -78,6 +91,7 @@ const coreFeaturesAll: Feature[] = [
   {
     title: "ICT Buy",
     slug: "ict-buy",
+    short: "ICT Buy",
     icon: "TrendingUp",
     image: "/images/features/ict-buy-snap.webp",
     desc: "สัญญาณ Buy ที่ช่วยค้นหาจังหวะเมื่อราคาแสดงแรงตอบสนองเชิงบวกจากบริเวณ Demand หรือโซนสำคัญ",
@@ -86,6 +100,7 @@ const coreFeaturesAll: Feature[] = [
   {
     title: "ICT Sell",
     slug: "ict-sell",
+    short: "ICT Sell",
     icon: "TrendingDown",
     image: "/images/features/ict-sell-snap.webp",
     desc: "สัญญาณ Sell ที่ช่วยค้นหาจังหวะเมื่อราคาแสดงแรงตอบสนองเชิงลบจากบริเวณ Supply หรือโซนสำคัญ",
@@ -100,6 +115,7 @@ const advancedToolsAll: Feature[] = [
   {
     title: "Supertrend",
     slug: "supertrend",
+    short: "Supertrend",
     icon: "Activity",
     image: "/images/features/supertrend-snap.webp",
     desc: "แสดงเส้นแนวโน้มบนกราฟเพื่อช่วยให้มองภาพรวมของราคาและจังหวะการเปลี่ยนทิศทางได้ชัดขึ้น",
@@ -108,6 +124,7 @@ const advancedToolsAll: Feature[] = [
   {
     title: "EMA200",
     slug: "ema200",
+    short: "EMA200",
     icon: "LineChart",
     image: "/images/features/ema200-snap.webp",
     desc: "แสดงเส้นแนวโน้มระยะยาวบนกราฟ เพื่อช่วยประเมินว่าราคาอยู่ในบริบทขาขึ้นหรือขาลง",
@@ -116,6 +133,7 @@ const advancedToolsAll: Feature[] = [
   {
     title: "Higher Timeframe Alignment — HTF",
     slug: "htf-alignment",
+    short: "HTF",
     icon: "Layers",
     image: "",
     desc: "ใช้แนวโน้มและโซนจาก Timeframe ใหญ่เป็นข้อมูลประกอบการวิเคราะห์บน Timeframe ที่ใช้เข้าเทรด",
@@ -124,6 +142,7 @@ const advancedToolsAll: Feature[] = [
   {
     title: "Confluence Score",
     slug: "confluence-score",
+    short: "Confluence",
     icon: "Gauge",
     image: "",
     desc: "ระบบให้คะแนนโซน 0-100 เพื่อช่วยจัดลำดับว่าโซนใดมีองค์ประกอบสนับสนุนหลายด้านมากกว่า",
@@ -132,6 +151,7 @@ const advancedToolsAll: Feature[] = [
   {
     title: "Zone Lifecycle",
     slug: "zone-lifecycle",
+    short: "Lifecycle",
     icon: "RefreshCw",
     image: "",
     desc: "ติดตามสถานะของโซนว่าเป็นโซนใหม่ ถูกแตะ ถูกใช้งาน หรือเสียโครงสร้างแล้ว เพื่อให้กราฟเหลือข้อมูลที่ยังน่าติดตาม",
@@ -140,6 +160,7 @@ const advancedToolsAll: Feature[] = [
   {
     title: "PPDD Order Block",
     slug: "ppdd-order-block",
+    short: "PPDD",
     icon: "Boxes",
     image: "",
     desc: "แสดง Order Block ที่เกิดหลังการกวาด Liquidity เพื่อช่วยเน้นบริเวณที่มีบริบทด้านสภาพคล่องร่วมด้วย",
@@ -148,6 +169,7 @@ const advancedToolsAll: Feature[] = [
   {
     title: "High Volume Bar — HVB",
     slug: "high-volume-bar",
+    short: "HVB",
     icon: "BarChart3",
     image: "",
     desc: "เน้นแท่งเทียนที่มีปริมาณการซื้อขายเด่นกว่าปกติ เพื่อช่วยให้มองเห็นช่วงที่ตลาดมีแรงเข้ามาชัดเจน",
@@ -156,6 +178,7 @@ const advancedToolsAll: Feature[] = [
   {
     title: "Stacked OB + FVG",
     slug: "stacked-ob-fvg",
+    short: "Stacked",
     icon: "Layers",
     image: "",
     desc: "แสดงบริเวณที่ Order Block และ Fair Value Gap เกิดร่วมกัน เพื่อช่วยให้เห็นโซนที่มีองค์ประกอบซ้อนกัน",
@@ -164,6 +187,7 @@ const advancedToolsAll: Feature[] = [
   {
     title: "Rejection Block — RJB",
     slug: "rejection-block",
+    short: "RJB",
     icon: "Ban",
     image: "/images/features/rejection-block.webp",
     desc: "แสดงบริเวณที่ราคาเกิดแรงปฏิเสธชัดเจนจากแท่งเทียน เพื่อใช้มองจุดที่แรงซื้อหรือแรงขายตอบสนองกลับ",
@@ -243,7 +267,6 @@ export const faqs: Faq[] = [
   { q: "ใช้กับ Timeframe ไหน?", a: "ใช้ได้ทุกไทม์เฟรม แนะนำ M15 ขึ้นไปสำหรับการวางแผนที่ชัดเจน และดูภาพใหญ่จากไทม์เฟรมสูงร่วมด้วย" },
   { q: "อินดิเคเตอร์ Repaint หรือไม่?", a: "สัญญาณเข้าเทรดออกแบบให้ไม่ Repaint เมื่อเกิดสัญญาณแล้วใช้อ้างอิงได้ โดยยึดข้อมูลแท่งที่ปิดแล้วเป็นหลัก" },
   { q: "ติดตั้งและเริ่มใช้งานอย่างไร?", a: "สมัครสมาชิก แล้วแจ้ง TradingView username จากนั้นทีมงานจะเพิ่มสิทธิ์สคริปต์ให้ เมื่อได้รับสิทธิ์ก็เพิ่มอินดิเคเตอร์เข้ากราฟได้ทันที" },
-  { q: "ยกเลิกสมาชิกได้หรือไม่?", a: "ยกเลิกได้ตามเงื่อนไขของแต่ละแพ็กเกจ โดยจัดการได้ในหน้าบัญชีของคุณ" },
   { q: "มีการรับประกันกำไรหรือไม่?", a: "ไม่มีการรับประกันผลกำไร QVX เป็นเครื่องมือช่วยวิเคราะห์และวางแผนเท่านั้น การเทรดมีความเสี่ยงและขึ้นกับการตัดสินใจของผู้ใช้" },
   { q: "ติดต่อทีมช่วยเหลือได้ทางไหน?", a: "ติดต่อทีมงานผ่านช่องทางที่ระบุในหน้าเว็บ ทีมงานพร้อมช่วยเหลือเรื่องการติดตั้งและการใช้งานระบบ" },
 ];

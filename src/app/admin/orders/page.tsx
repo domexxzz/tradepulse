@@ -38,6 +38,8 @@ function VerifyBadge({ status, note }: { status: string | null; note: string | n
     VERIFIED: { cls: "text-up border-up/30 bg-up/10", icon: ShieldCheck, text: "ยอดตรง" },
     MISMATCH: { cls: "text-down border-down/30 bg-down/10", icon: ShieldAlert, text: "ยอดไม่ตรง" },
     DUPLICATE: { cls: "text-down border-down/30 bg-down/10", icon: ShieldAlert, text: "สลิปซ้ำ" },
+    WRONG_ACCOUNT: { cls: "text-down border-down/30 bg-down/10", icon: ShieldAlert, text: "ผิดบัญชี" },
+    STALE: { cls: "text-down border-down/30 bg-down/10", icon: ShieldAlert, text: "สลิปเก่า" },
     FAILED: { cls: "text-muted border-border bg-surface-2", icon: ShieldQuestion, text: "อ่านสลิปไม่ได้" },
   };
   const v = map[status] ?? map.FAILED;

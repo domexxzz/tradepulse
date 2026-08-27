@@ -10,11 +10,13 @@ import type { PromoState } from "@/lib/pricing";
 export function PromoSeats({ promo }: { promo: PromoState }) {
   const pct = Math.min(100, Math.round((promo.taken / promo.seats) * 100));
 
+  // ขึ้นต้นด้วยราคาที่ใช้อยู่ ไม่ใช่ประกาศว่าโปรที่ผ่านมาเต็มไปแล้ว
+  // การเปิดหัวข้อราคาด้วยข่าวว่า "คุณพลาดไปแล้ว" ลดแรงจูงใจ ไม่ได้เพิ่ม
   if (!promo.active) {
     return (
       <div className="mx-auto mt-8 flex w-fit max-w-full items-center gap-2.5 rounded-2xl border border-border bg-surface px-5 py-3 text-sm text-muted">
         <CheckCircle2 className="h-4 w-4 shrink-0 text-brand" />
-        โปรเปิดตัว {promo.seats} ที่นั่งแรกเต็มแล้ว — ราคาปัจจุบัน{" "}
+        ราคาปัจจุบัน{" "}
         <b className="text-foreground">{formatTHB(MONTHLY_REGULAR)}/เดือน</b>
       </div>
     );

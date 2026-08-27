@@ -3,11 +3,9 @@ import { plansFor, planIncludes } from "@/config/plans";
 import { getPromoState } from "@/lib/pricing";
 import { PromoSeats } from "./PromoSeats";
 import { paymentsEnabled, paymentMode } from "@/config/site";
-import { createQrOrder } from "@/lib/actions/payment";
-import { formatTHB } from "@/lib/utils";
-import { CheckoutButton } from "./CheckoutButton";
-import { GuaranteeStrip, GuaranteeLine } from "./GuaranteeBadge";
-import { Check } from "lucide-react";
+import { PlanSelector } from "./PlanSelector";
+import { GuaranteeStrip } from "./GuaranteeBadge";
+import { TrustCenter } from "./TrustCenter";
 
 export async function Pricing() {
   const promo = await getPromoState();
@@ -23,66 +21,20 @@ export async function Pricing() {
           subtitle="ทุกแพ็กเกจได้ฟีเจอร์ครบเหมือนกัน ต่างกันที่ระยะเวลาและราคาเฉลี่ยต่อเดือน"
         />
 
+        {/* ⚠️ อย่าเอาบล็อกอธิบายกลับมาไว้เหนือราคาอีก
+            วัดของเดิมแล้ว: จากขอบบน section ถึงตัวเลขราคาตัวแรก = 750px
+            คือ TrustCenter (6 ข้อ) + PromoSeats + GuaranteeStrip ซ้อนกันอยู่ข้างหน้า
+            คนกดเมนู "ราคา" มาเพื่อดูราคา ไม่ใช่มาอ่านเงื่อนไขก่อน
+            TrustCenter ย้ายไปไว้ใต้ราคาแล้ว — มันคือข้อมูล "ก่อนจ่ายเงิน"
+            ซึ่งจะมีความหมายก็ต่อเมื่อเห็นราคาแล้วเท่านั้น */}
         <PromoSeats promo={promo} />
 
-        <GuaranteeStrip />
-
-        <div className="mt-12 grid gap-5 lg:grid-cols-4">
-          {plans.map((p) => {
-            const primaryBtn =
-              "inline-flex h-11 w-full items-center justify-center rounded-full bg-brand text-sm font-semibold text-brand-ink transition-colors hover:bg-brand-strong";
-            const outlineBtn =
-              "inline-flex h-11 w-full items-center justify-center rounded-full border border-border-strong text-sm font-medium text-foreground transition-colors hover:border-brand/50 hover:text-brand hover:bg-brand-wash";
-            const cls = p.highlight ? primaryBtn : outlineBtn;
-            return (
-              <div
-                key={p.id}
-                className={`relative flex flex-col rounded-2xl border p-6 transition-colors ${
-                  p.highlight
-                    ? "border-brand/45 bg-surface-2 shadow-[0_24px_70px_-40px_rgba(110,227,74,.45)] lg:-my-3 lg:py-9"
-                    : "border-border bg-surface hover:border-border-strong"
-                }`}
-              >
-                {p.badge && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-brand px-3 py-1 text-xs font-semibold text-brand-ink">
-                    {p.badge}
-                  </span>
-                )}
-                <h3 className="text-sm font-medium text-muted">{p.name}</h3>
-                <div className="mt-3 flex items-baseline gap-1.5">
-                  <span className="display tnum text-[length:var(--display-sm)]">
-                    {formatTHB(p.perMonthTHB)}
-                  </span>
-                  <span className="text-sm text-muted">/เดือน</span>
-                </div>
-                <p className="mt-2 text-sm text-muted tnum">
-                  จ่าย {formatTHB(p.priceTHB)} · {p.billingNote}
-                </p>
-                {p.savingsTHB > 0 ? (
-                  <p className="pill-brand tnum mt-3 inline-flex w-fit rounded-full px-2.5 py-0.5 text-xs font-medium">
-                    ประหยัด {formatTHB(p.savingsTHB)}
-                  </p>
-                ) : (
-                  <span className="mt-3 h-[22px]" aria-hidden />
-                )}
-
-                <div className="mt-6">
-                  {paymentMode === "qr" ? (
-                    <form action={createQrOrder}>
-                      <input type="hidden" name="planCode" value={p.id} />
-                      <button className={cls}>สมัคร · โอนผ่าน QR</button>
-                    </form>
-                  ) : paymentsEnabled ? (
-                    <CheckoutButton planCode={p.id} className={cls}>สมัครสมาชิก</CheckoutButton>
-                  ) : (
-                    <a href="/register" className={cls}>สมัครบัญชี</a>
-                  )}
-                  <GuaranteeLine className="mt-3" />
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <PlanSelector
+          plans={plans}
+          includes={planIncludes}
+          paymentMode={paymentMode}
+          paymentsEnabled={paymentsEnabled}
+        />
 
         {!paymentsEnabled && (
           <p className="mx-auto mt-6 max-w-2xl text-center text-sm text-muted">
@@ -90,27 +42,28 @@ export async function Pricing() {
           </p>
         )}
 
-        <div className="mx-auto mt-10 max-w-2xl rounded-2xl border border-border card-surface p-6">
-          <h4 className="text-center font-semibold">ทุกแพ็กเกจได้รับ</h4>
-          <ul className="mt-5 grid gap-3 sm:grid-cols-2">
-            {planIncludes.map((x) => (
-              <li key={x} className="flex items-start gap-2.5 text-sm">
-                <Check className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
-                <span>{x}</span>
-              </li>
-            ))}
-          </ul>
-          <ul className="mt-6 space-y-1.5 border-t border-border pt-5 text-xs text-muted">
-            <li>
-              •{" "}
-              {paymentMode === "qr"
-                ? "ไม่ต่ออายุอัตโนมัติ ไม่มีการตัดเงินโดยไม่แจ้ง"
-                : "ยกเลิกได้เองในหน้าบัญชี"}
-            </li>
-            <li>• การสมัครสมาชิกไม่รับประกันผลกำไร</li>
-            <li>• ตรวจสอบ <a href="/refund" className="text-brand hover:underline">รายละเอียดการคืนเงิน</a> ก่อนชำระเงิน</li>
-          </ul>
-        </div>
+        {/* รายการ "ได้รับอะไรบ้าง" ย้ายเข้าไปอยู่ในการ์ดของ PlanSelector แล้ว
+            ตรงนี้เหลือเฉพาะเงื่อนไขตัวเล็ก ไม่งั้นจะพิมพ์รายการเดียวกันสองรอบในจอเดียว */}
+        <ul className="mx-auto mt-8 max-w-2xl space-y-1.5 text-center text-xs text-muted">
+          <li>
+            {paymentMode === "qr"
+              ? "ไม่ต่ออายุอัตโนมัติ ไม่มีการตัดเงินโดยไม่แจ้ง"
+              : "ยกเลิกได้เองในหน้าบัญชี"}
+          </li>
+          <li>การสมัครสมาชิกไม่รับประกันผลกำไร</li>
+          <li>
+            ตรวจสอบ{" "}
+            <a href="/refund" className="text-brand hover:underline">
+              รายละเอียดการคืนเงิน
+            </a>{" "}
+            ก่อนชำระเงิน
+          </li>
+        </ul>
+
+        <GuaranteeStrip />
+
+        {/* ข้อมูล "ก่อนจ่ายเงิน" — อยู่ใต้ราคาเพราะจะมีความหมายก็ต่อเมื่อเห็นราคาแล้ว */}
+        <TrustCenter />
       </div>
     </section>
   );

@@ -26,9 +26,9 @@ export const site = {
    * ใช้ "/#..." เพื่อให้ลิงก์ใน Footer ใช้ได้จากทุกหน้า ไม่ใช่เฉพาะหน้าแรก
    */
   nav: [
-    { label: "ฟีเจอร์", href: "/#features" },
-    { label: "กราฟจริง", href: "/#chart" },
     { label: "ผลลัพธ์", href: "/#results" },
+    { label: "กราฟจริง", href: "/#chart" },
+    { label: "ฟีเจอร์", href: "/#features" },
     { label: "สัญญาณสด", href: "/#signals" },
     { label: "ราคา", href: "/#pricing" },
     { label: "คำถามพบบ่อย", href: "/#faq" },

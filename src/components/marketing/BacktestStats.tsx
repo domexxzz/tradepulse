@@ -11,7 +11,7 @@ export function BacktestStats() {
     .join(" · ");
 
   return (
-    <section id="stats" className="section-md">
+    <div id="stats" className="mt-14 sm:mt-16">
       <div className="container-x">
         <SectionHeading
           eyebrow="สถิติผลงาน"
@@ -34,6 +34,6 @@ export function BacktestStats() {
           • ผลในอดีตไม่ได้รับประกันผลในอนาคต • ไม่ใช่คำแนะนำการลงทุน การเทรดมีความเสี่ยง
         </p>
       </div>
-    </section>
+    </div>
   );
 }

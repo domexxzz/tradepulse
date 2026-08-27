@@ -30,10 +30,10 @@ const stripe = new Stripe(key);
 
 const PRODUCT_NAME = "QVX Membership";
 const plans = [
-  { code: "MONTH", label: "รายเดือน", amount: 99000, interval: "month", count: 1, env: "STRIPE_PRICE_MONTH" },
-  { code: "Q3", label: "ราย 3 เดือน", amount: 267000, interval: "month", count: 3, env: "STRIPE_PRICE_Q3" },
-  { code: "H6", label: "ราย 6 เดือน", amount: 474000, interval: "month", count: 6, env: "STRIPE_PRICE_H6" },
-  { code: "YEAR", label: "รายปี", amount: 799000, interval: "year", count: 1, env: "STRIPE_PRICE_YEAR" },
+  { code: "MONTH", label: "รายเดือน", amount: 129000, interval: "month", count: 1, env: "STRIPE_PRICE_MONTH" },
+  { code: "Q3", label: "ราย 3 เดือน", amount: 387000, interval: "month", count: 3, env: "STRIPE_PRICE_Q3" },
+  { code: "H6", label: "ราย 6 เดือน", amount: 774000, interval: "month", count: 6, env: "STRIPE_PRICE_H6" },
+  { code: "YEAR", label: "รายปี", amount: 1548000, interval: "year", count: 1, env: "STRIPE_PRICE_YEAR" },
 ];
 
 let productId = null;

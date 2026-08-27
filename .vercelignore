@@ -1,0 +1,20 @@
+.git/
+.next/
+.next-*/
+node_modules/
+coverage/
+media-src/
+*.log
+.env*
+!.env.example
+prisma/dev.db
+prisma/dev.db-journal
+*.db-journal
+SMC Unified.txt
+SMC suit strategy.txt
+Change SL.txt
+*.pine
+pine/
+.pine-backup/
+__pycache__/
+*.pyc
