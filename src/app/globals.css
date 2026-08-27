@@ -151,7 +151,7 @@ body {
  * เพราะมันคือหัวข้อ ควรเด่นกว่าเดิม
  */
 .eyebrow {
-  font-size: var(--text-sm); font-weight: 700;
+  font-size: clamp(1rem, .92rem + .3vw, 1.2rem); font-weight: 700;
   letter-spacing: .04em; text-transform: uppercase; color: var(--brand);
 }
 .lede { color: var(--muted); font-size: var(--text-lg); line-height: 1.72; }
