@@ -36,13 +36,7 @@ import { ShieldCheck } from "lucide-react";
  */
 export function Hero({ monthlyTHB }: { monthlyTHB?: number }) {
   const shown = monthlyTHB === undefined ? plans : plansFor(monthlyTHB);
-  // ยอดที่ต้องจ่ายจริงเพื่อเริ่มใช้ ไม่ใช่ค่าเฉลี่ยต่อเดือนที่ถูกที่สุด
-  // ของเดิมโชว์ 899 ซึ่งเป็นค่าเฉลี่ยของแพ็กเกจ 12 เดือน คนกดเข้ามาแล้วเจอว่า
-  // ต้องจ่าย 10,790 ทีเดียว ตัวเลขบนปุ่มกับตัวเลขในหน้าราคาจึงคนละเรื่องกัน
-  //
-  // ยึดแพ็กรายเดือนตรง ๆ ไม่ใช้ min() เพราะป้ายบนปุ่มเขียน "/เดือน" ไว้
-  // ถ้าวันหลังราคาสลับจนแพ็กที่ถูกที่สุดไม่ใช่รายเดือน ป้ายนั้นจะผิดทันที
-  const entry = shown.find((p) => p.months === 1) ?? shown[0];
+  const cheapest = Math.min(...shown.map((p) => p.perMonthTHB));
 
   return (
     // ระยะบนน้อยกว่า --sp-hero เดิม (สูงสุด 9.5rem) เพราะต้องเอาพื้นที่ไปให้คลิปพ้น fold
@@ -77,10 +71,10 @@ export function Hero({ monthlyTHB }: { monthlyTHB?: number }) {
 
           <div className="rise rise-3 mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button href="#pricing" size="lg">
-              เริ่มใช้งาน · เริ่มต้น {formatTHB(entry.priceTHB)}/เดือน
+              เริ่มใช้งาน · เริ่มต้น {formatTHB(cheapest)}/เดือน
             </Button>
             <Button href="#chart" variant="outline" size="lg">
-              ดูตัวอย่างกราฟ
+              ดูกราฟจริง
             </Button>
           </div>
         </div>
@@ -122,7 +116,7 @@ export function Hero({ monthlyTHB }: { monthlyTHB?: number }) {
           </div>
 
           <figcaption className="mt-3.5 text-center text-xs text-faint">
-            คลิปตัวอย่างกราฟที่รันอินดิเคเตอร์ บันทึกในโหมด Bar Replay ของ TradingView ·
+            คลิปจากกราฟจริงที่รันอินดิเคเตอร์ บันทึกในโหมด Bar Replay ของ TradingView ·
             เป็นการเดินย้อนหลังเพื่อสาธิต ไม่ใช่การเทรดสด และไม่ใช่การรับประกันผลในอนาคต
           </figcaption>
         </figure>

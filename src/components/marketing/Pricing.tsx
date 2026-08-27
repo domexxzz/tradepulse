@@ -4,6 +4,7 @@ import { getPromoState } from "@/lib/pricing";
 import { PromoSeats } from "./PromoSeats";
 import { paymentsEnabled, paymentMode } from "@/config/site";
 import { PlanSelector } from "./PlanSelector";
+import { GuaranteeStrip } from "./GuaranteeBadge";
 import { TrustCenter } from "./TrustCenter";
 
 export async function Pricing() {
@@ -22,7 +23,7 @@ export async function Pricing() {
 
         {/* ⚠️ อย่าเอาบล็อกอธิบายกลับมาไว้เหนือราคาอีก
             วัดของเดิมแล้ว: จากขอบบน section ถึงตัวเลขราคาตัวแรก = 750px
-            คือ TrustCenter (6 ข้อ) + PromoSeats + แถบรับประกัน ซ้อนกันอยู่ข้างหน้า
+            คือ TrustCenter (6 ข้อ) + PromoSeats + GuaranteeStrip ซ้อนกันอยู่ข้างหน้า
             คนกดเมนู "ราคา" มาเพื่อดูราคา ไม่ใช่มาอ่านเงื่อนไขก่อน
             TrustCenter ย้ายไปไว้ใต้ราคาแล้ว — มันคือข้อมูล "ก่อนจ่ายเงิน"
             ซึ่งจะมีความหมายก็ต่อเมื่อเห็นราคาแล้วเท่านั้น */}
@@ -59,6 +60,7 @@ export async function Pricing() {
           </li>
         </ul>
 
+        <GuaranteeStrip />
 
         {/* ข้อมูล "ก่อนจ่ายเงิน" — อยู่ใต้ราคาเพราะจะมีความหมายก็ต่อเมื่อเห็นราคาแล้ว */}
         <TrustCenter />

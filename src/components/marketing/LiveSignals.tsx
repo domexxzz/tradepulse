@@ -1,0 +1,130 @@
+"use client";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Lock } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface Signal {
+  id: string;
+  timeframe: string;
+  side: string | null;
+  symbol: string | null;
+  entry: string | null;
+  tp: string | null;
+  tp2: string | null;
+  sl: string | null;
+  createdAt: string;
+}
+
+function ago(iso: string) {
+  const s = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+  if (s < 60) return `${s} วินาทีที่แล้ว`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m} นาทีที่แล้ว`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} ชั่วโมงที่แล้ว`;
+  return `${Math.floor(h / 24)} วันที่แล้ว`;
+}
+
+export function LiveSignals() {
+  const [signals, setSignals] = useState<Signal[]>([]);
+  const [masked, setMasked] = useState(true);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      try {
+        const res = await fetch("/api/signals", { cache: "no-store" });
+        const data = await res.json();
+        if (alive) {
+          setSignals(Array.isArray(data.signals) ? data.signals : []);
+          setMasked(data.masked !== false);
+          setLoaded(true);
+        }
+      } catch {
+        if (alive) setLoaded(true);
+      }
+    };
+    load();
+    const t = setInterval(load, 15000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, []);
+
+  return (
+    <div id="signals" className="border-t border-border pt-8">
+      <div className="w-full">
+        <div className="mx-auto flex max-w-3xl flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand">สัญญาณสด</p>
+            <h2 className="mt-1 font-display text-2xl font-bold sm:text-3xl">สัญญาณจากระบบแบบเรียลไทม์</h2>
+            <p className="mt-1 text-sm text-muted">
+              อัปเดตอัตโนมัติเมื่ออินดิเคเตอร์ยิงสัญญาณ — ตัวอย่างการทำงานจริง ไม่ใช่คำแนะนำการลงทุน
+            </p>
+          </div>
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-70" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-brand" />
+          </span>
+          <span className="text-xs text-muted">LIVE · อัปเดตทุก 15 วินาที</span>
+        </div>
+
+        <div className="mx-auto mt-5 grid max-w-3xl gap-3">
+          {!loaded ? (
+            <div className="card-surface rounded-2xl p-6 text-center text-sm text-muted">กำลังโหลด…</div>
+          ) : signals.length === 0 ? (
+            <div className="card-surface rounded-2xl p-8 text-center text-sm text-muted">
+              ยังไม่มีสัญญาณล่าสุด — รอจังหวะที่อินดิเคเตอร์ยิงสัญญาณ
+            </div>
+          ) : (
+            signals.map((s) => {
+              const buy = s.side === "BUY";
+              const sell = s.side === "SELL";
+              return (
+                <div key={s.id} className="card-surface flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl p-4">
+                  <span
+                    className={cn(
+                      "rounded-full px-3 py-1 text-sm font-bold",
+                      buy && "bg-up/15 text-up",
+                      sell && "bg-down/15 text-down",
+                      !buy && !sell && "bg-surface-2 text-muted"
+                    )}
+                  >
+                    {s.side ?? "SIGNAL"}
+                  </span>
+                  <span className="font-semibold">{s.symbol ?? "XAUUSD"}</span>
+                  <span className="rounded-md border border-border px-2 py-0.5 text-xs text-muted">{s.timeframe}</span>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
+                    {s.entry && <span>Entry <b className="text-foreground">{s.entry}</b></span>}
+                    {s.tp && <span>{s.tp2 ? "TP1" : "TP"} <b className="text-up">{s.tp}</b></span>}
+                    {s.tp2 && <span>TP2 <b className="text-up">{s.tp2}</b></span>}
+                    {s.sl && <span>SL <b className="text-down">{s.sl}</b></span>}
+                  </div>
+                  <span className="ml-auto text-xs text-muted">{ago(s.createdAt)}</span>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {loaded && masked && signals.length > 0 && (
+          <div className="mx-auto mt-6 flex max-w-3xl flex-wrap items-center justify-center gap-x-3 gap-y-2 rounded-2xl border border-brand/25 bg-brand/5 px-5 py-4 text-center">
+            <Lock className="h-4 w-4 shrink-0 text-brand" />
+            <span className="text-sm text-muted">
+              ราคาเข้า เป้าทำกำไร และจุดตัดขาดทุน เปิดให้เฉพาะสมาชิก
+            </span>
+            <Link
+              href="#pricing"
+              className="rounded-full bg-brand px-5 py-1.5 text-sm font-semibold text-brand-ink transition-colors hover:bg-brand-strong"
+            >
+              ดูแพ็กเกจ
+            </Link>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

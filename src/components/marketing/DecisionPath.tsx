@@ -9,10 +9,10 @@ const stories = [
 ] as const;
 
 const steps = [
-  { label: "สมัครใช้งาน", detail: "สร้างบัญชีด้วยอีเมล ใช้เวลาไม่ถึงนาที", Icon: CircleUserRound },
-  { label: "เลือกแพ็กเกจ", detail: "เลือกระยะเวลาแล้วชำระผ่าน PromptPay QR", Icon: CreditCard },
-  { label: "รับสิทธิ์", detail: "แจ้ง TradingView Username ทีมงานเปิดสิทธิ์ให้", Icon: KeyRound },
-  { label: "เข้าใช้งาน", detail: "เพิ่มอินดิเคเตอร์เข้ากราฟ และรับลิงก์ Telegram", Icon: ShieldCheck },
+  { label: "เลือกแพ็กเกจ", detail: "เลือกระยะเวลาที่เหมาะกับคุณ", Icon: CreditCard },
+  { label: "แจ้ง Username", detail: "กรอก TradingView Username ในหน้าบัญชี", Icon: CircleUserRound },
+  { label: "เปิดสิทธิ์", detail: "ทีมงานตรวจสอบและเปิดสิทธิ์โดยปกติภายใน 24 ชั่วโมง", Icon: KeyRound },
+  { label: "เริ่มใช้งาน", detail: "เพิ่ม Invite-only Script และรับลิงก์ Telegram", Icon: ShieldCheck },
 ] as const;
 
 export function DecisionPath() {

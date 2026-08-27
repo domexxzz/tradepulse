@@ -26,9 +26,9 @@ export function LiveChart() {
     <div id="chart" className="mt-10 sm:mt-12">
       <div className="container-x">
         <SectionHeading
-          eyebrow="ตัวอย่างกราฟ"
+          eyebrow="กราฟจริง"
           title="กราฟทองคำ XAUUSD ที่ติดตั้ง QVX"
-          subtitle="ดูภาพตัวอย่างกราฟที่รันอินดิเคเตอร์ของเรา พร้อมราคาตลาดแบบเรียลไทม์ในหน้าเดียว"
+          subtitle="ดูภาพกราฟจริงที่รันอินดิเคเตอร์ของเรา พร้อมราคาตลาดแบบเรียลไทม์ในหน้าเดียว"
         />
 
         <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
@@ -63,7 +63,7 @@ export function LiveChart() {
           )}
 
           <Button href={tradingView.chartUrl} target="_blank" rel="noopener noreferrer" variant="outline">
-            เปิดกราฟบน TradingView ↗
+            เปิดกราฟจริงบน TradingView ↗
           </Button>
         </div>
 
@@ -121,7 +121,7 @@ export function LiveChart() {
 
         <p className="mt-3 text-center text-xs text-muted">
           {mode === "snapshot" && hasChartSnapshot
-            ? "ภาพตัวอย่างกราฟที่รันอินดิเคเตอร์ QVX • ตัวเลข Win Rate / Profit Factor / Net PnL บนภาพเป็นผลทดสอบย้อนหลัง (backtest) ของช่วงเวลาที่แสดง ไม่ใช่ผลเทรดจริง และไม่ใช่การรับประกันผลในอนาคต"
+            ? "ภาพจากกราฟจริงที่รันอินดิเคเตอร์ QVX • ตัวเลข Win Rate / Profit Factor / Net PnL บนภาพเป็นผลทดสอบย้อนหลัง (backtest) ของช่วงเวลาที่แสดง ไม่ใช่ผลเทรดจริง และไม่ใช่การรับประกันผลในอนาคต"
             : "ข้อมูลราคาเป็นของตลาดจริงจาก TradingView"}{" "}
           • QVX ไม่มีส่วนเกี่ยวข้องกับ TradingView
         </p>

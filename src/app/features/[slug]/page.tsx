@@ -114,7 +114,7 @@ export default async function FeatureDetailPage({
         <div className="relative mt-8 aspect-[16/9] overflow-hidden rounded-2xl border border-border">
           <Image
             src={feature.image}
-            alt={`ตัวอย่างการใช้งาน ${feature.title} บนตัวอย่างกราฟ`}
+            alt={`ตัวอย่างการใช้งาน ${feature.title} บนกราฟจริง`}
             fill
             sizes="(max-width: 768px) 100vw, 768px"
             className="object-cover"

@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { ArrowUpRight, BookOpen, RotateCcw, Users, XCircle } from "lucide-react";
-import { tradingView, discordInviteUrl } from "@/config/site";
+import { ArrowUpRight, BookOpen, RotateCcw, ShieldCheck, XCircle } from "lucide-react";
+import { tradingView } from "@/config/site";
+import { REFUND_DAYS } from "@/config/legal";
 
 /**
  * "ตรวจเองได้ / เราไม่ทำอะไรบ้าง" — เติมช่องหลักฐานที่ว่างอยู่
@@ -24,7 +25,7 @@ export function ProofLedger() {
   const checkable = [
     {
       Icon: ArrowUpRight,
-      title: "เปิดกราฟบน TradingView",
+      title: "เปิดกราฟจริงบน TradingView",
       detail: "เลย์เอาต์เดียวกับที่ใช้ทำภาพทั้งหมดในหน้านี้ กดเข้าไปดูได้เลย",
       href: tradingView.chartUrl,
       external: true,
@@ -42,14 +43,10 @@ export function ProofLedger() {
       href: "/#faq",
     },
     {
-      // แทนช่อง "คืนเงิน 7 วัน" ที่ถอดออกไป — ต้องมี 4 ช่องพอดี ไม่งั้นกริด 2 คอลัมน์
-      // จะเหลือช่องว่างโชว์สีเส้นขอบเป็นก้อนเทา ๆ ค้างอยู่
-      // อันนี้ตรวจได้จริงเหมือนกัน: เข้าไปดูชุมชนก่อนจ่ายเงินได้เลย ไม่ต้องเป็นสมาชิก
-      Icon: Users,
-      title: "เข้าดูชุมชนก่อนได้ ไม่ต้องจ่าย",
-      detail: "เซิร์ฟเวอร์ Discord เปิดให้ทุกคน เข้าไปดูบรรยากาศก่อนตัดสินใจ",
-      href: discordInviteUrl,
-      external: true,
+      Icon: ShieldCheck,
+      title: `คืนเงินภายใน ${REFUND_DAYS} วัน`,
+      detail: "ลองใช้จริงก่อน ถ้าไม่ตรงกับสไตล์การเทรด แจ้งคืนได้เต็มจำนวน",
+      href: "/refund",
     },
   ];
 
