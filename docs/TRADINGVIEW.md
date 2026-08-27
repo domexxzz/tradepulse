@@ -359,3 +359,21 @@ username ที่ `/account` จากนั้นดู `C:\tv-bridge.log` ว
 > ⚠️ scheduled task `TradePulseTVBridge` เป็นแบบ **Interactive only** — ถ้าเครื่องไม่ได้
 > ล็อกอินค้างไว้ `schtasks /run` จะตอบ SUCCESS แต่ process ไม่เกิด (Last Result 1)
 > และ process ที่สั่งผ่าน SSH จะตายพร้อม session ต้องรีสตาร์ตตอนอยู่หน้าเครื่อง
+
+## ทำไมบริดจ์เคยล้มแล้วไม่ฟื้น และ watchdog ที่ใส่เพิ่ม
+
+`TradePulseTVBridge` ตั้งไว้เป็น **InteractiveToken + BootTrigger อย่างเดียว** ซึ่งขัดกันเอง —
+ตอนบูตยังไม่มีใครล็อกอิน task แบบ interactive จึงรันไม่ได้ (`Last Result 1`)
+และไม่มี trigger ตอน logon เลย พอบริดจ์ตายก็ไม่มีอะไรปลุก
+
+เพิ่ม `TradePulseTVBridgeWatchdog` (ทุก 5 นาที, `/it` จึงไม่ต้องเก็บรหัสผ่าน) ทำหน้าที่
+เช็กพอร์ต 8787 ถ้าไม่มีใครฟังก็สตาร์ตใหม่ สคริปต์อยู่ที่
+`C:\Users\User\tv-bridge-watchdog.ps1` เขียน log ที่ `tv-bridge-watchdog.log`
+
+**กับดักตอนเขียน watchdog:** `Start-Process "C:\tv-bridge-run.bat"` เงียบสนิทไม่ launch อะไรเลย
+ต้องเรียก `python.exe -u tv_bridge.py` ตรง ๆ พร้อม `-WorkingDirectory` ถึงจะ bind พอร์ตได้จริง
+และ process ที่สั่งผ่าน SSH เฉย ๆ จะตายพร้อม session — ต้องให้ scheduled task เป็นคนสตาร์ต
+
+> ย้ายไป server-254 ในอนาคตได้ (เปิด 24 ชม.) แต่ตอนนี้เครื่องยังไม่เปิด และเข้าไม่ได้
+> (Tailscale SSH ปิด, คีย์ไม่ผ่าน, อยู่คนละ LAN กับคอมเบส) ถ้าจะย้ายต้องเปิด `tailscale set --ssh`
+> บนเครื่องนั้นก่อน แล้วก๊อปโปรไฟล์ Chrome `C:\tv-bot-chrome` ไปด้วยเพื่อพา session TradingView ไป
