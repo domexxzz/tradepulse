@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { ArrowRight, BookOpen, Flame, X } from "lucide-react";
 import { formatTHB } from "@/lib/utils";
@@ -8,12 +8,13 @@ import { MONTHLY_REGULAR } from "@/config/plans";
 import type { PromoState } from "@/lib/pricing";
 
 /**
- * แบนเนอร์โฆษณาบนหน้าแรก — มีสองชั้น
+ * แบนเนอร์โฆษณาบนหน้าแรก — มีสามชั้น
  *
- *   1. แถบตั้งสองข้าง   จอ >= 1536px ซ้าย = โปร, ขวา = คู่มือ (โผล่หลังพ้น Hero)
- *   2. การ์ดมุมซ้ายล่าง จอ < 1536px รวมสองข้อความไว้ใบเดียว (โผล่หลังพ้น Hero)
+ *   1. ป้ายใหญ่กลางจอ  โผล่ทันทีที่เข้าหน้า ไม่ต้องเลื่อน เห็นครั้งเดียวจบ
+ *   2. แถบตั้งสองข้าง   จอ >= 1536px ซ้าย = โปร, ขวา = คู่มือ (โผล่หลังพ้น Hero)
+ *   3. การ์ดมุมซ้ายล่าง จอ < 1536px รวมสองข้อความไว้ใบเดียว (โผล่หลังพ้น Hero)
  *
- * แบนเนอร์จะปรากฏหลังผู้ใช้พ้น Hero เพื่อไม่บังพาดหัวและคลิปหลัก
+ * ชั้นที่ 1 ทำหน้าที่ "ให้เห็นแน่ ๆ ตั้งแต่วินาทีแรก" ส่วนชั้น 2-3 เป็นตัวคอยเตือน
  * ระหว่างอ่านหน้าเว็บ ปิดแยกกันคนละคีย์ ปิดอันไหนแล้วอันนั้นไม่กลับมาอีก
  *
  * ทำไมชั้น 2 กับ 3 ต้องแยกกัน: คอนเทนต์กว้าง 1180px จอ 1366px จึงเหลือข้างละ
@@ -23,7 +24,17 @@ import type { PromoState } from "@/lib/pricing";
  * เพื่อไม่ให้สองที่บอกเลขไม่ตรงกัน โปรเต็มเมื่อไหร่ฝั่งโปรจะหายไปเอง
  *
  * z-30 อยู่ใต้ Navbar กับ ChatWidget (z-50) ไม่ทับกันเพราะ ChatWidget อยู่ขวา
+ * ส่วนการ์ดนี้อยู่ซ้าย ป้ายใหญ่ใช้ <dialog> ซึ่งอยู่ top layer จึงไม่เกี่ยวกับ z-index
  */
+
+/**
+ * หน่วงก่อนเปิดป้ายใหญ่
+ *
+ * ไม่เปิดทันทีที่ 0 ms เพราะจะแย่งจังหวะวาดหน้าแรกและทำให้ LCP ไปตกที่ตัว dialog
+ * แทนที่จะเป็นเนื้อหาจริง หน่วงสั้น ๆ ให้ Hero ขึ้นก่อนแล้วค่อยเปิด ยังรู้สึกว่า
+ * "เห็นทันที" อยู่
+ */
+const LAUNCH_DELAY_MS = 900;
 
 /** ครึ่งความกว้าง container (1180/2 = 590) + ระยะห่างจากเนื้อหา 16px */
 const RAIL_OFFSET = "calc(50% + 606px)";
@@ -102,12 +113,18 @@ function usePastHero() {
 
 export function AdBanners({ promo }: { promo: PromoState }) {
   const pastHero = usePastHero();
+  const launchDismissed = useDismissed("launch");
   const promoDismissed = useDismissed("promo");
   const guideDismissed = useDismissed("guide");
   const compactDismissed = useDismissed("compact");
 
   return (
     <>
+      {/* ---- ป้ายใหญ่กลางจอ: เห็นตั้งแต่เข้าหน้า ไม่ต้องเลื่อน ---- */}
+      {!launchDismissed && (
+        <LaunchModal promo={promo} onClose={() => dismissStore.dismiss("launch")} />
+      )}
+
       {/* ---- จอกว้าง: แถบตั้งสองข้าง ---- */}
       {promo.active && !promoDismissed && (
         <Rail
@@ -186,6 +203,134 @@ export function AdBanners({ promo }: { promo: PromoState }) {
 }
 
 /**
+ * ป้ายใหญ่กลางจอ — ตัวที่ผู้ใช้เห็นแน่ ๆ ตั้งแต่เข้าหน้าโดยไม่ต้องเลื่อน
+ *
+ * ใช้ <dialog> ของเบราว์เซอร์ ไม่ใช่ div ลอยเอง เพราะ showModal() แถม
+ * focus trap, ปิดด้วย Esc, ปิดการโต้ตอบกับพื้นหลัง และ top layer มาให้ครบ
+ * ไม่ต้องเขียนเองและไม่ต้องสู้ z-index กับ Navbar หรือ ChatWidget
+ *
+ * ปิดแล้วจำไว้ ไม่เด้งซ้ำอีก — ป้ายเด้งทุกครั้งที่เข้าหน้าคือสิ่งที่ทำให้คนปิดเว็บหนี
+ */
+function LaunchModal({ promo, onClose }: { promo: PromoState; onClose: () => void }) {
+  const ref = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => ref.current?.showModal(), LAUNCH_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <dialog
+      ref={ref}
+      // dialog ปิดตัวเองได้หลายทาง (Esc, ปุ่ม, กดพื้นหลัง) จึงจดจำการปิดที่ onClose
+      // ที่เดียว แทนที่จะไปดักทุกทางแยกกัน
+      onClose={onClose}
+      onClick={(e) => {
+        // กดพื้นหลังนอกกล่องแล้วปิด — เทียบ target กับตัว dialog เอง
+        // เพราะพื้นที่ ::backdrop นับเป็นตัว dialog ส่วนเนื้อในเป็นลูก
+        if (e.target === ref.current) ref.current?.close();
+      }}
+      aria-labelledby="launch-modal-title"
+      // m-auto จำเป็น — เบราว์เซอร์จัด <dialog> กึ่งกลางด้วย margin:auto แต่ Tailwind
+      // preflight ตั้ง margin:0 ให้ทุก element ทับไป ถ้าไม่ใส่กลับ ป้ายจะไปติดขอบบน
+      className="m-auto w-[min(30rem,calc(100vw-2rem))] rounded-3xl border border-border-strong
+                 bg-surface p-0 text-foreground shadow-[0_40px_120px_-40px_rgba(0,0,0,1)]
+                 backdrop:bg-background/80 backdrop:backdrop-blur-sm"
+    >
+      <div className="relative p-7 sm:p-8">
+        <button
+          type="button"
+          onClick={() => ref.current?.close()}
+          aria-label="ปิดป้ายโฆษณา"
+          className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full text-faint
+                     transition-colors hover:bg-surface-2 hover:text-foreground
+                     focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+                     focus-visible:outline-brand"
+        >
+          <X className="h-5 w-5" />
+        </button>
+
+        {promo.active ? (
+          <>
+            <Eyebrow icon={<Flame className="h-3 w-3" />}>โปรเปิดตัว</Eyebrow>
+
+            <h2 id="launch-modal-title" className="mt-3 font-display text-2xl font-bold leading-snug">
+              เหลืออีก <span className="tnum text-brand">{promo.remaining}</span> ที่
+              <br />
+              จาก {promo.seats} คนแรก
+            </h2>
+
+            <div className="mt-5 flex items-end gap-3 rounded-2xl border border-brand/25 bg-brand/5 px-5 py-4">
+              <span className="text-sm text-faint line-through">
+                {formatTHB(MONTHLY_REGULAR)}
+              </span>
+              <span className="font-display text-3xl font-bold leading-none text-brand">
+                {formatTHB(promo.monthlyTHB)}
+              </span>
+              <span className="pb-0.5 text-sm text-muted">/เดือน</span>
+            </div>
+
+            <p className="mt-4 text-sm leading-relaxed text-muted">
+              ครบ {promo.seats} คนแล้วราคาจะขึ้นเป็น {formatTHB(MONTHLY_REGULAR)}/เดือน —
+              แต่ใครที่สมัครทันช่วงนี้{" "}
+              <b className="text-foreground">จ่ายเท่าเดิมทุกครั้งที่ต่ออายุ</b>
+            </p>
+
+            <div className="mt-6 flex flex-col gap-2.5 sm:flex-row">
+              <Link
+                href="/#pricing"
+                onClick={() => ref.current?.close()}
+                className="group inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full
+                           bg-brand text-sm font-semibold text-brand-ink transition-colors hover:bg-brand-strong"
+              >
+                ดูแพ็กเกจ
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </Link>
+              <Link
+                href="/guide"
+                onClick={() => ref.current?.close()}
+                className="inline-flex h-11 flex-1 items-center justify-center rounded-full border
+                           border-border-strong text-sm font-medium text-muted transition-colors
+                           hover:border-brand/40 hover:text-foreground"
+              >
+                เปิดคู่มือตั้งค่า
+              </Link>
+            </div>
+          </>
+        ) : (
+          <>
+            <Eyebrow icon={<BookOpen className="h-3 w-3" />}>ของใหม่</Eyebrow>
+
+            <h2 id="launch-modal-title" className="mt-3 font-display text-2xl font-bold leading-snug">
+              คู่มือตั้งค่า
+              <br />
+              ครบทั้ง 3 ชุด
+            </h2>
+
+            <p className="mt-4 text-sm leading-relaxed text-muted">
+              ค่าตั้งจริงทุกช่องของ SMC Unified Suite, Gold Booster + Gold Core และ ICT SD Signal
+              พร้อมภาพหน้าชาร์ตและคลิปสาธิตการทำงาน
+            </p>
+
+            <div className="mt-6">
+              <Link
+                href="/guide"
+                onClick={() => ref.current?.close()}
+                className="group inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-full
+                           bg-brand text-sm font-semibold text-brand-ink transition-colors hover:bg-brand-strong"
+              >
+                เปิดคู่มือ
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </Link>
+            </div>
+          </>
+        )}
+      </div>
+    </dialog>
+  );
+}
+
+/**
  * การ์ดสำหรับจอที่ไม่มีที่วางแถบตั้ง
  *
  * โปรเป็นตัวชูโรงเพราะเป็นสิ่งที่มีกำหนดหมด ส่วนคู่มือเป็นลิงก์รองข้างปุ่ม
@@ -208,9 +353,9 @@ function CompactCard({
       className={[
         "fixed left-4 z-30 2xl:hidden",
         // บนมือถือต้องเว้นโซนขวาให้ปุ่มแชท (กว้าง 56px + ขอบ 16px) ไม่งั้นปุ่มซึ่ง
-        // เป็น z-50 จะทับมุมขวาล่างของการ์ดจนกดลิงก์ในนั้นไม่ได้ — เว้นระยะจริง 16px
+        // เป็น z-50 จะทับมุมขวาล่างของการ์ดจนกดลิงก์ในนั้นไม่ได้ — วัดแล้วทับกัน 20px
         // ตั้งแต่ md ขึ้นไปจอกว้างพอ ไม่ต้องหลบ
-        "w-[min(20rem,calc(100vw-7.5rem))] md:w-[min(20rem,calc(100vw-2rem))]",
+        "w-[min(20rem,calc(100vw-6.25rem))] md:w-[min(20rem,calc(100vw-2rem))]",
         "bottom-5",
         "rounded-2xl border border-border-strong bg-surface/95 p-4 backdrop-blur-md",
         "shadow-[0_24px_60px_-30px_rgba(0,0,0,1)]",

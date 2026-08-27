@@ -7,8 +7,8 @@ const DISCORD_BLURPLE = "#5865F2";
 
 export function Community() {
   return (
-    <div id="community" className="border-t border-border pt-8">
-      <div className="w-full grid items-center gap-12 lg:grid-cols-2">
+    <section id="community" className="section-md">
+      <div className="container-x grid items-center gap-12 lg:grid-cols-2">
         <div>
           <p className="mb-3 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-brand">
             <MessagesSquare className="h-3.5 w-3.5" /> ชุมชน · Discord
@@ -67,7 +67,7 @@ export function Community() {
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
 

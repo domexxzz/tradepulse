@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Lock } from "lucide-react";
+import { SectionHeading } from "@/components/ui/SectionHeading";
 import { cn } from "@/lib/utils";
 
 interface Signal {
@@ -55,24 +56,23 @@ export function LiveSignals() {
   }, []);
 
   return (
-    <div id="signals" className="border-t border-border pt-8">
-      <div className="w-full">
-        <div className="mx-auto flex max-w-3xl flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand">สัญญาณสด</p>
-            <h2 className="mt-1 font-display text-2xl font-bold sm:text-3xl">สัญญาณจากระบบแบบเรียลไทม์</h2>
-            <p className="mt-1 text-sm text-muted">
-              อัปเดตอัตโนมัติเมื่ออินดิเคเตอร์ยิงสัญญาณ — ตัวอย่างการทำงานจริง ไม่ใช่คำแนะนำการลงทุน
-            </p>
-          </div>
+    <section id="signals" className="border-y border-border bg-surface section-md">
+      <div className="container-x">
+        <SectionHeading
+          eyebrow="สัญญาณสด"
+          title="สัญญาณจากระบบแบบเรียลไทม์"
+          subtitle="อัปเดตอัตโนมัติเมื่ออินดิเคเตอร์ยิงสัญญาณ (ตัวอย่างการทำงานจริง ไม่ใช่คำแนะนำการลงทุน)"
+        />
+
+        <div className="mx-auto mt-8 flex max-w-3xl items-center justify-center gap-2 text-xs text-muted">
           <span className="relative flex h-2 w-2">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-70" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-brand" />
           </span>
-          <span className="text-xs text-muted">LIVE · อัปเดตทุก 15 วินาที</span>
+          LIVE · อัปเดตทุก 15 วินาที
         </div>
 
-        <div className="mx-auto mt-5 grid max-w-3xl gap-3">
+        <div className="mx-auto mt-8 grid max-w-3xl gap-3">
           {!loaded ? (
             <div className="card-surface rounded-2xl p-6 text-center text-sm text-muted">กำลังโหลด…</div>
           ) : signals.length === 0 ? (
@@ -125,6 +125,6 @@ export function LiveSignals() {
           </div>
         )}
       </div>
-    </div>
+    </section>
   );
 }

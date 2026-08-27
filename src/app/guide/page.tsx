@@ -8,8 +8,6 @@ import { getPromoState } from "@/lib/pricing";
 import { formatTHB } from "@/lib/utils";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { SuiteSection } from "@/components/guide/SuiteSection";
-import { GuideNavigator } from "@/components/guide/GuideNavigator";
-import { GuideComparison } from "@/components/guide/GuideComparison";
 
 const title = "คู่มือตั้งค่าและแนวใช้งานอินดิเคเตอร์";
 const description = `วิธีตั้งค่า ${site.name} ให้ได้หน้าชาร์ตแบบตัวอย่าง — ครบทั้ง 3 ชุด: SMC Unified Suite, Gold Booster + Gold Core และ ICT SD Signal พร้อมค่าตั้งจริงทุกช่อง ภาพหน้าชาร์ต และคลิปสาธิตบน XAUUSD`;
@@ -65,11 +63,19 @@ export default async function GuidePage() {
         <span>{mediaNote}</span>
       </p>
 
-      <GuideNavigator />
+      <nav aria-label="ไปยังชุดอินดิเคเตอร์" className="mt-8 flex flex-wrap gap-2.5">
+        {guideSuites.map((s) => (
+          <a
+            key={s.id}
+            href={`#${s.id}`}
+            className="rounded-full border border-border px-4 py-2 text-sm text-muted transition-colors hover:border-brand/40 hover:text-foreground"
+          >
+            {s.name}
+          </a>
+        ))}
+      </nav>
 
-      <GuideComparison suites={guideSuites} />
-
-      <section className="mt-10 rounded-2xl border border-brand/25 bg-brand/5 p-6 sm:p-8">
+      <section className="mt-12 rounded-2xl border border-brand/25 bg-brand/5 p-6 sm:p-8">
         <h2 className="font-display text-xl font-bold">ลำดับการใช้งานที่ใช้ได้ทุกชุด</h2>
         <p className="mt-2 text-sm text-muted">
           ทั้งสามชุดมีเครื่องมือคนละอย่าง แต่ลำดับการตัดสินใจเหมือนกัน
@@ -93,7 +99,7 @@ export default async function GuidePage() {
         ))}
       </div>
 
-      <section id="cautions" className="scroll-mt-36 mt-16 border-t border-border pt-14">
+      <section className="mt-16 border-t border-border pt-14">
         <h2 className="font-display text-2xl font-bold">ข้อควรระวังที่ใช้ร่วมกันทุกชุด</h2>
         <ul className="mt-5 grid gap-3 sm:grid-cols-2">
           {sharedCautions.map((c) => (

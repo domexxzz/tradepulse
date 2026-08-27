@@ -53,14 +53,6 @@
   --sp-sm: clamp(2.25rem, 2rem + 1.4vw, 3rem);
 }
 
-/* หน้าแรกเป็นเส้นทางขายของที่ต้องอ่านจบไว — ลดช่องว่างเฉพาะหน้านี้ */
-.marketing-home {
-  --sp-hero: clamp(5rem, 3.5rem + 5vw, 7rem);
-  --sp-lg: clamp(2.75rem, 2rem + 2vw, 3.5rem);
-  --sp-md: clamp(2.75rem, 2.25rem + 1.8vw, 4rem);
-  --sp-sm: clamp(1.75rem, 1.5rem + 1vw, 2.5rem);
-}
-
 @theme inline {
   --color-background: var(--background);
   --color-surface: var(--surface);
@@ -110,13 +102,6 @@ body {
 .section { padding-block: var(--sp-lg); }
 .section-md { padding-block: var(--sp-md); }
 .section-sm { padding-block: var(--sp-sm); }
-
-/**
- * navbar ลอยทับอยู่สูง 4rem — ทุกจุดที่ลิงก์ #anchor กระโดดไปต้องเผื่อระยะไว้
- * ไม่งั้นหัวข้อของ section จะถูก navbar บังทุกครั้งที่กดเมนู (วัดแล้วบังจริง 65px)
- * ห่อด้วย :where() ให้ specificity เป็นศูนย์ คลาส scroll-mt-* ของ Tailwind จึงยังทับได้
- */
-:where(section[id], [id]) { scroll-margin-top: 5rem; }
 
 /* เส้นคั่นบาง ๆ ที่จางหายทั้งสองข้าง — แบ่งโดยไม่ตัดสายตา */
 .rule {
@@ -185,63 +170,25 @@ body {
    ============================================================ */
 .bg3d {
   position: fixed; inset: 0; z-index: -10; pointer-events: none; overflow: hidden;
-  --pointer-x: 50vw; --pointer-y: 22vh;
   background:
-    radial-gradient(72% 46% at 50% -8%, rgba(110, 227, 74, .13), transparent 68%),
-    radial-gradient(42% 34% at 88% 16%, rgba(110, 227, 74, .055), transparent 70%),
+    radial-gradient(72% 46% at 50% -8%, rgba(110, 227, 74, .10), transparent 68%),
+    radial-gradient(38% 32% at 88% 12%, rgba(110, 227, 74, .045), transparent 70%),
     linear-gradient(180deg, #08100b 0%, #060c08 48%, #050806 100%);
 }
-.bg3d__aurora {
-  position: absolute; inset: -18%;
-  background: radial-gradient(340px circle at var(--pointer-x) var(--pointer-y), rgba(110,227,74,.12), transparent 72%), conic-gradient(from 195deg at 52% 12%, transparent 0 28%, rgba(63,182,91,.055) 35%, transparent 44% 100%);
-  filter: blur(20px);
-}
 .bg3d__grid {
-  position: absolute; left: -18%; right: -18%; top: -9%; height: 72%;
+  position: absolute; inset: 0;
   background-image:
-    linear-gradient(rgba(110,227,74,.055) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(110,227,74,.055) 1px, transparent 1px);
-  background-size: 72px 72px;
-  transform: perspective(620px) rotateX(61deg) translateY(-12%);
-  transform-origin: 50% 0;
-  -webkit-mask-image: linear-gradient(to bottom, #000 5%, rgba(0,0,0,.65) 50%, transparent 95%);
-  mask-image: linear-gradient(to bottom, #000 5%, rgba(0,0,0,.65) 50%, transparent 95%);
-  animation: grid-drift 18s linear infinite;
+    linear-gradient(rgba(110, 227, 74, .035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(110, 227, 74, .035) 1px, transparent 1px);
+  background-size: 64px 64px;
+  -webkit-mask-image: radial-gradient(ellipse 80% 52% at 50% 12%, #000 20%, transparent 88%);
+  mask-image: radial-gradient(ellipse 80% 52% at 50% 12%, #000 20%, transparent 88%);
 }
-.bg3d__beam { position:absolute; top:0; bottom:0; width:36vw; left:15%; background:linear-gradient(105deg,transparent 25%,rgba(110,227,74,.04),transparent 68%); filter:blur(18px); animation:beam-sweep 14s ease-in-out infinite alternate; }
-/* สนามจุดเพอร์สเปกทีฟ วาดด้วย canvas 2D (เหตุผลที่ไม่ใช้ three.js อยู่ใน Background3D.tsx)
-   มาสก์ให้จางหายรอบนอก เพื่อไม่ให้จุดไปแย่งสายตากับพาดหัวฝั่งซ้าย */
-.bg3d__field {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  -webkit-mask-image: radial-gradient(105% 80% at 68% 52%, #000 22%, rgba(0,0,0,.5) 58%, transparent 88%);
-  mask-image: radial-gradient(105% 80% at 68% 52%, #000 22%, rgba(0,0,0,.5) 58%, transparent 88%);
-}
-
 .bg3d__grain {
   position: absolute; inset: 0; opacity: .03;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 .hero-backdrop { background: none; }
-.hero-market-depth { position:absolute; inset:4.5rem 0 auto; height:430px; pointer-events:none; opacity:.62; -webkit-mask-image:radial-gradient(ellipse 64% 60% at 50% 46%,#000 10%,transparent 78%); mask-image:radial-gradient(ellipse 64% 60% at 50% 46%,#000 10%,transparent 78%); }
-.hero-market-depth__line { position:absolute; left:7%; right:7%; height:1px; background:linear-gradient(90deg,transparent,rgba(110,227,74,.16) 20%,rgba(139,240,107,.54) 50%,rgba(110,227,74,.12) 80%,transparent); filter:drop-shadow(0 0 7px rgba(110,227,74,.45)); transform-origin:center; }
-.hero-market-depth__line--one { top:34%; transform:rotate(-5deg) scaleX(.82); animation:depth-line 8s ease-in-out infinite; }
-.hero-market-depth__line--two { top:51%; transform:rotate(3deg) scaleX(.68); animation:depth-line 10s ease-in-out -2s infinite reverse; }
-.hero-market-depth__line--three { top:67%; transform:rotate(-2deg) scaleX(.5); animation:depth-line 9s ease-in-out -5s infinite; }
-.hero-market-depth__pulse { position:absolute; left:50%; top:51%; width:12px; height:12px; border-radius:50%; border:1px solid rgba(139,240,107,.8); transform:translate(-50%,-50%); box-shadow:0 0 24px rgba(110,227,74,.55); animation:radar-pulse 3.2s ease-out infinite; }
-.hero-chart-frame { perspective:1200px; }
-.hero-chart-frame > div:last-of-type { transform:rotateX(1.2deg) translateZ(0); transform-origin:50% 100%; transition:transform .45s cubic-bezier(.2,.8,.2,1),border-color .45s ease; }
-.hero-chart-frame:hover > div:last-of-type { transform:rotateX(0) translateY(-4px) scale(1.006); border-color:color-mix(in srgb,var(--brand) 34%,var(--border-strong)); }
-.tour-hotspot { position:absolute; z-index:2; transform:translate(-50%,-50%); width:14px; height:14px; border-radius:999px; border:2px solid rgba(238,244,236,.85); background:var(--brand-deep); box-shadow:0 0 0 5px rgba(110,227,74,.13),0 0 22px rgba(110,227,74,.6); transition:transform .25s ease,background-color .25s ease; }
-.tour-hotspot span { position:absolute; left:50%; top:calc(100% + 9px); transform:translateX(-50%); white-space:nowrap; border:1px solid var(--border-strong); border-radius:999px; background:rgba(6,10,7,.88); padding:.18rem .5rem; color:var(--foreground); font-size:.625rem; font-weight:600; backdrop-filter:blur(8px); }
-.tour-hotspot:hover,.tour-hotspot--active { transform:translate(-50%,-50%) scale(1.28); background:var(--brand); }
-.tour-hotspot--active::before { content:""; position:absolute; inset:-12px; border:1px solid rgba(110,227,74,.65); border-radius:inherit; animation:tour-pulse 1.8s ease-out infinite; }
-.guide-hotspot { position:absolute; width:13px; height:13px; transform:translate(-50%,-50%); border:2px solid rgba(238,244,236,.9); border-radius:999px; background:var(--brand-deep); box-shadow:0 0 0 5px rgba(110,227,74,.12),0 0 18px rgba(110,227,74,.65); transition:transform .2s ease,background-color .2s ease; }
-.guide-hotspot span { position:absolute; left:50%; top:calc(100% + 8px); transform:translateX(-50%); white-space:nowrap; border:1px solid var(--border-strong); border-radius:999px; background:rgba(6,10,7,.88); padding:.14rem .45rem; color:var(--foreground); font-size:.58rem; font-weight:600; backdrop-filter:blur(7px); }
-.guide-hotspot:hover,.guide-hotspot--active { z-index:2; transform:translate(-50%,-50%) scale(1.25); background:var(--brand); }
-.guide-hotspot--active::before { content:""; position:absolute; inset:-10px; border:1px solid rgba(110,227,74,.65); border-radius:inherit; animation:tour-pulse 1.8s ease-out infinite; }
-.guide-mode-quick .guide-detail-only { display:none !important; }
-.guide-sticky-nav > div:last-child { scrollbar-width:none; }
-.guide-sticky-nav > div:last-child::-webkit-scrollbar { display:none; }
 
 /* ============================================================
    การเคลื่อนไหว — น้อยและมีเหตุผล
@@ -258,18 +205,6 @@ body {
 
 /* ค่อย ๆ ปรากฏตอนโหลดหน้า ใช้กับ hero อย่างเดียว */
 @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-@keyframes grid-drift { to { background-position:0 72px; } }
-@keyframes beam-sweep { from { transform:translateX(-30%) skewX(-8deg); opacity:.35; } to { transform:translateX(150%) skewX(8deg); opacity:.8; } }
-@keyframes market-float { 0%,100% { transform:translate3d(0,0,0); opacity:.15; } 45% { opacity:.7; } 55% { transform:translate3d(13px,-28px,0) scale(1.5); opacity:.55; } }
-@keyframes depth-line { 0%,100% { opacity:.22; clip-path:inset(0 42%); } 50% { opacity:.78; clip-path:inset(0 3%); } }
-@keyframes radar-pulse { 0% { box-shadow:0 0 0 0 rgba(110,227,74,.35),0 0 20px rgba(110,227,74,.5); opacity:.9; } 100% { box-shadow:0 0 0 80px rgba(110,227,74,0),0 0 30px rgba(110,227,74,0); opacity:0; } }
-@keyframes tour-pulse { from { transform:scale(.55); opacity:.9; } to { transform:scale(1.7); opacity:0; } }
-
-/* Progressive enhancement: browsers without scroll timelines keep content fully visible. */
-@supports (animation-timeline: view()) {
-  .scroll-reveal { animation: scroll-reveal linear both; animation-timeline:view(); animation-range:entry 4% cover 24%; }
-  @keyframes scroll-reveal { from { opacity:.25; transform:translateY(34px) scale(.985); } to { opacity:1; transform:none; } }
-}
 .rise { animation: rise .7s cubic-bezier(.22,.61,.36,1) both; }
 .rise-1 { animation-delay: .05s; }
 .rise-2 { animation-delay: .14s; }
@@ -284,12 +219,4 @@ body {
     transition-duration: .001ms !important;
   }
   .rise { animation: none; opacity: 1; transform: none; }
-}
-
-@media (max-width: 767px) {
-  .bg3d__aurora { display:none; }
-  .bg3d__grid { background-size:54px 54px; animation:none; opacity:.7; }
-  .bg3d__field, .bg3d__beam { display:none; }
-  .hero-market-depth { opacity:.42; height:330px; }
-  .hero-chart-frame:hover > div:last-of-type { transform:none; }
 }

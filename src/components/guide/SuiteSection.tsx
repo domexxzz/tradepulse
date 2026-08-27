@@ -2,9 +2,6 @@ import Image from "next/image";
 import { AlertTriangle, Check, Eye, Repeat, SlidersHorizontal } from "lucide-react";
 import type { GuideSuite } from "@/config/guide";
 import { LoopingClip } from "@/components/guide/LoopingClip";
-import { GuideChart } from "@/components/guide/GuideChart";
-import { SettingsAccordion } from "@/components/guide/SettingsAccordion";
-import { SetupChecklist } from "@/components/guide/SetupChecklist";
 
 /**
  * หนึ่งชุดอินดิเคเตอร์บนหน้า /guide
@@ -31,9 +28,21 @@ export function SuiteSection({ suite }: { suite: GuideSuite }) {
         </p>
       </header>
 
-      <GuideChart suiteId={suite.id} suiteName={suite.name} chart={suite.chart} />
+      <figure className="mt-8 overflow-hidden rounded-2xl border border-border bg-surface p-1.5">
+        <Image
+          src={suite.chart.src}
+          alt={suite.chart.alt}
+          width={suite.chart.width}
+          height={suite.chart.height}
+          className="h-auto w-full rounded-xl"
+          sizes="(max-width: 1024px) 100vw, 1000px"
+        />
+        <figcaption className="px-3 py-2 text-xs text-muted">
+          ตัวอย่างหน้าชาร์ต XAUUSD เมื่อเปิด {suite.name}
+        </figcaption>
+      </figure>
 
-      <div className="guide-detail-only mt-6 grid gap-5 md:grid-cols-2">
+      <div className="mt-6 grid gap-5 md:grid-cols-2">
         {suite.videos.map((v) => (
           <figure
             key={v.src}
@@ -66,14 +75,27 @@ export function SuiteSection({ suite }: { suite: GuideSuite }) {
           <SlidersHorizontal className="h-4 w-4 text-brand" />
           ค่าตั้งสำคัญที่ทำให้ได้หน้าชาร์ตแบบนี้
         </h3>
-        <div className="mt-4"><SettingsAccordion suiteName={suite.name} groups={suite.settings} /></div>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          {suite.settings.map((g) => (
+            <div key={g.group} className="rounded-2xl border border-border bg-surface/60 p-5">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-brand">{g.group}</p>
+              <ul className="mt-3 space-y-1.5">
+                {g.items.map((item) => (
+                  <li key={item} className="text-[13px] leading-relaxed text-foreground/85">
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
         <p className="mt-4 rounded-xl border border-border bg-background/40 px-4 py-3 text-sm">
           <span className="font-semibold text-brand">คีย์หลัก</span>
           <span className="text-muted"> — {suite.keyLine}</span>
         </p>
       </div>
 
-      <div className="guide-detail-only mt-8 grid gap-5 md:grid-cols-2">
+      <div className="mt-8 grid gap-5 md:grid-cols-2">
         <ListCard
           icon={<Check className="h-4 w-4" />}
           title="แนวใช้งานที่เวิร์ก"
@@ -88,9 +110,21 @@ export function SuiteSection({ suite }: { suite: GuideSuite }) {
         />
       </div>
 
-      <SetupChecklist suiteId={suite.id} steps={suite.steps} />
+      <div className="mt-8 rounded-2xl border border-border bg-surface/60 p-6">
+        <h3 className="font-display text-lg font-semibold">วิธีใช้ให้คุ้มที่สุด</h3>
+        <ol className="mt-4 space-y-3">
+          {suite.steps.map((s, i) => (
+            <li key={s} className="flex gap-3">
+              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand/10 text-[11px] font-bold text-brand">
+                {i + 1}
+              </span>
+              <span className="text-sm leading-relaxed text-foreground/85">{s}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
 
-      <div className="guide-detail-only mt-8">
+      <div className="mt-8">
         <h3 className="font-display text-lg font-semibold">การ์ดสรุปไว้เปิดตอนตั้งค่า</h3>
         <p className="mt-2 text-sm text-muted">
           กดที่ภาพเพื่อดูขนาดเต็ม แล้วเซฟไว้เปิดคู่กับ TradingView ได้เลย
@@ -103,7 +137,6 @@ export function SuiteSection({ suite }: { suite: GuideSuite }) {
               target="_blank"
               rel="noopener noreferrer"
               className="overflow-hidden rounded-2xl border border-border transition-colors hover:border-brand/40"
-              download
             >
               <Image
                 src={c.src}
