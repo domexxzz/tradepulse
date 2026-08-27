@@ -53,19 +53,26 @@ export default async function Home() {
         <Hero monthlyTHB={promo.monthlyTHB} />
         <MarketTicker />
 
+        {/* ปูปัญหาให้ก่อน แล้วค่อยเข้าฟีเจอร์ */}
         <ProblemSolution />
-        <HowItWorks />
 
+        {/* ---- ลำดับ 5 หัวข้อนี้ต้องตรงกับเมนูใน config/site.ts เสมอ ----
+             ฟีเจอร์ -> ตัวอย่างการทำงาน -> ราคา -> วิธีการใช้งาน -> FAQ
+             ถ้าย้าย section ใดใน main อย่าลืมย้ายเมนูให้ตรงกันด้วย
+             ไม่งั้นคนกดเมนูแล้วกระโดดข้ามไปข้ามมา */}
         <CoreFeatures />
         <RealResults />
 
-        <BacktestStats />
+        {/* หัวข้อประกอบ ไม่มีในเมนู วางคั่นก่อนถึงหน้าราคา */}
         <TelegramAlerts />
-
         <Community />
+        <BacktestStats />
         <Reviews />
+
         <Pricing />
+        <HowItWorks />
         <FAQ />
+
         <EmailCapture />
         <Disclaimer />
       </main>

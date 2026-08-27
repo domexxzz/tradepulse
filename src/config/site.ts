@@ -27,9 +27,10 @@ export const site = {
    */
   nav: [
     { label: "ฟีเจอร์", href: "/#features" },
-    { label: "ผลลัพธ์", href: "/#results" },
+    { label: "ตัวอย่างการทำงาน", href: "/#results" },
     { label: "ราคา", href: "/#pricing" },
-    { label: "คำถามพบบ่อย", href: "/#faq" },
+    { label: "วิธีการใช้งาน", href: "/#how" },
+    { label: "FAQ", href: "/#faq" },
   ],
 } as const;
 
