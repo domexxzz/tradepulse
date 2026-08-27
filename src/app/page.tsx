@@ -6,6 +6,7 @@ import { MarketTicker } from "@/components/marketing/MarketTicker";
 import { ProblemSolution } from "@/components/marketing/ProblemSolution";
 import { HowItWorks } from "@/components/marketing/HowItWorks";
 import { CoreFeatures } from "@/components/marketing/CoreFeatures";
+import { RealResults } from "@/components/marketing/RealResults";
 import { BacktestStats } from "@/components/marketing/BacktestStats";
 import { TelegramAlerts } from "@/components/marketing/TelegramAlerts";
 import { Community } from "@/components/marketing/Community";
@@ -56,6 +57,7 @@ export default async function Home() {
         <HowItWorks />
 
         <CoreFeatures />
+        <RealResults />
 
         <BacktestStats />
         <TelegramAlerts />
