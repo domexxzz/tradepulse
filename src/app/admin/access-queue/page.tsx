@@ -1,5 +1,10 @@
 import { prisma } from "@/lib/prisma";
-import { grantAccess, revokeAccess, adminRetryTradingView } from "@/lib/actions/admin";
+import {
+  grantAccess,
+  revokeAccess,
+  adminRetryTradingView,
+  adminRevokeTradingView,
+} from "@/lib/actions/admin";
 
 const statusStyle: Record<string, string> = {
   PENDING: "text-amber-400 border-amber-400/30 bg-amber-400/10",
@@ -25,9 +30,11 @@ export default async function AccessQueuePage() {
       <div>
         <h1 className="display text-[length:var(--display-sm)]">คิวอนุมัติสิทธิ์ TradingView</h1>
         <p className="mt-1 text-sm text-muted">
-          &quot;สั่งบอท&quot; ให้บอทไปเพิ่ม/ถอน username บน TradingView ให้เอง —
-          ส่วน &quot;อนุมัติ&quot; กับ &quot;ยกเลิก&quot; เป็นการบันทึกสถานะเฉย ๆ
-          ใช้ตอนที่ไปจัดการบน TradingView ด้วยมือเองแล้ว <b className="text-foreground">ไม่ได้สั่งบอท</b>
+          &quot;เพิ่ม/ต่ออายุ&quot; กับ &quot;ลบจาก TV&quot; สั่งบอทไปกดบน TradingView จริง
+          (ใช้เวลา 1–3 นาที แล้วผลจะอัปเดตเอง) — ต่ออายุคนเดิมบอทจะลบออกแล้วเพิ่มกลับ
+          พร้อมวันหมดอายุใหม่ให้ ส่วน &quot;อนุมัติ&quot; กับ &quot;ยกเลิก&quot;
+          เป็นการบันทึกสถานะเฉย ๆ ใช้ตอนไปจัดการบน TradingView ด้วยมือเองแล้ว{" "}
+          <b className="text-foreground">ไม่ได้สั่งบอท</b>
         </p>
       </div>
 
@@ -71,21 +78,35 @@ export default async function AccessQueuePage() {
                     <div className="flex justify-end gap-2">
                       {/* ปุ่มเดียวในหน้านี้ที่สั่งบอทจริง — อีกสองปุ่มแค่บันทึกสถานะ */}
                       {g.user.tradingViewUsername && (
-                        <form action={adminRetryTradingView} className="flex items-center gap-1.5">
-                          <input type="hidden" name="userId" value={g.user.id} />
-                          <input
-                            type="number"
-                            name="days"
-                            defaultValue={30}
-                            min={1}
-                            max={3650}
-                            title="จำนวนวันที่ให้สิทธิ์ (ค่าเริ่มต้น 30 = 1 เดือน)"
-                            className="w-14 rounded-full border border-border bg-surface px-2 py-1.5 text-center text-xs tabular-nums"
-                          />
-                          <button className="rounded-full bg-brand/15 px-3 py-1.5 text-xs font-medium text-brand hover:bg-brand/25">
-                            สั่งบอท
-                          </button>
-                        </form>
+                        <>
+                          <form action={adminRetryTradingView} className="flex items-center gap-1.5">
+                            <input type="hidden" name="userId" value={g.user.id} />
+                            <input
+                              type="number"
+                              name="days"
+                              defaultValue={30}
+                              min={1}
+                              max={3650}
+                              title="จำนวนวันที่ให้สิทธิ์ (ค่าเริ่มต้น 30 = 1 เดือน)"
+                              className="w-14 rounded-full border border-border bg-surface px-2 py-1.5 text-center text-xs tabular-nums"
+                            />
+                            <button
+                              title="สั่งบอทเพิ่ม/ต่ออายุสิทธิ์บน TradingView ตามจำนวนวันที่กรอก"
+                              className="rounded-full bg-brand/15 px-3 py-1.5 text-xs font-medium text-brand hover:bg-brand/25"
+                            >
+                              เพิ่ม/ต่ออายุ
+                            </button>
+                          </form>
+                          <form action={adminRevokeTradingView}>
+                            <input type="hidden" name="userId" value={g.user.id} />
+                            <button
+                              title="สั่งบอทลบ username นี้ออกจากสคริปต์บน TradingView จริง"
+                              className="rounded-full bg-down/15 px-3 py-1.5 text-xs font-medium text-down hover:bg-down/25"
+                            >
+                              ลบจาก TV
+                            </button>
+                          </form>
+                        </>
                       )}
                       {g.status !== "GRANTED" && (
                         <form action={grantAccess}>

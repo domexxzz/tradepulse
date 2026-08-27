@@ -11,6 +11,7 @@ import {
   syncTradingViewGrant,
 } from "@/lib/lifecycle";
 import { removeGroupMember, telegramGroupManaged } from "@/lib/telegram";
+import { revokeTradingViewAccess } from "@/lib/tradingview";
 import { sendEmail } from "@/lib/email";
 import { accessGrantedEmail } from "@/lib/email-templates";
 import { getUserSubscription } from "@/lib/subscription";
@@ -200,7 +201,13 @@ export async function adminExpireMembership(formData: FormData) {
   revalidatePath("/admin");
 }
 
-/** ลองให้สิทธิ์ TradingView ผ่านบอทอีกครั้ง (ใช้ตอนบอทล่มตอนแรก) */
+/**
+ * สั่งบอทเพิ่ม/ต่ออายุสิทธิ์ TradingView
+ *
+ * ใช้ได้ทั้งตอนบอทล่มรอบแรก และตอนต่ออายุให้ลูกค้าเดิม — บอทฝั่งคอมเบสจะลบ
+ * username เดิมออกแล้วเพิ่มกลับพร้อมวันหมดอายุใหม่ให้เอง เพราะ TradingView
+ * ไม่ยอมให้แก้วันของคนที่มีสิทธิ์อยู่แล้วผ่านหน้าจอเพิ่มผู้ใช้
+ */
 export async function adminRetryTradingView(formData: FormData) {
   await requireAdmin();
   const userId = String(formData.get("userId") ?? "");
@@ -210,6 +217,42 @@ export async function adminRetryTradingView(formData: FormData) {
   const daysRaw = Number(formData.get("days"));
   const days = Number.isFinite(daysRaw) && daysRaw > 0 ? Math.floor(daysRaw) : undefined;
   await syncTradingViewGrant(userId, days);
+
+  revalidatePath("/admin/access-queue");
+}
+
+/**
+ * สั่งบอทถอน username ออกจากสคริปต์บน TradingView จริง ๆ
+ *
+ * ต่างจากปุ่ม "ยกเลิก" ที่บันทึกสถานะเฉย ๆ — อันนี้ไปกดลบบนหน้า TradingView ให้
+ * ผลจริงจะตามมาทาง callback เหมือนตอนให้สิทธิ์ (Selenium ใช้เวลาเป็นนาที)
+ */
+export async function adminRevokeTradingView(formData: FormData) {
+  await requireAdmin();
+  const userId = String(formData.get("userId") ?? "");
+  if (!userId) return;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { tradingViewUsername: true },
+  });
+  if (!user?.tradingViewUsername) return;
+
+  const res = await revokeTradingViewAccess(user.tradingViewUsername);
+
+  const grant = await prisma.accessGrant.findFirst({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    select: { id: true },
+  });
+  if (grant) {
+    await prisma.accessGrant.update({
+      where: { id: grant.id },
+      data: res.ok
+        ? { note: "สั่งบอทถอนสิทธิ์แล้ว รอผลยืนยัน" }
+        : { note: `สั่งบอทถอนสิทธิ์ไม่สำเร็จ: ${res.reason ?? "ไม่ทราบสาเหตุ"}` },
+    });
+  }
 
   revalidatePath("/admin/access-queue");
 }
