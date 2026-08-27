@@ -7,7 +7,12 @@ export interface Feature {
   desc: string;
   howto: string;
   icon: string;
-  image?: string; // ใส่ path screenshot จริงได้ เช่น "/images/features/fvg.png"
+  /**
+   * path ของ screenshot จริง เช่น "/images/features/fvg-snap.webp"
+   * เว้นว่างไว้ = ซ่อนฟีเจอร์นั้นทั้งหมด (ดูตัวกรอง hasScreenshot ท้ายไฟล์)
+   * วิธีทำรูปใหม่และกฎการตั้งชื่อ ดู public/images/features/README.txt
+   */
+  image?: string;
 }
 
 export const coreIntro =
