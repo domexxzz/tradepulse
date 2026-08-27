@@ -12,7 +12,6 @@ import { ProductTour } from "@/components/marketing/ProductTour";
 import { ProductWorkbench } from "@/components/marketing/ProductWorkbench";
 import { FeatureExplorer } from "@/components/marketing/FeatureExplorer";
 import { TelegramAlerts } from "@/components/marketing/TelegramAlerts";
-import { LiveSignals } from "@/components/marketing/LiveSignals";
 import { Community } from "@/components/marketing/Community";
 import { Reviews } from "@/components/marketing/Reviews";
 import { Pricing } from "@/components/marketing/Pricing";
@@ -38,7 +37,7 @@ export const revalidate = 300;
  *   พิสูจน์      ชาร์ต 3 ชุด → กราฟจริง/ราคา live → สถิติ backtest
  *   กลไก        ปัญหา→ทางแก้ และ 3 ขั้นตอน (section เดียว)
  *   มีอะไรบ้าง   แผงสำรวจฟีเจอร์ทั้งหมด
- *   ใช้จริง      Telegram → สัญญาณสด → ชุมชน
+ *   ใช้จริง      Telegram → ชุมชน
  *   ตัดสินใจ     รีวิว → ราคา → คำถาม → รับข่าวสาร → คำเตือน
  *
  * ⚠️ ทำไมหลักฐานถึงต้องมาก่อน:
@@ -80,11 +79,10 @@ export default async function Home() {
         {/* ทดลองชุดตั้งค่า + เหตุผลที่ workflow แตกต่าง */}
         <ProductWorkbench />
 
-        {/* ใช้งานจริง: Telegram → สัญญาณสด → ชุมชน */}
+        {/* ใช้งานจริง: Telegram → ชุมชน */}
         <section id="use" className="border-y border-border bg-surface py-10 sm:py-12">
           <TelegramAlerts />
-          <div className="container-x mt-8 grid gap-8 lg:grid-cols-2">
-            <LiveSignals />
+          <div className="container-x mt-8">
             <Community />
           </div>
         </section>

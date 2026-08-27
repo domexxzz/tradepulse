@@ -5,7 +5,6 @@ import { Check } from "lucide-react";
 import type { Plan } from "@/config/plans";
 import { createQrOrder } from "@/lib/actions/payment";
 import { CheckoutButton } from "./CheckoutButton";
-import { GuaranteeLine } from "./GuaranteeBadge";
 import { formatTHB, cn } from "@/lib/utils";
 
 /**
@@ -86,15 +85,21 @@ export function PlanSelector({
               )}
             >
               <span className="block text-xs text-muted">{p.name}</span>
+              {/* ตัวเลขหลักคือยอดที่จ่ายจริงทั้งก้อน ไม่ใช่ค่าเฉลี่ยต่อเดือน
+                  ค่าเฉลี่ยเป็นเลขที่คำนวณขึ้นมา ส่วนยอดนี้คือเงินที่โอนจริง */}
               <span
                 className={cn(
                   "tnum mt-0.5 block font-display text-lg font-bold",
                   on && "text-brand"
                 )}
               >
-                {formatTHB(p.perMonthTHB)}
-                <span className="text-xs font-normal text-muted">/เดือน</span>
+                {formatTHB(p.priceTHB)}
               </span>
+              {p.months > 1 && (
+                <span className="tnum mt-0.5 block text-[11px] text-faint">
+                  เฉลี่ย {formatTHB(p.perMonthTHB)}/เดือน
+                </span>
+              )}
               {(best || p.badge) && (
                 <span className="mt-1.5 inline-flex rounded-full bg-surface-3 px-2 py-0.5 text-[10px] font-semibold text-muted">
                   {best ? "คุ้มที่สุด" : p.badge}
@@ -110,24 +115,22 @@ export function PlanSelector({
         <div className="bg-surface-2 p-6 sm:p-7">
           <p className="text-sm text-muted">{active.name}</p>
 
-          <div className="mt-2 flex items-baseline gap-1.5">
+          {/* ยอดจ่ายจริงเป็นพระเอก คู่กับราคาเต็มขีดฆ่าไว้ข้าง ๆ ให้เห็นส่วนต่างทันที
+              ราคาเต็มโชว์เฉพาะตอนที่ยังได้ราคา Founding อยู่ — หมดโปรแล้ว
+              listPriceTHB จะเท่ากับ priceTHB เอง เงื่อนไขนี้เลยปิดตัวเอง
+              ไม่มีทางเกิดกรณีขีดฆ่าราคาที่เท่ากับราคาที่จ่ายจริง */}
+          <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <span className="display tnum text-[length:var(--display-md)]">
-              {formatTHB(active.perMonthTHB)}
+              {formatTHB(active.priceTHB)}
             </span>
-            <span className="text-sm text-muted">/เดือน</span>
+            {active.listPriceTHB > active.priceTHB && (
+              <s className="tnum text-lg text-faint">{formatTHB(active.listPriceTHB)}</s>
+            )}
           </div>
 
-          <p className="tnum mt-2 flex flex-wrap items-baseline gap-x-2 text-sm text-muted">
-            <span>
-              จ่าย <b className="text-foreground">{formatTHB(active.priceTHB)}</b> ·{" "}
-              {active.billingNote}
-            </span>
-            {/* ราคาเต็มขีดฆ่า — โชว์เฉพาะตอนที่ยังได้ราคา Founding อยู่จริง
-                หมดโปรแล้ว listPriceTHB จะเท่ากับ priceTHB เอง เงื่อนไขนี้เลยปิดตัวเอง
-                ไม่มีทางเกิดกรณีขีดฆ่าราคาที่เท่ากับราคาที่จ่ายจริง */}
-            {active.listPriceTHB > active.priceTHB && (
-              <s className="text-faint">{formatTHB(active.listPriceTHB)}</s>
-            )}
+          <p className="tnum mt-2 text-sm text-muted">
+            {active.billingNote}
+            {active.months > 1 && <> · เฉลี่ย {formatTHB(active.perMonthTHB)}/เดือน</>}
           </p>
 
           {active.savingsTHB > 0 && (
@@ -151,7 +154,6 @@ export function PlanSelector({
                 สมัครบัญชี
               </a>
             )}
-            <GuaranteeLine className="mt-3 justify-center" />
           </div>
         </div>
 

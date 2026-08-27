@@ -34,7 +34,7 @@ export function FeatureExplorer() {
           </h2>
           <p className="lede mt-4">
             เลือกดูทีละตัวได้เลยว่าแต่ละเครื่องมือวาดอะไรลงบนกราฟ — ทั้งหมด {total} รายการ
-            เป็นภาพจากกราฟจริงบน XAUUSD
+            เป็นภาพตัวอย่างกราฟบน XAUUSD
           </p>
         </div>
 

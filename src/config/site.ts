@@ -27,9 +27,8 @@ export const site = {
    */
   nav: [
     { label: "ผลลัพธ์", href: "/#results" },
-    { label: "กราฟจริง", href: "/#chart" },
+    { label: "ตัวอย่างกราฟ", href: "/#chart" },
     { label: "ฟีเจอร์", href: "/#features" },
-    { label: "สัญญาณสด", href: "/#signals" },
     { label: "ราคา", href: "/#pricing" },
     { label: "คำถามพบบ่อย", href: "/#faq" },
   ],

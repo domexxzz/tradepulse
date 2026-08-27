@@ -11,7 +11,9 @@ import { ArrowRight } from "lucide-react";
 
 const title = "ฟีเจอร์ทั้งหมดของอินดิเคเตอร์";
 // นับจากข้อมูลจริง ไม่ฝังตัวเลขไว้ — advancedTools กรองเฉพาะตัวที่มี screenshot แล้ว
-const description = `รวมทุกเครื่องมือใน ${site.name} — FVG, Liquidity Sweep, Demand/Supply, BOS, CHoCH, สัญญาณ Buy/Sell, ICT Buy/Sell และเครื่องมือขั้นสูงอีก ${advancedTools.length} รายการ สำหรับวิเคราะห์กราฟ XAUUSD บน TradingView`;
+const advancedNote =
+  advancedTools.length > 0 ? ` และเครื่องมือขั้นสูงอีก ${advancedTools.length} รายการ` : "";
+const description = `รวมทุกเครื่องมือใน ${site.name} — FVG, Liquidity Sweep, Demand/Supply, BOS, CHoCH, สัญญาณ Buy/Sell, ICT Buy/Sell${advancedNote} สำหรับวิเคราะห์กราฟ XAUUSD บน TradingView`;
 
 // ราคาบนหน้านี้ต้องตามโปรที่เหลืออยู่จริง จึงรีเฟรชด้วยจังหวะเดียวกับหน้าแรก
 export const revalidate = 300;
@@ -77,11 +79,15 @@ export default async function FeaturesIndexPage() {
         <FeatureList items={coreFeatures} />
       </section>
 
-      <section className="mt-16">
-        <h2 className="font-display text-2xl font-bold">เครื่องมือขั้นสูง</h2>
-        <p className="mt-2 max-w-2xl text-sm text-muted">{advancedIntro}</p>
-        <FeatureList items={advancedTools} />
-      </section>
+      {/* ซ่อนทั้ง section เมื่อยังไม่มีเครื่องมือขั้นสูงที่มีภาพประกอบ
+          ไม่งั้นจะเหลือหัวข้อกับคำโปรยลอยอยู่โดยไม่มีการ์ดสักใบ */}
+      {advancedTools.length > 0 && (
+        <section className="mt-16">
+          <h2 className="font-display text-2xl font-bold">เครื่องมือขั้นสูง</h2>
+          <p className="mt-2 max-w-2xl text-sm text-muted">{advancedIntro}</p>
+          <FeatureList items={advancedTools} />
+        </section>
+      )}
 
       <section className="mt-16 rounded-2xl border border-brand/30 bg-brand/5 p-8 text-center">
         <h2 className="font-display text-2xl font-bold">ได้ทุกฟีเจอร์ในแพ็กเกจเดียว</h2>

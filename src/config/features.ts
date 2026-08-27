@@ -117,7 +117,7 @@ const advancedToolsAll: Feature[] = [
     slug: "supertrend",
     short: "Supertrend",
     icon: "Activity",
-    image: "/images/features/supertrend-snap.webp",
+    image: "",
     desc: "แสดงเส้นแนวโน้มบนกราฟเพื่อช่วยให้มองภาพรวมของราคาและจังหวะการเปลี่ยนทิศทางได้ชัดขึ้น",
     howto: "ใช้ดูทิศทางประกอบกับโครงสร้างตลาดและโซนสำคัญ ไม่ควรใช้เส้นแนวโน้มเพียงอย่างเดียวในการตัดสินใจเข้าเทรด",
   },
@@ -126,7 +126,7 @@ const advancedToolsAll: Feature[] = [
     slug: "ema200",
     short: "EMA200",
     icon: "LineChart",
-    image: "/images/features/ema200-snap.webp",
+    image: "",
     desc: "แสดงเส้นแนวโน้มระยะยาวบนกราฟ เพื่อช่วยประเมินว่าราคาอยู่ในบริบทขาขึ้นหรือขาลง",
     howto: "ใช้เป็นภาพรวมประกอบสัญญาณ Scalping และโครงสร้างตลาด โดยให้ความสำคัญกับแผนที่สอดคล้องกับทิศทางใหญ่",
   },
@@ -189,7 +189,7 @@ const advancedToolsAll: Feature[] = [
     slug: "rejection-block",
     short: "RJB",
     icon: "Ban",
-    image: "/images/features/rejection-block.webp",
+    image: "",
     desc: "แสดงบริเวณที่ราคาเกิดแรงปฏิเสธชัดเจนจากแท่งเทียน เพื่อใช้มองจุดที่แรงซื้อหรือแรงขายตอบสนองกลับ",
     howto: "ใช้ประกอบกับ Supply/Demand, Liquidity และโครงสร้างตลาด เพื่อประเมินว่าการปฏิเสธนั้นมีน้ำหนักมากพอหรือไม่",
   },
@@ -241,9 +241,10 @@ export interface Step {
   desc: string;
 }
 export const steps: Step[] = [
-  { no: "1", title: "เปิดกราฟ XAUUSD บน TradingView", desc: "เพิ่มอินดิเคเตอร์ QVX เข้ากับกราฟทองคำที่คุณใช้อยู่" },
-  { no: "2", title: "อ่าน Trend และสัญญาณ Entry", desc: "ดูทิศทางตลาดจากแถบสี และจังหวะเข้าจากสัญญาณของระบบ" },
-  { no: "3", title: "วางแผน TP/SL และคุมความเสี่ยง", desc: "ตั้งเป้าทำกำไรและจุดตัดขาดทุน พร้อมกำหนดขนาด Lot ก่อนเข้าเทรด" },
+  { no: "1", title: "สมัครใช้งาน", desc: "สร้างบัญชีด้วยอีเมล ใช้เวลาไม่ถึงนาที" },
+  { no: "2", title: "เลือกแพ็กเกจ", desc: "เลือกระยะเวลาที่ต้องการ แล้วชำระผ่าน PromptPay QR" },
+  { no: "3", title: "รับสิทธิ์", desc: "แจ้ง TradingView Username ให้ทีมงานเปิดสิทธิ์อินดิเคเตอร์" },
+  { no: "4", title: "เข้าใช้งาน", desc: "เพิ่ม QVX เข้ากราฟ XAUUSD และเข้ากลุ่ม Telegram สมาชิก" },
 ];
 
 export interface TrustItem {
