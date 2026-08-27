@@ -377,3 +377,35 @@ username ที่ `/account` จากนั้นดู `C:\tv-bridge.log` ว
 > ย้ายไป server-254 ในอนาคตได้ (เปิด 24 ชม.) แต่ตอนนี้เครื่องยังไม่เปิด และเข้าไม่ได้
 > (Tailscale SSH ปิด, คีย์ไม่ผ่าน, อยู่คนละ LAN กับคอมเบส) ถ้าจะย้ายต้องเปิด `tailscale set --ssh`
 > บนเครื่องนั้นก่อน แล้วก๊อปโปรไฟล์ Chrome `C:\tv-bot-chrome` ไปด้วยเพื่อพา session TradingView ไป
+
+## ย้ายบริดจ์จากคอมเบสไป server-254 (28 ส.ค. 2569)
+
+ย้ายเพราะคอมเบสปิดกลางคืน + task Interactive-only ไม่ฟื้นเอง — server-254 (Tailscale
+100.89.239.2, user `pai09`) เปิด 24 ชม.
+
+**ที่ตั้งใหม่:** `C:\BotTV` (tlapi.py = V17, tv_bridge.py, .env, requirements-bridge.txt)
+Funnel: `https://node.tail17bed7.ts.net` → ตั้ง `TV_BOT_URL` บน Vercel ชี้มานี่แล้ว
+callback ใน .env แก้เป็น `quantvisionx.com` แล้ว
+
+**กับดักที่เจอตอนย้าย:**
+- **เข้า server-254 ไม่ได้ตอนแรก** — Windows OpenSSH ไม่รองรับ `tailscale set --ssh`
+  ต้องลง OpenSSH Server จาก MSI ทางการ (Windows Update โหลดไม่ได้ ขึ้น NotPresent)
+  แล้ว pai09 เป็นแอดมิน → key ต้องอยู่ `C:\ProgramData\ssh\administrators_authorized_keys`
+  (ไม่ใช่ user profile) สิทธิ์ไฟล์ต้องมีแค่ Administrators:F + SYSTEM:F
+- **Tailscale IdeaPad→254 ตันตลอด** (relay ไม่ทะลุ) แต่ **254→คอมเบส ทะลุ** — pull ไฟล์
+  จาก 254 ได้ (push จากคอมเบสไม่ได้)
+- **โปรไฟล์ Chrome ก๊อปมาแล้ว login หาย** — `scp -r` ข้ามไฟล์ database ที่ล็อก โดยเฉพาะ
+  `Default\Network\Cookies` (Chrome รุ่นใหม่ย้าย Cookies ไปโฟลเดอร์ Network) ต้องปิด Chrome
+  แล้ว scp โฟลเดอร์ Network มาต่างหาก **แต่ cookie เข้ารหัสด้วย DPAPI ผูกเครื่องเดิม
+  ก๊อปข้ามเครื่องใช้ไม่ได้** — ต้อง RDP เข้า 254 login TradingView (Pyro_Bolt) เองครั้งเดียว
+- **Task Scheduler รัน python ไม่ขึ้น** — Start-Process ใน task context ถูกบล็อก, และรัน
+  python foreground ทำให้ task ค้าง (Last Result 267009 = still running) เลิกใช้ task
+  เปลี่ยนเป็น **runner.ps1 วนลูป while(true) เช็กพอร์ต 8787 ทุก 30 วิ** + shortcut ใน
+  Startup folder (`TVRunner.lnk`) ให้เปิดตอน login — เสถียร ทดสอบ revive ผ่าน
+
+**การพิมพ์ผ่าน RDP** ทำ single-quote กลายเป็น smart-quote บ่อย → คำสั่งค้าง/ไฟล์ชื่อเพี้ยน
+เลี่ยงด้วยการสั่งจากคอมเบสผ่าน SSH หรือใช้คำสั่งสั้นไม่มี quote
+
+**เทสผ่านครบวง:** grant DomeDev → EXPIRY_OK until 2026-09-27 บน 254
+
+> คอมเบสยังเก็บไว้เป็นสำรอง (บริดจ์เดิม + watchdog ยังอยู่) ไม่ได้ลบ
