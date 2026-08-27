@@ -149,7 +149,7 @@ async function notifyActivation(input: ActivateInput, until: Date) {
  *
  * ไม่สำเร็จก็ปล่อยให้คิวค้างไว้ให้แอดมินกดเอง — ห้าม throw
  */
-export async function syncTradingViewGrant(userId: string): Promise<void> {
+export async function syncTradingViewGrant(userId: string, daysOverride?: number): Promise<void> {
   if (!tvAutoGrantEnabled) return;
 
   try {
@@ -167,8 +167,13 @@ export async function syncTradingViewGrant(userId: string): Promise<void> {
 
     // ให้สิทธิ์บน TradingView หมดอายุพร้อมแพ็กเกจ เผื่อ cron ฝั่งเราไม่ทำงานสักวัน
     const { sub, isActive } = await getUserSubscription(userId);
+    // แอดมินเลือกจำนวนวันเองได้ (daysOverride) — ไม่งั้นยึดตามวันหมดอายุแพ็กเกจ
     const days =
-      isActive && sub?.currentPeriodEnd ? Math.max(1, daysUntil(sub.currentPeriodEnd)) : undefined;
+      daysOverride && daysOverride > 0
+        ? daysOverride
+        : isActive && sub?.currentPeriodEnd
+          ? Math.max(1, daysUntil(sub.currentPeriodEnd))
+          : undefined;
 
     const res = await grantTradingViewAccess(user.tradingViewUsername, days);
 

@@ -71,8 +71,17 @@ export default async function AccessQueuePage() {
                     <div className="flex justify-end gap-2">
                       {/* ปุ่มเดียวในหน้านี้ที่สั่งบอทจริง — อีกสองปุ่มแค่บันทึกสถานะ */}
                       {g.user.tradingViewUsername && (
-                        <form action={adminRetryTradingView}>
+                        <form action={adminRetryTradingView} className="flex items-center gap-1.5">
                           <input type="hidden" name="userId" value={g.user.id} />
+                          <input
+                            type="number"
+                            name="days"
+                            defaultValue={30}
+                            min={1}
+                            max={3650}
+                            title="จำนวนวันที่ให้สิทธิ์ (ค่าเริ่มต้น 30 = 1 เดือน)"
+                            className="w-14 rounded-full border border-border bg-surface px-2 py-1.5 text-center text-xs tabular-nums"
+                          />
                           <button className="rounded-full bg-brand/15 px-3 py-1.5 text-xs font-medium text-brand hover:bg-brand/25">
                             สั่งบอท
                           </button>

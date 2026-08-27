@@ -206,7 +206,10 @@ export async function adminRetryTradingView(formData: FormData) {
   const userId = String(formData.get("userId") ?? "");
   if (!userId) return;
 
-  await syncTradingViewGrant(userId);
+  // แอดมินกรอกจำนวนวันได้ (ค่าว่าง/ไม่ถูกต้อง = ยึดตามวันหมดอายุแพ็กเกจ)
+  const daysRaw = Number(formData.get("days"));
+  const days = Number.isFinite(daysRaw) && daysRaw > 0 ? Math.floor(daysRaw) : undefined;
+  await syncTradingViewGrant(userId, days);
 
   revalidatePath("/admin/access-queue");
 }
