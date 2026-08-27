@@ -87,7 +87,7 @@ const smc: GuideSuite = {
       src: "/videos/qvx-smc-demand-supply.mp4",
       poster: "/images/videos/qvx-smc-demand-supply.webp",
       label: "ชุด SMC + Demand/Supply บน XAUUSD 5 นาที",
-      duration: "3:48",
+      duration: "3:23",
     },
   ],
   onChart: [
@@ -236,7 +236,7 @@ const gold: GuideSuite = {
       src: "/videos/qvx-gold-booster-core.mp4",
       poster: "/images/videos/qvx-gold-booster-core.webp",
       label: "ชุด Gold Booster + Gold Core บน XAUUSD 5 นาที",
-      duration: "3:14",
+      duration: "2:49",
     },
   ],
   onChart: [
@@ -373,7 +373,7 @@ const ict: GuideSuite = {
       src: "/videos/qvx-ict-sd.mp4",
       poster: "/images/videos/qvx-ict-sd.webp",
       label: "ชุด ICT SD Signal บน XAUUSD 5 นาที",
-      duration: "2:48",
+      duration: "2:30",
     },
     {
       src: "/videos/qvx-ict-smc.mp4",
@@ -513,6 +513,17 @@ const ict: GuideSuite = {
 };
 
 export const guideSuites: GuideSuite[] = [smc, gold, ict];
+
+/**
+ * คลิปที่ใช้เป็นพระเอกบน Hero หน้าแรก
+ *
+ * เลือกตัว ICT + SMC เพราะเป็นคลิปเดียวที่ไม่มีช่วงเปิดหน้าต่างตั้งค่าคั่นตอนต้น
+ * เลยเข้าเรื่องได้ทันทีตั้งแต่วินาทีแรก และมีทั้งป้าย ICT BUY/SELL โซน และ
+ * โครงสร้างตลาดครบ ตรงกับสิ่งที่พาดหัวพูดถึงมากที่สุด
+ *
+ * คลิปอีกสามตัวถูกตัดหัวทิ้ง 17-25 วินาทีตอนเข้ารหัสเพื่อข้ามช่วงตั้งค่าไปแล้ว
+ */
+export const heroClip: GuideVideo = ict.videos[1];
 
 /** ขั้นตอนที่ใช้ร่วมกันทุกชุด — สรุปจากแนวใช้งานที่สอดคล้องกันของทั้งสามชุด */
 export const sharedFlow: string[] = [

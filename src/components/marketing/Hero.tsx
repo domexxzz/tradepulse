@@ -1,6 +1,6 @@
-import Image from "next/image";
 import { Button } from "@/components/ui/Button";
-import { tradingView, hasChartSnapshot } from "@/config/site";
+import { LoopingClip } from "@/components/guide/LoopingClip";
+import { heroClip } from "@/config/guide";
 import { plans } from "@/config/plans";
 import { formatTHB } from "@/lib/utils";
 import { trustItems } from "@/config/features";
@@ -44,34 +44,27 @@ export function Hero() {
           </div>
         </div>
 
-        {/* ภาพกราฟจริง — พระเอกของหน้า */}
-        {hasChartSnapshot && (
-          <figure className="rise rise-4 relative mx-auto mt-14 max-w-5xl">
-            {/* แสงเขียวจาง ๆ หลังภาพ ให้กราฟลอยขึ้นจากพื้นดำ */}
-            <div
-              aria-hidden
-              className="pointer-events-none absolute -inset-x-8 -top-6 bottom-6 rounded-[2rem] bg-brand/10 blur-3xl"
-            />
-            <div className="relative overflow-hidden rounded-2xl border border-border-strong bg-surface p-1.5 shadow-[0_40px_120px_-60px_rgba(0,0,0,1)]">
-              <div
-                className="relative w-full overflow-hidden rounded-xl"
-                style={{ aspectRatio: tradingView.snapshotAspect }}
-              >
-                <Image
-                  src={tradingView.snapshotUrl}
-                  alt="กราฟ XAUUSD ที่ติดตั้งอินดิเคเตอร์ QVX แสดงสัญญาณ BUY/SELL, ICT, CHoCH, โซน FVG และ Order Block"
-                  fill
-                  priority
-                  sizes="(max-width: 1024px) 100vw, 1024px"
-                  className="object-cover"
-                />
-              </div>
-            </div>
-            <figcaption className="mt-3.5 text-center text-xs text-faint">
-              ภาพจากกราฟจริงที่รันอินดิเคเตอร์ · ตัวเลขบนภาพเป็นผลทดสอบย้อนหลัง ไม่ใช่การรับประกันผลในอนาคต
-            </figcaption>
-          </figure>
-        )}
+        {/*
+          คลิปกราฟจริง — พระเอกของหน้า
+
+          ของเดิมเป็นภาพนิ่ง ซึ่งบอกได้แค่ว่า "หน้าจอหน้าตาแบบนี้" แต่ไม่ได้บอกว่า
+          อินดิเคเตอร์ตัดสินใจยังไง คลิปนี้เป็นการเดิน Bar Replay ให้เห็นสัญญาณ
+          กับโซนโผล่ขึ้นมาทีละแท่ง ซึ่งเป็นสิ่งที่คนอยากรู้จริง ๆ ก่อนตัดสินใจซื้อ
+        */}
+        <figure className="rise rise-4 relative mx-auto mt-14 max-w-5xl">
+          {/* แสงเขียวจาง ๆ หลังคลิป ให้กราฟลอยขึ้นจากพื้นดำ */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -inset-x-8 -top-6 bottom-6 rounded-[2rem] bg-brand/10 blur-3xl"
+          />
+          <div className="relative overflow-hidden rounded-2xl border border-border-strong bg-surface p-1.5 shadow-[0_40px_120px_-60px_rgba(0,0,0,1)]">
+            <LoopingClip src={heroClip.src} poster={heroClip.poster} label={heroClip.label} eager />
+          </div>
+          <figcaption className="mt-3.5 text-center text-xs text-faint">
+            คลิปจากกราฟจริงที่รันอินดิเคเตอร์ บันทึกในโหมด Bar Replay ของ TradingView ·
+            เป็นการเดินย้อนหลังเพื่อสาธิต ไม่ใช่การเทรดสด และไม่ใช่การรับประกันผลในอนาคต
+          </figcaption>
+        </figure>
 
         {/* จุดเด่นสั้น ๆ — ย้ายมาไว้ใต้ภาพ ไม่ให้แย่งความสนใจจากพาดหัว */}
         <ul className="mx-auto mt-12 flex max-w-4xl flex-wrap items-center justify-center gap-x-8 gap-y-3">

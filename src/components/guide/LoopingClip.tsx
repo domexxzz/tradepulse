@@ -23,10 +23,13 @@ export function LoopingClip({
   src,
   poster,
   label,
+  eager = false,
 }: {
   src: string;
   poster: string;
   label: string;
+  /** คลิปที่อยู่เหนือ fold — โหลด metadata ล่วงหน้าเพื่อให้เฟรมแรกขึ้นเร็ว ไม่ต้องรอ observer */
+  eager?: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   /** ผู้ใช้กดหยุดเองหรือเปล่า — แยกจาก paused เพราะ IntersectionObserver ก็สั่งหยุดได้ */
@@ -56,12 +59,15 @@ export function LoopingClip({
           el.pause();
         }
       },
-      { threshold: 0.35 }
+      // คลิปเหนือ fold ต้องเล่นทันทีที่เห็น — บนจอเตี้ย ๆ คลิป Hero โผล่แค่ ~30%
+      // ตอนเปิดหน้า ถ้าใช้ threshold เดียวกับคลิปล่าง ๆ มันจะนิ่งอยู่จนกว่าจะเลื่อน
+      // ส่วนคลิปล่าง fold ใช้ค่าสูงกว่าเพื่อไม่ให้เริ่มเล่นตั้งแต่เพิ่งโผล่ขอบจอ
+      { threshold: eager ? 0 : 0.35 }
     );
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [eager]);
 
   const toggle = () => {
     const el = videoRef.current;
@@ -86,7 +92,7 @@ export function LoopingClip({
         loop
         muted
         playsInline
-        preload="none"
+        preload={eager ? "metadata" : "none"}
         poster={poster}
         aria-label={label}
         onClick={toggle}
