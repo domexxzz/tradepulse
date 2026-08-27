@@ -170,25 +170,54 @@ body {
    ============================================================ */
 .bg3d {
   position: fixed; inset: 0; z-index: -10; pointer-events: none; overflow: hidden;
+  --pointer-x: 50vw; --pointer-y: 22vh;
   background:
-    radial-gradient(72% 46% at 50% -8%, rgba(110, 227, 74, .10), transparent 68%),
-    radial-gradient(38% 32% at 88% 12%, rgba(110, 227, 74, .045), transparent 70%),
+    radial-gradient(72% 46% at 50% -8%, rgba(110, 227, 74, .13), transparent 68%),
+    radial-gradient(42% 34% at 88% 16%, rgba(110, 227, 74, .055), transparent 70%),
     linear-gradient(180deg, #08100b 0%, #060c08 48%, #050806 100%);
 }
-.bg3d__grid {
-  position: absolute; inset: 0;
-  background-image:
-    linear-gradient(rgba(110, 227, 74, .035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(110, 227, 74, .035) 1px, transparent 1px);
-  background-size: 64px 64px;
-  -webkit-mask-image: radial-gradient(ellipse 80% 52% at 50% 12%, #000 20%, transparent 88%);
-  mask-image: radial-gradient(ellipse 80% 52% at 50% 12%, #000 20%, transparent 88%);
+.bg3d__aurora {
+  position: absolute; inset: -18%;
+  background: radial-gradient(340px circle at var(--pointer-x) var(--pointer-y), rgba(110,227,74,.12), transparent 72%), conic-gradient(from 195deg at 52% 12%, transparent 0 28%, rgba(63,182,91,.055) 35%, transparent 44% 100%);
+  filter: blur(20px);
 }
+.bg3d__grid {
+  position: absolute; left: -18%; right: -18%; top: -9%; height: 72%;
+  background-image:
+    linear-gradient(rgba(110,227,74,.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(110,227,74,.055) 1px, transparent 1px);
+  background-size: 72px 72px;
+  transform: perspective(620px) rotateX(61deg) translateY(-12%);
+  transform-origin: 50% 0;
+  -webkit-mask-image: linear-gradient(to bottom, #000 5%, rgba(0,0,0,.65) 50%, transparent 95%);
+  mask-image: linear-gradient(to bottom, #000 5%, rgba(0,0,0,.65) 50%, transparent 95%);
+  animation: grid-drift 18s linear infinite;
+}
+.bg3d__beam { position:absolute; top:0; bottom:0; width:36vw; left:15%; background:linear-gradient(105deg,transparent 25%,rgba(110,227,74,.04),transparent 68%); filter:blur(18px); animation:beam-sweep 14s ease-in-out infinite alternate; }
+/* สนามจุดเพอร์สเปกทีฟ วาดด้วย canvas 2D (เหตุผลที่ไม่ใช้ three.js อยู่ใน Background3D.tsx)
+   มาสก์ให้จางหายรอบนอก เพื่อไม่ให้จุดไปแย่งสายตากับพาดหัวฝั่งซ้าย */
+.bg3d__field {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  -webkit-mask-image: radial-gradient(105% 80% at 68% 52%, #000 22%, rgba(0,0,0,.5) 58%, transparent 88%);
+  mask-image: radial-gradient(105% 80% at 68% 52%, #000 22%, rgba(0,0,0,.5) 58%, transparent 88%);
+}
+
 .bg3d__grain {
   position: absolute; inset: 0; opacity: .03;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 .hero-backdrop { background: none; }
+
+/* เส้นเรืองแสงในกรอบ Hero + จุดพัลส์ — ดึงกลับมาจาก fe5431e */
+.hero-market-depth { position:absolute; inset:4.5rem 0 auto; height:430px; pointer-events:none; opacity:.62; -webkit-mask-image:radial-gradient(ellipse 64% 60% at 50% 46%,#000 10%,transparent 78%); mask-image:radial-gradient(ellipse 64% 60% at 50% 46%,#000 10%,transparent 78%); }
+.hero-market-depth__line { position:absolute; left:7%; right:7%; height:1px; background:linear-gradient(90deg,transparent,rgba(110,227,74,.16) 20%,rgba(139,240,107,.54) 50%,rgba(110,227,74,.12) 80%,transparent); filter:drop-shadow(0 0 7px rgba(110,227,74,.45)); transform-origin:center; }
+.hero-market-depth__line--one { top:34%; transform:rotate(-5deg) scaleX(.82); animation:depth-line 8s ease-in-out infinite; }
+.hero-market-depth__line--two { top:51%; transform:rotate(3deg) scaleX(.68); animation:depth-line 10s ease-in-out -2s infinite reverse; }
+.hero-market-depth__line--three { top:67%; transform:rotate(-2deg) scaleX(.5); animation:depth-line 9s ease-in-out -5s infinite; }
+.hero-market-depth__pulse { position:absolute; left:50%; top:51%; width:12px; height:12px; border-radius:50%; border:1px solid rgba(139,240,107,.8); transform:translate(-50%,-50%); box-shadow:0 0 24px rgba(110,227,74,.55); animation:radar-pulse 3.2s ease-out infinite; }
+.hero-chart-frame { perspective:1200px; }
+.hero-chart-frame > div:last-of-type { transform:rotateX(1.2deg) translateZ(0); transform-origin:50% 100%; transition:transform .45s cubic-bezier(.2,.8,.2,1),border-color .45s ease; }
+.hero-chart-frame:hover > div:last-of-type { transform:rotateX(0) translateY(-4px) scale(1.006); border-color:color-mix(in srgb,var(--brand) 34%,var(--border-strong)); }
 
 /* ============================================================
    การเคลื่อนไหว — น้อยและมีเหตุผล
@@ -204,6 +233,11 @@ body {
 .marquee-track:hover { animation-play-state: paused; }
 
 /* ค่อย ๆ ปรากฏตอนโหลดหน้า ใช้กับ hero อย่างเดียว */
+@keyframes grid-drift { to { background-position:0 72px; } }
+@keyframes beam-sweep { from { transform:translateX(-30%) skewX(-8deg); opacity:.35; } to { transform:translateX(150%) skewX(8deg); opacity:.8; } }
+@keyframes market-float { 0%,100% { transform:translate3d(0,0,0); opacity:.15; } 45% { opacity:.7; } 55% { transform:translate3d(13px,-28px,0) scale(1.5); opacity:.55; } }
+@keyframes depth-line { 0%,100% { opacity:.22; clip-path:inset(0 42%); } 50% { opacity:.78; clip-path:inset(0 3%); } }
+@keyframes radar-pulse { 0% { box-shadow:0 0 0 0 rgba(110,227,74,.35),0 0 20px rgba(110,227,74,.5); opacity:.9; } 100% { box-shadow:0 0 0 80px rgba(110,227,74,0),0 0 30px rgba(110,227,74,0); opacity:0; } }
 @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 .rise { animation: rise .7s cubic-bezier(.22,.61,.36,1) both; }
 .rise-1 { animation-delay: .05s; }

@@ -28,7 +28,18 @@ export function Hero({ monthlyTHB }: { monthlyTHB?: number }) {
   const cheapest = Math.min(...shown.map((p) => p.perMonthTHB));
 
   return (
-    <section id="top" className="relative pb-[var(--sp-md)] pt-[var(--sp-hero)]">
+    <section
+      id="top"
+      className="hero-terminal relative overflow-hidden pb-[var(--sp-md)] pt-[var(--sp-hero)]"
+    >
+      {/* เส้นเรืองแสงสามเส้น + จุดพัลส์เรดาร์ — ตกแต่งล้วน ๆ ไม่มีความหมายให้ screen reader
+          สไตล์อยู่ที่ .hero-market-depth ใน globals.css และหยุดเองเมื่อผู้ใช้ตั้ง reduced-motion */}
+      <div className="hero-market-depth" aria-hidden>
+        <span className="hero-market-depth__line hero-market-depth__line--one" />
+        <span className="hero-market-depth__line hero-market-depth__line--two" />
+        <span className="hero-market-depth__line hero-market-depth__line--three" />
+        <span className="hero-market-depth__pulse" />
+      </div>
       <div className="container-x">
         <div className="mx-auto max-w-3xl text-center">
           <p className="eyebrow rise rise-1">XAUUSD · Smart Money Concept</p>
