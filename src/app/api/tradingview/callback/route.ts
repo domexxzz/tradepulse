@@ -39,43 +39,33 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "invalid json" }, { status: 400 });
   }
 
-  // [TEMP DIAG] บันทึกสิ่งที่บอทส่งมาจริง เพื่อหาสาเหตุที่สิทธิ์ไม่ขึ้นบน TradingView
-  // ปิดบัง secret ไม่ให้หลุดลง log — เอาออกเมื่อวินิจฉัยเสร็จ
-  try {
-    const raw = body as Record<string, unknown> | null;
-    console.log("[tv-callback] payload:", JSON.stringify({ ...raw, secret: raw?.secret ? "<set>" : "<missing>" }));
-  } catch {}
-
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
-    console.log("[tv-callback] REJECT 400 invalid payload:", JSON.stringify(parsed.error.issues));
     return NextResponse.json({ error: "invalid payload" }, { status: 400 });
   }
 
   const { secret, action, username, ok, error } = parsed.data;
   if (!secretMatches(secret)) {
-    console.log("[tv-callback] REJECT 401 secret ไม่ตรงกับ TV_BOT_SECRET บน Vercel");
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  console.log(`[tv-callback] ผ่าน auth — action=${action} username=${username} ok=${ok} error=${error ?? "-"}`);
 
-  const user = await prisma.user.findFirst({
-    where: { tradingViewUsername: { equals: username, mode: "insensitive" } },
-    select: { id: true, name: true, email: true },
-  });
-  if (!user) {
-    console.log(`[tv-callback] REJECT 404 ไม่พบสมาชิกที่ใช้ tradingViewUsername="${username}"`);
-    return NextResponse.json({ error: "ไม่พบสมาชิกที่ใช้ username นี้" }, { status: 404 });
-  }
-
+  // หาคิวสิทธิ์จาก username โดยตรง (ผ่าน relation) — กัน username ซ้ำหลายบัญชี
+  // ถ้าค้นจาก user ก่อนแล้วเผอิญเจอบัญชีที่ไม่มีคิว จะพลาดเป็น 404 ทั้งที่อีกบัญชีมีคิวอยู่
+  // จึงค้นที่ accessGrant ที่ผูกกับ user ซึ่ง tradingViewUsername ตรง แล้วเลือกคิวล่าสุด
   const grant = await prisma.accessGrant.findFirst({
-    where: { userId: user.id },
+    where: {
+      user: { tradingViewUsername: { equals: username, mode: "insensitive" } },
+    },
     orderBy: { createdAt: "desc" },
+    include: { user: { select: { id: true, name: true, email: true } } },
   });
   if (!grant) {
-    console.log(`[tv-callback] REJECT 404 ไม่พบคิวสิทธิ์ของ userId=${user.id}`);
-    return NextResponse.json({ error: "ไม่พบคิวสิทธิ์ของสมาชิกรายนี้" }, { status: 404 });
+    return NextResponse.json(
+      { error: "ไม่พบคิวสิทธิ์ของ username นี้" },
+      { status: 404 }
+    );
   }
+  const user = grant.user;
 
   const now = new Date();
 
