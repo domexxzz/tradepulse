@@ -12,12 +12,13 @@ export function Footer() {
         <div>
           <div className="flex items-center gap-2">
             {/* โลโก้เดียวกับ Navbar — alt ว่างเพราะมีชื่อแบรนด์เป็นข้อความอยู่ข้าง ๆ แล้ว */}
+            {/* ท้ายหน้าไม่มีเพดานความสูงเหมือน navbar จึงให้ใหญ่กว่าได้ */}
             <Image
               src="/images/brand/qvx-logo-hex-v1.png"
               alt=""
-              width={36}
-              height={36}
-              className="h-9 w-9"
+              width={52}
+              height={52}
+              className="h-13 w-13"
             />
             <span className="font-display text-lg font-bold">{site.name}</span>
           </div>

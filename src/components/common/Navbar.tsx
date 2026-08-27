@@ -32,13 +32,15 @@ export function Navbar() {
               ไม่ใส่กรอบหรือพื้นหลังทับ เพราะตัวโลโก้มีกรอบหกเหลี่ยมอยู่แล้ว
               alt ว่างเพราะข้อความ "QVX" ข้าง ๆ บอกชื่อแบรนด์อยู่แล้ว
               ถ้าใส่ alt ซ้ำ screen reader จะอ่านชื่อสองรอบ */}
+          {/* 44px คือเพดานในแถบสูง 64px — เหลือระยะบน-ล่างข้างละ 10px
+              ใหญ่กว่านี้โลโก้จะชนขอบ navbar */}
           <Image
             src="/images/brand/qvx-logo-hex-v1.png"
             alt=""
-            width={36}
-            height={36}
+            width={44}
+            height={44}
             priority
-            className="h-9 w-9"
+            className="h-11 w-11"
           />
           <span className="font-display text-[1.05rem] font-semibold tracking-tight">{site.name}</span>
         </a>
