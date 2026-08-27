@@ -65,7 +65,6 @@ export default async function Home() {
 
         {/* หัวข้อประกอบ ไม่มีในเมนู วางคั่นก่อนถึงหน้าราคา */}
         <TelegramAlerts />
-        <Community />
         <BacktestStats />
         <Reviews />
 
@@ -73,7 +72,10 @@ export default async function Home() {
         <HowItWorks />
         <FAQ />
 
+        {/* ปิดท้าย: ชวนรับข่าวสาร แล้วต่อด้วยชุมชนเป็นทางเลือกฟรี
+            สำหรับคนที่ยังไม่พร้อมสมัคร */}
         <EmailCapture />
+        <Community />
         <Disclaimer />
       </main>
       <Footer />
