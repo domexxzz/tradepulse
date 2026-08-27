@@ -25,6 +25,7 @@ export function Footer() {
               <li key={n.href}><a href={n.href} className="hover:text-foreground">{n.label}</a></li>
             ))}
             <li><Link href="/features" className="hover:text-foreground">ฟีเจอร์ทั้งหมด (รายตัว)</Link></li>
+            <li><Link href="/guide" className="hover:text-foreground">คู่มือตั้งค่าและวิธีใช้</Link></li>
           </ul>
         </nav>
 

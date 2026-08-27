@@ -47,8 +47,11 @@ export function EmailCapture() {
                 <p className="mb-3 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-brand">
                   <Mail className="h-3.5 w-3.5" /> รับข่าวสาร
                 </p>
+                {/* nowrap ครอบ "ก็ไม่เป็นไร" ไว้ ไม่งั้นถูกตัดกลางสำนวนเป็น "ก็ไม่ / เป็นไร"
+                    (ดูหมายเหตุที่ .display ใน globals.css) */}
                 <h2 className="font-display text-2xl font-bold sm:text-3xl">
-                  ยังไม่พร้อมสมัครวันนี้ก็ไม่เป็นไร
+                  ยังไม่พร้อมสมัครวันนี้{" "}
+                  <span className="whitespace-nowrap">ก็ไม่เป็นไร</span>
                 </h2>
                 <p className="mt-2 max-w-md text-muted">
                   ฝากอีเมลไว้ เราจะแจ้งเมื่อมีฟีเจอร์ใหม่หรือโปรโมชัน คุณจะได้ไม่พลาดรอบถัดไป

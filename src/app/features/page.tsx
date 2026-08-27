@@ -10,7 +10,8 @@ import { JsonLd } from "@/components/seo/JsonLd";
 import { ArrowRight } from "lucide-react";
 
 const title = "ฟีเจอร์ทั้งหมดของอินดิเคเตอร์";
-const description = `รวมทุกเครื่องมือใน ${site.name} — FVG, Order Block, Liquidity Sweep, Demand/Supply, BOS, CHoCH, สัญญาณ Buy/Sell และเครื่องมือขั้นสูงอีก 9 รายการ สำหรับวิเคราะห์กราฟ XAUUSD บน TradingView`;
+// นับจากข้อมูลจริง ไม่ฝังตัวเลขไว้ — advancedTools กรองเฉพาะตัวที่มี screenshot แล้ว
+const description = `รวมทุกเครื่องมือใน ${site.name} — FVG, Liquidity Sweep, Demand/Supply, BOS, CHoCH, สัญญาณ Buy/Sell, ICT Buy/Sell และเครื่องมือขั้นสูงอีก ${advancedTools.length} รายการ สำหรับวิเคราะห์กราฟ XAUUSD บน TradingView`;
 
 // ราคาบนหน้านี้ต้องตามโปรที่เหลืออยู่จริง จึงรีเฟรชด้วยจังหวะเดียวกับหน้าแรก
 export const revalidate = 300;
@@ -88,12 +89,20 @@ export default async function FeaturesIndexPage() {
           ทุกแพ็กเกจได้เครื่องมือครบเหมือนกัน ต่างกันแค่ระยะเวลาและราคาเฉลี่ยต่อเดือน
           เริ่มต้น {formatTHB(cheapest)}
         </p>
-        <Link
-          href="/#pricing"
-          className="mt-6 inline-flex h-11 items-center rounded-full bg-brand px-7 text-sm font-semibold text-brand-ink transition-colors hover:bg-brand-strong"
-        >
-          ดูราคาแพ็กเกจ
-        </Link>
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <Link
+            href="/#pricing"
+            className="inline-flex h-11 items-center rounded-full bg-brand px-7 text-sm font-semibold text-brand-ink transition-colors hover:bg-brand-strong"
+          >
+            ดูราคาแพ็กเกจ
+          </Link>
+          <Link
+            href="/guide"
+            className="inline-flex h-11 items-center rounded-full border border-border px-7 text-sm font-medium text-muted transition-colors hover:border-brand/40 hover:text-foreground"
+          >
+            คู่มือตั้งค่าทั้ง 3 ชุด
+          </Link>
+        </div>
       </section>
     </main>
   );

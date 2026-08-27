@@ -2,7 +2,10 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 import { advancedTools, advancedIntro } from "@/config/features";
 import { FeatureCard } from "@/components/marketing/FeatureCard";
 
-/** Part 2 — เครื่องมือเสริม/ขั้นสูง (9 รายการ) ต่อเนื่องจากฟีเจอร์หลัก */
+/**
+ * Part 2 — เครื่องมือเสริม/ขั้นสูง ต่อเนื่องจากฟีเจอร์หลัก
+ * จำนวนรายการมาจาก advancedTools ซึ่งกรองเฉพาะตัวที่มี screenshot แล้ว (ดู config/features.ts)
+ */
 export function AllFeatures() {
   return (
     <section id="advanced-tools" className="section-md">

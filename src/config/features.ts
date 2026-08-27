@@ -13,12 +13,12 @@ export interface Feature {
 export const coreIntro =
   "QVX รวมเครื่องมืออ่านโครงสร้างราคา โซนสำคัญ และสัญญาณสำหรับวางแผนเทรดไว้ในอินดิเคเตอร์เดียว เพื่อช่วยให้ผู้ใช้เห็นบริบทของตลาดก่อนตัดสินใจ";
 
-export const coreFeatures: Feature[] = [
+const coreFeaturesAll: Feature[] = [
   {
     title: "FVG — Fair Value Gap",
     slug: "fvg",
     icon: "SeparatorHorizontal",
-    image: "",
+    image: "/images/features/fvg.webp",
     desc: "แสดงบริเวณที่ราคาเคลื่อนที่เร็วและทิ้งช่องว่างไว้ ใช้เฝ้าดูจังหวะที่ราคาอาจกลับมาทดสอบหรือเกิดปฏิกิริยา",
     howto: "รอให้ราคากลับเข้าใกล้โซน FVG แล้วดูโครงสร้างตลาดและสัญญาณยืนยันก่อนวางแผนเข้าเทรด",
   },
@@ -34,7 +34,7 @@ export const coreFeatures: Feature[] = [
     title: "LQ — Liquidity & Sweep",
     slug: "liquidity-sweep",
     icon: "Droplets",
-    image: "",
+    image: "/images/features/liquidity-sweep.webp",
     desc: "ช่วยมองเห็นจุดสภาพคล่อง และจังหวะที่ราคากวาดระดับสำคัญก่อนกลับตัว",
     howto: "เมื่อเกิด Sweep ให้ใช้เป็นข้อมูลประกอบกับโซนใกล้เคียงและโครงสร้างตลาด เพื่อประเมินว่าราคาอาจมีแรงกลับหรือไม่",
   },
@@ -42,7 +42,7 @@ export const coreFeatures: Feature[] = [
     title: "DM-SP — Demand / Supply Zone",
     slug: "demand-supply-zone",
     icon: "LayoutGrid",
-    image: "",
+    image: "/images/features/demand-supply-zone.webp",
     desc: "แสดง Demand Zone และ Supply Zone ซึ่งเป็นบริเวณที่ราคาเคยมีแรงซื้อหรือแรงขายเด่นชัด",
     howto: "ใช้ Demand Zone เพื่อเฝ้าหาจังหวะฝั่ง Buy และใช้ Supply Zone เพื่อเฝ้าหาจังหวะฝั่ง Sell โดยรอสัญญาณยืนยันเมื่อราคากลับเข้าโซน",
   },
@@ -50,7 +50,7 @@ export const coreFeatures: Feature[] = [
     title: "BOS — Break of Structure",
     slug: "break-of-structure",
     icon: "GitBranch",
-    image: "",
+    image: "/images/features/break-of-structure.webp",
     desc: "แสดงเมื่อราคาทะลุโครงสร้างสำคัญ ช่วยให้เห็นว่าราคาอาจยังมีแรงเดินต่อในทิศทางเดิม",
     howto: "ใช้ BOS เพื่อยืนยันทิศทางตลาด แล้วรอราคาย่อกลับหาโซนสำคัญก่อนมองหาจังหวะเข้าเทรด",
   },
@@ -58,7 +58,7 @@ export const coreFeatures: Feature[] = [
     title: "CHoCH / MSS — Change of Character",
     slug: "change-of-character",
     icon: "Shuffle",
-    image: "",
+    image: "/images/features/change-of-character.webp",
     desc: "แสดงเมื่อโครงสร้างราคาเริ่มเปลี่ยนไปจากทิศทางเดิม เป็นสัญญาณเตือนว่าตลาดอาจกำลังเปลี่ยนแนวโน้ม",
     howto: "หลังเกิด CHoCH ให้รอราคากลับมาทดสอบโซนสำคัญและมีสัญญาณยืนยัน ก่อนพิจารณาแผนในทิศทางใหม่",
   },
@@ -66,7 +66,7 @@ export const coreFeatures: Feature[] = [
     title: "Buy / Sell Scalping",
     slug: "buy-sell-scalping",
     icon: "Zap",
-    image: "",
+    image: "/images/features/buy-sell-scalping.webp",
     desc: "สัญญาณ Buy / Sell สำหรับช่วยหาจังหวะเทรดระยะสั้นบนกราฟทองคำ โดยแสดงเมื่อระบบพบเงื่อนไขที่เข้าเกณฑ์",
     howto: "รอให้สัญญาณปรากฏหลังแท่งเทียนปิด แล้วตรวจสอบว่าอยู่ใกล้โซนสำคัญและสอดคล้องกับโครงสร้างตลาดก่อนเข้าเทรด",
   },
@@ -74,7 +74,7 @@ export const coreFeatures: Feature[] = [
     title: "ICT Buy",
     slug: "ict-buy",
     icon: "TrendingUp",
-    image: "",
+    image: "/images/features/ict-buy.webp",
     desc: "สัญญาณ Buy ที่ช่วยค้นหาจังหวะเมื่อราคาแสดงแรงตอบสนองเชิงบวกจากบริเวณ Demand หรือโซนสำคัญ",
     howto: "ใช้เมื่อราคากลับมาที่ Demand Zone หรือ Bullish OB แล้วเกิด ICT Buy โดยกำหนดจุดตัดขาดทุนและเป้าหมายตามแผนที่ระบบแสดง",
   },
@@ -82,7 +82,7 @@ export const coreFeatures: Feature[] = [
     title: "ICT Sell",
     slug: "ict-sell",
     icon: "TrendingDown",
-    image: "",
+    image: "/images/features/ict-sell.webp",
     desc: "สัญญาณ Sell ที่ช่วยค้นหาจังหวะเมื่อราคาแสดงแรงตอบสนองเชิงลบจากบริเวณ Supply หรือโซนสำคัญ",
     howto: "ใช้เมื่อราคากลับมาที่ Supply Zone หรือ Bearish OB แล้วเกิด ICT Sell โดยกำหนดจุดตัดขาดทุนและเป้าหมายตามแผนที่ระบบแสดง",
   },
@@ -91,12 +91,12 @@ export const coreFeatures: Feature[] = [
 export const advancedIntro =
   "สำหรับผู้ที่ต้องการปรับมุมมองและวิเคราะห์กราฟได้ลึกขึ้น QVX มีเครื่องมือเสริมที่เปิดใช้ตามสไตล์การเทรดของแต่ละคนได้";
 
-export const advancedTools: Feature[] = [
+const advancedToolsAll: Feature[] = [
   {
     title: "Supertrend",
     slug: "supertrend",
     icon: "Activity",
-    image: "",
+    image: "/images/features/supertrend.webp",
     desc: "แสดงเส้นแนวโน้มบนกราฟเพื่อช่วยให้มองภาพรวมของราคาและจังหวะการเปลี่ยนทิศทางได้ชัดขึ้น",
     howto: "ใช้ดูทิศทางประกอบกับโครงสร้างตลาดและโซนสำคัญ ไม่ควรใช้เส้นแนวโน้มเพียงอย่างเดียวในการตัดสินใจเข้าเทรด",
   },
@@ -104,7 +104,7 @@ export const advancedTools: Feature[] = [
     title: "EMA200",
     slug: "ema200",
     icon: "LineChart",
-    image: "",
+    image: "/images/features/ema200.webp",
     desc: "แสดงเส้นแนวโน้มระยะยาวบนกราฟ เพื่อช่วยประเมินว่าราคาอยู่ในบริบทขาขึ้นหรือขาลง",
     howto: "ใช้เป็นภาพรวมประกอบสัญญาณ Scalping และโครงสร้างตลาด โดยให้ความสำคัญกับแผนที่สอดคล้องกับทิศทางใหญ่",
   },
@@ -165,6 +165,20 @@ export const advancedTools: Feature[] = [
     howto: "ใช้ประกอบกับ Supply/Demand, Liquidity และโครงสร้างตลาด เพื่อประเมินว่าการปฏิเสธนั้นมีน้ำหนักมากพอหรือไม่",
   },
 ];
+
+/**
+ * แสดงเฉพาะฟีเจอร์ที่มี screenshot จริงแล้วเท่านั้น
+ *
+ * ของเดิมฟีเจอร์ที่ยังไม่มีรูปจะเรนเดอร์เป็นการ์ดภาพแบรนด์ พอวางเรียงปนกับการ์ด
+ * ที่มีภาพกราฟจริงแล้วดูเหมือนของยังทำไม่เสร็จ จึงซ่อนไว้ก่อนจนกว่าจะแคปภาพมาใส่
+ *
+ * เนื้อหาของทั้ง 8 ตัวยังอยู่ครบในสองอาร์เรย์ด้านบน — พอใส่ image ให้ตัวไหน
+ * ตัวนั้นจะกลับมาโผล่เองทั้งหน้าแรก หน้า /features และ sitemap ไม่ต้องแก้ที่อื่น
+ */
+const hasScreenshot = (f: Feature) => Boolean(f.image);
+
+export const coreFeatures: Feature[] = coreFeaturesAll.filter(hasScreenshot);
+export const advancedTools: Feature[] = advancedToolsAll.filter(hasScreenshot);
 
 export const telegramInfo = {
   intro:

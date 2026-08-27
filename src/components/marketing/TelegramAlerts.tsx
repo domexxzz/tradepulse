@@ -16,7 +16,11 @@ export function TelegramAlerts() {
           <p className="mb-3 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-brand">
             <Lock className="h-3.5 w-3.5" /> Telegram Alerts · เฉพาะสมาชิก
           </p>
-          <h2 className="font-display text-3xl font-bold sm:text-4xl">สัญญาณส่งเข้า Telegram แบบเรียลไทม์</h2>
+          {/* nowrap ครอบ "เรียลไทม์" ไว้ ไม่งั้น Chrome ตัดเป็น "แบบเรี / ยลไทม์"
+              (พจนานุกรมตัดคำไทยของ ICU ไม่รู้จักคำทับศัพท์ — ดูหมายเหตุที่ .display ใน globals.css) */}
+          <h2 className="font-display text-3xl font-bold sm:text-4xl">
+            สัญญาณส่งเข้า Telegram แบบ<span className="whitespace-nowrap">เรียลไทม์</span>
+          </h2>
           <p className="mt-3 max-w-xl text-muted">
             สมาชิกจะได้รับสิทธิ์เข้ากลุ่ม Telegram ที่เชื่อมสัญญาณจากอินดิเคเตอร์อัตโนมัติ —
             แยกห้องตามไทม์เฟรม รับจังหวะเข้าเทรดได้ทันทีทุกที่
