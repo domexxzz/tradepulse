@@ -22,7 +22,7 @@ export function ProductTour() {
 
       <div className="mt-8 overflow-hidden rounded-3xl border border-border-strong bg-surface shadow-[0_30px_100px_-60px_rgba(110,227,74,.45)] lg:grid lg:grid-cols-[1.55fr_.75fr]">
         <div className="relative aspect-[1800/734] min-h-[250px] overflow-hidden bg-black sm:min-h-0">
-          <Image src="/images/charts/smc-suite-snap.webp" alt="หน้าชาร์ตจริงของ QVX แสดง Market Structure, FVG, Liquidity และ Order Block" fill sizes="(max-width: 1024px) 100vw, 70vw" className="object-cover" />
+          <Image src="/images/charts/smc-suite-v2.webp" alt="หน้าชาร์ตจริงของ QVX แสดง Market Structure, FVG, Liquidity และ Order Block" fill sizes="(max-width: 1024px) 100vw, 70vw" className="object-cover" />
           <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_55%,rgba(6,10,7,.45))]" />
           {tourItems.map((item) => (
             <button

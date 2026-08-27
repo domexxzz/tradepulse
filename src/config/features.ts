@@ -14,7 +14,7 @@ export interface Feature {
   howto: string;
   icon: string;
   /**
-   * path ของ screenshot จริง เช่น "/images/features/fvg-snap.webp"
+   * path ของ screenshot จริง เช่น "/images/features/fvg-v2.webp"
    * เว้นว่างไว้ = ซ่อนฟีเจอร์นั้นทั้งหมด (ดูตัวกรอง hasScreenshot ท้ายไฟล์)
    * วิธีทำรูปใหม่และกฎการตั้งชื่อ ดู public/images/features/README.txt
    */
@@ -30,7 +30,7 @@ const coreFeaturesAll: Feature[] = [
     slug: "fvg",
     short: "FVG",
     icon: "SeparatorHorizontal",
-    image: "/images/features/fvg-snap.webp",
+    image: "/images/features/fvg-v2.webp",
     desc: "แสดงบริเวณที่ราคาเคลื่อนที่เร็วและทิ้งช่องว่างไว้ ใช้เฝ้าดูจังหวะที่ราคาอาจกลับมาทดสอบหรือเกิดปฏิกิริยา",
     howto: "รอให้ราคากลับเข้าใกล้โซน FVG แล้วดูโครงสร้างตลาดและสัญญาณยืนยันก่อนวางแผนเข้าเทรด",
   },
@@ -39,7 +39,7 @@ const coreFeaturesAll: Feature[] = [
     slug: "order-block",
     short: "OB",
     icon: "Boxes",
-    image: "/images/features/order-block.webp",
+    image: "/images/features/order-block-v2.webp",
     desc: "แสดงโซนที่เคยเกิดแรงซื้อหรือแรงขายชัดเจน ใช้เป็นบริเวณสำคัญสำหรับเฝ้าดูการตอบสนองของราคา",
     howto: "เมื่อราคากลับมาที่โซน OB ให้รอพฤติกรรมราคาหรือสัญญาณยืนยัน ไม่ควรเข้าออเดอร์ทันทีเพียงเพราะราคาชนโซน",
   },
@@ -48,7 +48,7 @@ const coreFeaturesAll: Feature[] = [
     slug: "liquidity-sweep",
     short: "LQ",
     icon: "Droplets",
-    image: "/images/features/liquidity-sweep-snap.webp",
+    image: "/images/features/liquidity-sweep-v2.webp",
     desc: "ช่วยมองเห็นจุดสภาพคล่อง และจังหวะที่ราคากวาดระดับสำคัญก่อนกลับตัว",
     howto: "เมื่อเกิด Sweep ให้ใช้เป็นข้อมูลประกอบกับโซนใกล้เคียงและโครงสร้างตลาด เพื่อประเมินว่าราคาอาจมีแรงกลับหรือไม่",
   },
@@ -57,7 +57,7 @@ const coreFeaturesAll: Feature[] = [
     slug: "demand-supply-zone",
     short: "DM-SP",
     icon: "LayoutGrid",
-    image: "/images/features/demand-supply-zone-snap.webp",
+    image: "/images/features/demand-supply-zone-v2.webp",
     desc: "แสดง Demand Zone และ Supply Zone ซึ่งเป็นบริเวณที่ราคาเคยมีแรงซื้อหรือแรงขายเด่นชัด",
     howto: "ใช้ Demand Zone เพื่อเฝ้าหาจังหวะฝั่ง Buy และใช้ Supply Zone เพื่อเฝ้าหาจังหวะฝั่ง Sell โดยรอสัญญาณยืนยันเมื่อราคากลับเข้าโซน",
   },
@@ -66,7 +66,7 @@ const coreFeaturesAll: Feature[] = [
     slug: "break-of-structure",
     short: "BOS",
     icon: "GitBranch",
-    image: "/images/features/break-of-structure-snap.webp",
+    image: "/images/features/break-of-structure-v2.webp",
     desc: "แสดงเมื่อราคาทะลุโครงสร้างสำคัญ ช่วยให้เห็นว่าราคาอาจยังมีแรงเดินต่อในทิศทางเดิม",
     howto: "ใช้ BOS เพื่อยืนยันทิศทางตลาด แล้วรอราคาย่อกลับหาโซนสำคัญก่อนมองหาจังหวะเข้าเทรด",
   },
@@ -75,7 +75,7 @@ const coreFeaturesAll: Feature[] = [
     slug: "change-of-character",
     short: "CHoCH",
     icon: "Shuffle",
-    image: "/images/features/change-of-character-snap.webp",
+    image: "/images/features/change-of-character-v2.webp",
     desc: "แสดงเมื่อโครงสร้างราคาเริ่มเปลี่ยนไปจากทิศทางเดิม เป็นสัญญาณเตือนว่าตลาดอาจกำลังเปลี่ยนแนวโน้ม",
     howto: "หลังเกิด CHoCH ให้รอราคากลับมาทดสอบโซนสำคัญและมีสัญญาณยืนยัน ก่อนพิจารณาแผนในทิศทางใหม่",
   },
@@ -84,7 +84,7 @@ const coreFeaturesAll: Feature[] = [
     slug: "buy-sell-scalping",
     short: "Scalping",
     icon: "Zap",
-    image: "/images/features/buy-sell-scalping-snap.webp",
+    image: "/images/features/buy-sell-scalping-v2.webp",
     desc: "สัญญาณ Buy / Sell สำหรับช่วยหาจังหวะเทรดระยะสั้นบนกราฟทองคำ โดยแสดงเมื่อระบบพบเงื่อนไขที่เข้าเกณฑ์",
     howto: "รอให้สัญญาณปรากฏหลังแท่งเทียนปิด แล้วตรวจสอบว่าอยู่ใกล้โซนสำคัญและสอดคล้องกับโครงสร้างตลาดก่อนเข้าเทรด",
   },
@@ -93,7 +93,7 @@ const coreFeaturesAll: Feature[] = [
     slug: "ict-buy",
     short: "ICT Buy",
     icon: "TrendingUp",
-    image: "/images/features/ict-buy-snap.webp",
+    image: "/images/features/ict-buy-v2.webp",
     desc: "สัญญาณ Buy ที่ช่วยค้นหาจังหวะเมื่อราคาแสดงแรงตอบสนองเชิงบวกจากบริเวณ Demand หรือโซนสำคัญ",
     howto: "ใช้เมื่อราคากลับมาที่ Demand Zone หรือ Bullish OB แล้วเกิด ICT Buy โดยกำหนดจุดตัดขาดทุนและเป้าหมายตามแผนที่ระบบแสดง",
   },
@@ -102,7 +102,7 @@ const coreFeaturesAll: Feature[] = [
     slug: "ict-sell",
     short: "ICT Sell",
     icon: "TrendingDown",
-    image: "/images/features/ict-sell-snap.webp",
+    image: "/images/features/ict-sell-v2.webp",
     desc: "สัญญาณ Sell ที่ช่วยค้นหาจังหวะเมื่อราคาแสดงแรงตอบสนองเชิงลบจากบริเวณ Supply หรือโซนสำคัญ",
     howto: "ใช้เมื่อราคากลับมาที่ Supply Zone หรือ Bearish OB แล้วเกิด ICT Sell โดยกำหนดจุดตัดขาดทุนและเป้าหมายตามแผนที่ระบบแสดง",
   },

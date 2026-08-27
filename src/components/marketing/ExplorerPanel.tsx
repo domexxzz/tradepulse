@@ -86,7 +86,12 @@ export function ExplorerPanel({ groups }: { groups: ExplorerGroup[] }) {
       {/* ---------- ผืนผ้าใบ + คำอธิบายของตัวที่เลือก ---------- */}
       <div className="lg:order-1">
         <div className="relative mx-auto w-full max-w-[960px] overflow-hidden rounded-2xl border border-border-strong bg-black shadow-[0_40px_110px_-70px_rgba(0,0,0,1)]">
-          <div className="relative aspect-[16/10]">
+          {/* ⚠️ ต้องเป็น 16/9 + object-contain ไม่ใช่ 16/10 + object-cover
+              ภาพชุดใหม่อัตราส่วนไม่เท่ากันเลย ตั้งแต่ 1.54 ถึง 2.12
+              ถ้า cover ในกรอบ 16/10 ภาพกว้างอย่าง FVG (2.12) จะโดนตัดข้าง
+              ซึ่งข้างขวาคือที่ป้าย FVG- FVG+ อยู่พอดี = ตัดของที่เราจะขายทิ้ง
+              contain บนพื้นดำแทน แถบว่างที่เกิดขึ้นเป็นดำบนดำ มองไม่เห็นอยู่แล้ว */}
+          <div className="relative aspect-[16/9]">
             {flat.map((f) => (
               <Image
                 key={f.slug}
@@ -96,7 +101,7 @@ export function ExplorerPanel({ groups }: { groups: ExplorerGroup[] }) {
                 sizes="(max-width: 1024px) 100vw, 960px"
                 aria-hidden={f.slug !== active.slug}
                 className={cn(
-                  "object-cover transition-opacity duration-300",
+                  "object-contain transition-opacity duration-300",
                   f.slug === active.slug ? "opacity-100" : "opacity-0"
                 )}
               />

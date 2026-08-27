@@ -7,7 +7,7 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 
 const presets = [
   {
-    id: "smc", badge: "ชุด A", name: "SMC Unified", style: "อ่านโครงสร้างและโซน", image: "/images/charts/smc-suite-snap.webp",
+    id: "smc", badge: "ชุด A", name: "SMC Unified", style: "อ่านโครงสร้างและโซน", image: "/images/charts/smc-suite-v2.webp",
     features: ["Market Structure", "OB / FVG / Liquidity", "Demand / Supply", "HTF 4H context"],
     controls: ["Strong zones", "Liquidity sweep", "NEXT zones", "Signal A / B"],
   },
@@ -17,7 +17,7 @@ const presets = [
     controls: ["Trend filter", "Dip / Rally", "Fixed TP / SL", "Long / Short"],
   },
   {
-    id: "ict", badge: "ชุด C", name: "ICT SD Signal", style: "ICT / SMC Intraday", image: "/images/charts/ict-suite-snap.webp",
+    id: "ict", badge: "ชุด C", name: "ICT SD Signal", style: "ICT / SMC Intraday", image: "/images/charts/ict-suite-v2.webp",
     features: ["ICT BUY / SELL", "Liquidity sweep", "London + NY filter", "EMA200 filter"],
     controls: ["Session filter", "Liquidity pool", "TP1 + BE", "Structure labels"],
   },
