@@ -88,10 +88,10 @@ const smc: GuideSuite = {
   bestFor: "Scalping / Intraday แบบ SMC",
   timeframe: "กราฟ 1–5 นาที · bias จาก HTF 4 ชั่วโมง",
   chart: {
-    src: "/images/charts/smc-suite.webp",
-    alt: "หน้าชาร์ต XAUUSD ที่เปิดชุด SMC Unified Suite แสดงโครงสร้าง HH/HL/LH/LL, BOS, CHoCH/MSS, โซน FVG และเส้น NEXT Supply / NEXT Demand",
+    src: "/images/charts/smc-suite-snap.webp",
+    alt: "หน้าชาร์ต XAUUSD ไทม์เฟรม 1 ชั่วโมง ที่เปิดชุด SMC Unified Suite แสดงโซน OB / FVG / RJB, โครงสร้าง HH/HL/LH/LL, BOS, CHoCH/MSS, เส้น Supertrend, EMA200 และป้ายราคาโซนถัดไป",
     width: 1800,
-    height: 883,
+    height: 734,
   },
   videos: [
     {
@@ -374,10 +374,10 @@ const ict: GuideSuite = {
   bestFor: "ICT / SMC Scalping – Intraday",
   timeframe: "กราฟ 1–5 นาที · เฉพาะ 14:00–23:00 น. (เวลาไทย)",
   chart: {
-    src: "/images/charts/ict-suite.webp",
-    alt: "หน้าชาร์ต XAUUSD ที่เปิดชุด ICT SD Signal แสดงป้าย ICT BUY และ ICT SELL พร้อมโครงสร้าง HH/HL/LH/LL และ CHoCH/MSS",
+    src: "/images/charts/ict-suite-snap.webp",
+    alt: "หน้าชาร์ต XAUUSD ไทม์เฟรม 1 ชั่วโมง ที่เปิดชุด ICT SD Signal แสดงป้าย ICT BUY / ICT SELL, เส้นสภาพคล่อง LQ+ / LQ−, BOS, CHoCH/MSS, เส้น TP/SL 500 จุด และ EMA200",
     width: 1800,
-    height: 803,
+    height: 734,
   },
   videos: [
     {
