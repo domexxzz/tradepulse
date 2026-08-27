@@ -62,3 +62,8 @@ next-env.d.ts
 
 # build logs
 *.log
+
+# Python bytecode cache - regenerated automatically, must not enter git
+# and anything under public/ is served publicly by Next.js
+__pycache__/
+*.pyc
