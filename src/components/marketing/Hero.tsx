@@ -25,7 +25,15 @@ import { ShieldCheck } from "lucide-react";
  */
 export function Hero({ monthlyTHB }: { monthlyTHB?: number }) {
   const shown = monthlyTHB === undefined ? plans : plansFor(monthlyTHB);
-  const cheapest = Math.min(...shown.map((p) => p.perMonthTHB));
+  /**
+   * ราคาแพ็กรายเดือน — ไม่ใช่ min() ของค่าเฉลี่ยต่อเดือน
+   *
+   * min() จะได้ 899 ซึ่งเป็นค่าเฉลี่ยของแพ็ก 12 เดือน คนกดเข้ามาแล้วเจอว่า
+   * ต้องจ่าย 10,790 ทีเดียว เลขบนปุ่มกับเลขที่ต้องโอนจริงจึงคนละเรื่องกัน
+   * ยึดแพ็กรายเดือนแทน เพราะป้ายเขียน "/เดือน" ไว้ และ 999 คือยอดที่จ่ายจริง
+   * เพื่อเริ่มใช้หนึ่งเดือน
+   */
+  const entry = shown.find((p) => p.months === 1) ?? shown[0];
 
   return (
     <section
@@ -42,25 +50,27 @@ export function Hero({ monthlyTHB }: { monthlyTHB?: number }) {
       </div>
       <div className="container-x">
         <div className="mx-auto max-w-3xl text-center">
-          <p className="eyebrow rise rise-1">XAUUSD · Smart Money Concept</p>
+          <p className="eyebrow rise rise-1">QVX · Quant Vision X</p>
 
           <h1 className="display rise rise-2 mt-5 text-[length:var(--display-lg)]">
-            อ่านกราฟทองคำ
+            QVX INDICATOR
             <br />
-            <span className="text-gradient-brand">ด้วยเทคนิคระดับโปร</span>
+            <span className="text-gradient-brand">วิเคราะห์ตลาดในระบบเดียว</span>
           </h1>
 
-          <p className="lede rise rise-2 mx-auto mt-6 max-w-xl">
-            เห็นโครงสร้างตลาด โซนสำคัญ และจุดเข้า–ออก อยู่บนกราฟเดียว
-            ไม่ต้องสลับอินดิเคเตอร์ไปมาอีกต่อไป
+          {/* ประโยคยาวกว่าเดิมมาก max-w-xl เดิมจะดันเป็น 4 บรรทัดและตัดคำทับศัพท์กลางคำ
+              จึงกว้างขึ้นเป็น 2xl — ดูหมายเหตุเรื่องการตัดบรรทัดไทยที่ .display ใน globals.css */}
+          <p className="lede rise rise-2 mx-auto mt-6 max-w-2xl">
+            QVX รวมการวิเคราะห์โครงสร้างราคา โซนสำคัญ และระบบสัญญาณ
+            เพื่อช่วยให้เห็นบริบทของตลาด และวางแผนจังหวะเข้าเทรดได้ชัดเจนขึ้น
           </p>
 
           <div className="rise rise-3 mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button href="#pricing" size="lg">
-              เริ่มใช้งาน · เริ่มต้น {formatTHB(cheapest)}/เดือน
+              เริ่มใช้งาน · เริ่มต้น {formatTHB(entry.priceTHB)}/เดือน
             </Button>
             <Button href="#chart" variant="outline" size="lg">
-              ดูกราฟจริง
+              ดูการทำงานบน TradingView
             </Button>
           </div>
         </div>
