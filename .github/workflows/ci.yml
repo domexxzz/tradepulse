@@ -1,0 +1,64 @@
+# ตรวจงานทุก PR ก่อน merge
+#
+# มีไว้เพราะ Vercel preview บอกได้แค่ว่า "build ผ่านไหม" แต่ไม่ได้รันเทสต์
+# ตรรกะที่พลาดแล้วเสียเงินจริง (วันหมดอายุ ราคาโปร การล็อกราคา) อยู่ในชุด UAT
+# ซึ่งต้องมีฐานข้อมูลจริงถึงจะรันได้ ตัวนี้เลยยก Postgres ขึ้นมาให้ในงานเลย
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: qvx
+          POSTGRES_PASSWORD: devpass
+          # ชื่อต้องมีคำว่า test ไม่งั้น uat/guard.ts จะปฏิเสธไม่ยอมรัน
+          POSTGRES_DB: qvx_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://qvx:devpass@127.0.0.1:5432/qvx_test?schema=public
+      DIRECT_URL: postgresql://qvx:devpass@127.0.0.1:5432/qvx_test?schema=public
+      # ค่าปลอมสำหรับ build เท่านั้น ไม่ใช่ความลับจริง
+      AUTH_SECRET: ci-build-only-not-a-real-secret
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: ติดตั้ง dependency
+        run: npm ci
+
+      - name: สร้างตาราง
+        run: npx prisma migrate deploy
+
+      - name: เทสต์ตรรกะ
+        run: npm test
+
+      - name: เทสต์กับฐานข้อมูลจริง
+        run: npm run test:uat
+
+      - name: build
+        run: npx next build
+
+      - name: ตรวจ lint
+        run: npm run lint

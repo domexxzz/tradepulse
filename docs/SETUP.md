@@ -2,24 +2,81 @@
 
 ## รันในเครื่อง
 
+```bash
+npm install
+npm run setup     # หา Postgres → เขียน .env.local → สร้างตาราง → ใส่ข้อมูลตั้งต้น
+npm run dev       # http://localhost:3000
+```
+
+`npm run setup` รันซ้ำได้ ไม่ทับ `.env.local` ที่มีอยู่แล้ว
+ถ้ายังไม่มี Postgres มันจะบอกคำสั่งติดตั้งให้ตามระบบปฏิบัติการ
+
 โปรเจกต์ใช้ PostgreSQL ทั้ง dev และ production เพื่อให้พฤติกรรมตรงกัน
 (SQLite ต่างเรื่อง type, transaction และ constraint มากพอที่จะทำให้เจอบั๊กตอนขึ้น production เท่านั้น)
 
+<details>
+<summary>ติดตั้ง Postgres เอง</summary>
+
 ```bash
-# 1) รัน Postgres สำหรับ dev
-docker run -d --name qvx-pg   -e POSTGRES_PASSWORD=devpass -e POSTGRES_USER=qvx -e POSTGRES_DB=qvx   -p 5433:5432 postgres:16-alpine
+# macOS
+brew install postgresql@16 && brew services start postgresql@16   # ถ้ายังไม่มี
 
-# 2) ตั้งค่าใน .env (ทั้งสองค่าใช้ตัวเดียวกันได้ใน dev)
-#    DATABASE_URL="postgresql://qvx:devpass@localhost:5433/qvx?schema=public"
-#    DIRECT_URL="postgresql://qvx:devpass@localhost:5433/qvx?schema=public"
-
-npm install
-npx prisma migrate dev   # สร้างตาราง
-node prisma/seed.mjs     # ใส่ plan + review ตัวอย่าง
-npm run dev              # http://localhost:3000
+# Docker (ได้ทุกระบบ)
+docker run -d --name qvx-pg -p 5432:5432 \
+  -e POSTGRES_PASSWORD=devpass -e POSTGRES_DB=qvx_dev postgres:16-alpine
 ```
 
-หยุด/ลบฐานข้อมูล dev: `docker stop qvx-pg` / `docker rm -f qvx-pg`
+Windows: ติดตั้งจาก https://www.postgresql.org/download/windows/
+</details>
+
+## เข้าหน้าจัดการระบบ
+
+มีสองทาง เลือกทางไหนก็ได้
+
+**ทางที่ 1 — ตั้ง `ADMIN_EMAILS`** เหมาะกับ production
+
+ใส่อีเมล (คั่นด้วยจุลภาคถ้ามีหลายคน) เป็น environment variable แล้วสมัครสมาชิกด้วยอีเมลนั้น
+ตอนล็อกอิน `src/lib/admin-bootstrap.ts` จะเลื่อนขั้นให้เป็น ADMIN อัตโนมัติ
+เลื่อนขั้นอย่างเดียว ไม่ลดขั้น — เอาอีเมลออกจากลิสต์แล้วสิทธิ์ยังอยู่
+
+**ทางที่ 2 — `npm run admin`** เหมาะตอนลืมรหัสผ่าน
+
+```bash
+npm run admin
+```
+
+ถามอีเมลกับรหัสผ่านแล้วสร้าง/อัปเดตบัญชีให้เป็น ADMIN ทันที
+รหัสผ่านพิมพ์ตอนรัน ไม่โชว์บนจอ ไม่รับผ่าน argument (จะไปติดใน shell history)
+และไม่ถูกเขียนลง log ที่ไหน — เก็บเป็น bcrypt hash อย่างเดียว
+
+จะชี้ไปฐานข้อมูลไหนก็ได้ มันโชว์ host กับชื่อฐานข้อมูลให้ยืนยันก่อนเขียนเสมอ
+
+```bash
+DATABASE_URL="postgresql://…" npm run admin     # เช่น ชี้ไป production
+```
+
+> จำเป็นเพราะปุ่ม "ลืมรหัสผ่าน?" บนหน้าเว็บใช้ไม่ได้ถ้ายังไม่ได้ตั้ง `RESEND_API_KEY`
+> ถ้าไม่มีเครื่องมือนี้ ลืมรหัสแล้วเข้าหลังบ้านไม่ได้เลย
+
+## ฐานข้อมูลควรอยู่ที่ไหน
+
+| ใช้ตอนไหน | อยู่ที่ไหน | ทำไม |
+|---|---|---|
+| พัฒนาในเครื่อง | Postgres ในเครื่องตัวเอง | เร็ว ทำงานตอนเน็ตหลุดได้ พังก็ลบทิ้งสร้างใหม่ได้ และ `uat/guard.ts` บังคับให้ UAT รันได้เฉพาะ localhost อยู่แล้ว |
+| Vercel preview (ทุก PR) | Neon branch | ต่อ Neon–Vercel integration แล้วมันสร้าง branch ของฐานข้อมูลให้ทุก PR อัตโนมัติ ลบให้เองตอน merge — ได้ทดสอบ migration กับข้อมูลทรงเดียวกับ production ก่อน merge จริง |
+| production | Neon | ตัวหลัก `vercel-build` รัน `prisma migrate deploy` ให้ทุกครั้งที่ deploy |
+
+**อย่าเอาฐานข้อมูล dev ไปไว้บนเครื่องที่เข้าถึงได้ผ่าน VPN/Tailscale เท่านั้น**
+Vercel อยู่บนคลาวด์ ต่อ tailnet ไม่ได้ → `prisma migrate deploy` ตอน build จะล้ม
+แปลว่า preview deployment ของทุก PR จะพัง ตรวจงานกันไม่ได้
+
+## ตรวจงานอัตโนมัติ (CI)
+
+`.github/workflows/ci.yml` รันทุก PR และทุก push เข้า main:
+ยก Postgres ขึ้นมาในงาน → `migrate deploy` → `npm test` → `npm run test:uat` → `next build` → `lint`
+
+ชื่อฐานข้อมูลใน CI ตั้งเป็น `qvx_test` โดยตั้งใจ เพราะ `uat/guard.ts` ยอมให้รัน
+เฉพาะฐานข้อมูลที่อยู่ localhost หรือชื่อมีคำว่า `uat`/`test` เท่านั้น
 
 ## คู่มือแยกตามระบบ
 
@@ -108,11 +165,11 @@ npm run test:watch
 localhost หรือฐานข้อมูลที่ชื่อมี `uat`/`test` ชุดเทสต์จะหยุดทันทีก่อนแตะข้อมูล
 (จำเป็นเพราะ `runMembershipMaintenance()` ทำงานกับทุกแถว ไม่ได้จำกัดเฉพาะข้อมูลทดสอบ)
 
-ถ้าเครื่องไม่มี Docker ใช้ Postgres จาก Homebrew แทนได้:
+ถ้ายังไม่มีฐานข้อมูลสำหรับ UAT ให้รัน `npm run setup` หรือสร้างเอง:
 
 ```bash
-brew install postgresql@16 && brew services start postgresql@16
-createuser -s qvx && createdb -O qvx tradepulse_uat
+brew install postgresql@16 && brew services start postgresql@16   # ถ้ายังไม่มี
+createdb qvx_uat
 ```
 
 ครอบตรรกะที่พลาดแล้วเสียเงินจริง: การคิดวันหมดอายุ (`addMonths` สิ้นเดือน/ปีอธิกสุรทิน),

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { grantAccess, revokeAccess } from "@/lib/actions/admin";
+import { grantAccess, revokeAccess, adminRetryTradingView } from "@/lib/actions/admin";
 
 const statusStyle: Record<string, string> = {
   PENDING: "text-amber-400 border-amber-400/30 bg-amber-400/10",
@@ -25,8 +25,9 @@ export default async function AccessQueuePage() {
       <div>
         <h1 className="display text-[length:var(--display-sm)]">คิวอนุมัติสิทธิ์ TradingView</h1>
         <p className="mt-1 text-sm text-muted">
-          อนุมัติแล้วให้ไปเพิ่ม username ในสคริปต์ invite-only บน TradingView ด้วยตนเอง
-          — รายการ &quot;หมดอายุ — รอถอนสิทธิ์&quot; มาจากงานประจำวัน ให้ลบ username ออกจากสคริปต์แล้วกด &quot;ยกเลิก&quot;
+          &quot;สั่งบอท&quot; ให้บอทไปเพิ่ม/ถอน username บน TradingView ให้เอง —
+          ส่วน &quot;อนุมัติ&quot; กับ &quot;ยกเลิก&quot; เป็นการบันทึกสถานะเฉย ๆ
+          ใช้ตอนที่ไปจัดการบน TradingView ด้วยมือเองแล้ว <b className="text-foreground">ไม่ได้สั่งบอท</b>
         </p>
       </div>
 
@@ -68,6 +69,15 @@ export default async function AccessQueuePage() {
                   </td>
                   <td className="px-5 py-3">
                     <div className="flex justify-end gap-2">
+                      {/* ปุ่มเดียวในหน้านี้ที่สั่งบอทจริง — อีกสองปุ่มแค่บันทึกสถานะ */}
+                      {g.user.tradingViewUsername && (
+                        <form action={adminRetryTradingView}>
+                          <input type="hidden" name="userId" value={g.user.id} />
+                          <button className="rounded-full bg-brand/15 px-3 py-1.5 text-xs font-medium text-brand hover:bg-brand/25">
+                            สั่งบอท
+                          </button>
+                        </form>
+                      )}
                       {g.status !== "GRANTED" && (
                         <form action={grantAccess}>
                           <input type="hidden" name="grantId" value={g.id} />
