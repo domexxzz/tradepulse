@@ -136,9 +136,23 @@ body {
    */
   text-wrap: balance;
 }
+/**
+ * หัวข้อกำกับเหนือหัวเรื่องใหญ่
+ *
+ * ⚠️ ห้ามเพิ่ม letter-spacing กลับไปเป็นค่ามาก ๆ กับข้อความไทย
+ *
+ * ของเดิมใช้ .2em ซึ่งสวยกับตัวโรมันล้วน แต่พังกับภาษาไทย
+ * เพราะไทยมีสระบน-ล่างและวรรณยุกต์ที่ต้องเกาะติดพยัญชนะฐาน
+ * พอดันระยะห่างทุกตัวอักษร เครื่องหมายพวกนั้นถูกผลักออกจากตัวที่มันเกาะอยู่
+ * คำเลยดูกระจัดกระจายและอ่านยาก — เป็นที่มาของ "ฟอนต์ทำให้ดูคำแปลก ๆ"
+ *
+ * .04em พอให้ยังอ่านเป็นป้ายกำกับสำหรับคำโรมัน (TELEGRAM ALERTS ฯลฯ)
+ * โดยไม่ทำลายการประกอบคำไทย และขยับขนาดจาก 12px เป็น 14px + หนาขึ้น
+ * เพราะมันคือหัวข้อ ควรเด่นกว่าเดิม
+ */
 .eyebrow {
-  font-size: var(--text-xs); font-weight: 600;
-  letter-spacing: .2em; text-transform: uppercase; color: var(--brand);
+  font-size: var(--text-sm); font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase; color: var(--brand);
 }
 .lede { color: var(--muted); font-size: var(--text-lg); line-height: 1.72; }
 

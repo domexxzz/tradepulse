@@ -123,33 +123,6 @@ export function SuiteSection({ suite }: { suite: GuideSuite }) {
           ))}
         </ol>
       </div>
-
-      <div className="mt-8">
-        <h3 className="font-display text-lg font-semibold">การ์ดสรุปไว้เปิดตอนตั้งค่า</h3>
-        <p className="mt-2 text-sm text-muted">
-          กดที่ภาพเพื่อดูขนาดเต็ม แล้วเซฟไว้เปิดคู่กับ TradingView ได้เลย
-        </p>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {suite.cards.map((c) => (
-            <a
-              key={c.src}
-              href={c.src}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="overflow-hidden rounded-2xl border border-border transition-colors hover:border-brand/40"
-            >
-              <Image
-                src={c.src}
-                alt={c.alt}
-                width={c.width}
-                height={c.height}
-                className="h-auto w-full"
-                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-              />
-            </a>
-          ))}
-        </div>
-      </div>
     </section>
   );
 }
