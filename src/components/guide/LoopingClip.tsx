@@ -24,12 +24,17 @@ export function LoopingClip({
   poster,
   label,
   eager = false,
+  width = 736,
+  height = 348,
 }: {
   src: string;
   poster: string;
   label: string;
   /** คลิปที่อยู่เหนือ fold — โหลด metadata ล่วงหน้าเพื่อให้เฟรมแรกขึ้นเร็ว ไม่ต้องรอ observer */
   eager?: boolean;
+  /** ขนาดจริงของไฟล์ ใช้ตั้ง aspect กันภาพกระโดด — ค่าเริ่มต้นคือคลิปในคู่มือทั้งสี่ตัว */
+  width?: number;
+  height?: number;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   /** ผู้ใช้กดหยุดเองหรือเปล่า — แยกจาก paused เพราะ IntersectionObserver ก็สั่งหยุดได้ */
@@ -83,10 +88,13 @@ export function LoopingClip({
   };
 
   return (
-    // กันภาพกระโดด (CLS) ตอนคลิปยังไม่โหลด — ทุกคลิปครอปด้วยสัดส่วน 736:348 เท่ากันหมด
-    // (คลิป Hero เข้ารหัสที่ 1472x696 ซึ่งเป็นสัดส่วนเดียวกัน จึงใช้ค่านี้ร่วมกันได้)
-    // ถ้าเปลี่ยนสัดส่วนตอนเข้ารหัสใหม่ ต้องแก้ตรงนี้ด้วย (ดูหมายเหตุใน config/guide.ts)
-    <div className="relative aspect-[736/348] overflow-hidden rounded-xl bg-black">
+    // กันภาพกระโดด (CLS) ตอนคลิปยังไม่โหลด โดยจองพื้นที่ตามสัดส่วนจริงของไฟล์
+    // เดิมฮาร์ดโค้ด 736:348 ไว้เพราะทุกคลิปครอปมาเท่ากัน แต่คลิป Hero ตัวใหม่
+    // อัดมาที่ 1718x584 ซึ่งกว้างกว่า จึงต้องรับค่าจากคอนฟิกแทน
+    <div
+      className="relative overflow-hidden rounded-xl bg-black"
+      style={{ aspectRatio: `${width} / ${height}` }}
+    >
       <video
         ref={videoRef}
         className="block h-full w-full cursor-pointer object-cover"

@@ -58,7 +58,14 @@ export function Hero() {
             className="pointer-events-none absolute -inset-x-8 -top-6 bottom-6 rounded-[2rem] bg-brand/10 blur-3xl"
           />
           <div className="relative overflow-hidden rounded-2xl border border-border-strong bg-surface p-1.5 shadow-[0_40px_120px_-60px_rgba(0,0,0,1)]">
-            <LoopingClip src={heroClip.src} poster={heroClip.poster} label={heroClip.label} eager />
+            <LoopingClip
+              src={heroClip.src}
+              poster={heroClip.poster}
+              label={heroClip.label}
+              width={heroClip.width}
+              height={heroClip.height}
+              eager
+            />
           </div>
           <figcaption className="mt-3.5 text-center text-xs text-faint">
             คลิปจากกราฟจริงที่รันอินดิเคเตอร์ บันทึกในโหมด Bar Replay ของ TradingView ·
