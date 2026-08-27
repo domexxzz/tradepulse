@@ -19,6 +19,7 @@ import { FAQ } from "@/components/marketing/FAQ";
 import { EmailCapture } from "@/components/marketing/EmailCapture";
 import { Disclaimer } from "@/components/marketing/Disclaimer";
 import { MobileStickyCTA } from "@/components/marketing/MobileStickyCTA";
+import { SideRails } from "@/components/marketing/SideRails";
 import { ChatWidget } from "@/components/marketing/ChatWidget";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { homeJsonLd } from "@/lib/seo";
@@ -77,6 +78,7 @@ export default async function Home() {
       </main>
       <Footer />
       <MobileStickyCTA />
+      <SideRails promo={promo} />
       <ChatWidget />
     </>
   );
