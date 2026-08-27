@@ -4,6 +4,7 @@ import { heroClip } from "@/config/guide";
 import { plans, plansFor } from "@/config/plans";
 import { formatTHB } from "@/lib/utils";
 import { trustItems } from "@/config/features";
+import { tradingView } from "@/config/site";
 import { Icon } from "@/components/common/Icon";
 import { ShieldCheck } from "lucide-react";
 
@@ -69,7 +70,15 @@ export function Hero({ monthlyTHB }: { monthlyTHB?: number }) {
             <Button href="#pricing" size="lg">
               เริ่มใช้งาน · เริ่มต้น {formatTHB(entry.priceTHB)}/เดือน
             </Button>
-            <Button href="#chart" variant="outline" size="lg">
+            {/* ชี้ไป TradingView จริง ไม่ใช่ #chart ในหน้านี้ — section กราฟจริงถูกถอดออกแล้ว
+                ถ้าปล่อยไว้ปุ่มจะกดแล้วไม่ไปไหน และปลายทางนี้ตรงกับข้อความบนปุ่มมากกว่าอยู่แล้ว */}
+            <Button
+              href={tradingView.chartUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              variant="outline"
+              size="lg"
+            >
               ดูการทำงานบน TradingView
             </Button>
           </div>

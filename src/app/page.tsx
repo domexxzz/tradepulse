@@ -3,16 +3,12 @@ import { Navbar } from "@/components/common/Navbar";
 import { Footer } from "@/components/common/Footer";
 import { Hero } from "@/components/marketing/Hero";
 import { MarketTicker } from "@/components/marketing/MarketTicker";
-import { LiveChart } from "@/components/marketing/LiveChart";
 import { ProblemSolution } from "@/components/marketing/ProblemSolution";
 import { HowItWorks } from "@/components/marketing/HowItWorks";
 import { CoreFeatures } from "@/components/marketing/CoreFeatures";
-import { AllFeatures } from "@/components/marketing/AllFeatures";
-import { RealResults } from "@/components/marketing/RealResults";
 import { BacktestStats } from "@/components/marketing/BacktestStats";
 import { TelegramAlerts } from "@/components/marketing/TelegramAlerts";
 import { Community } from "@/components/marketing/Community";
-import { LiveSignals } from "@/components/marketing/LiveSignals";
 import { Reviews } from "@/components/marketing/Reviews";
 import { Pricing } from "@/components/marketing/Pricing";
 import { FAQ } from "@/components/marketing/FAQ";
@@ -60,13 +56,9 @@ export default async function Home() {
         <HowItWorks />
 
         <CoreFeatures />
-        <AllFeatures />
 
-        <LiveChart />
-        <RealResults />
         <BacktestStats />
         <TelegramAlerts />
-        <LiveSignals />
 
         <Community />
         <Reviews />
