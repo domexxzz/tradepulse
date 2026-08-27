@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/Button";
 import { LoopingClip } from "@/components/guide/LoopingClip";
 import { heroClip } from "@/config/guide";
-import { plans } from "@/config/plans";
+import { plans, plansFor } from "@/config/plans";
 import { formatTHB } from "@/lib/utils";
 import { trustItems } from "@/config/features";
 import { Icon } from "@/components/common/Icon";
@@ -14,8 +14,18 @@ import { ShieldCheck } from "lucide-react";
  * ทั้งที่ "ภาพกราฟที่รันสคริปต์จริง" คือหลักฐานชิ้นเดียวที่ทำให้คนเชื่อ
  * จัดใหม่เป็นพาดหัวเต็มความกว้างแล้ววางกราฟใหญ่ใต้ประโยค — คนเห็นของก่อนอ่านคำโฆษณา
  */
-export function Hero() {
-  const cheapest = Math.min(...plans.map((p) => p.perMonthTHB));
+/**
+ * @param monthlyTHB ราคารายเดือนที่ใช้อยู่จริงตอนนี้ (มาจาก getPromoState)
+ *
+ * ⚠️ ต้องรับเข้ามา ห้ามอ่านจากตัวแปร plans ตรง ๆ
+ * plans คือแคตตาล็อก "ราคาเต็ม" ซึ่งในโครงราคา Founding 300 ทุกแพ็กเกจ
+ * เฉลี่ยเท่ากันหมดที่ 1,290/เดือน (จ่ายยาวขึ้นไม่ได้ถูกลง)
+ * ถ้าใช้ค่านั้นตอนโปรยังเปิดอยู่ ปุ่มจะโฆษณา 1,290 ทั้งที่หน้าราคาโชว์ 899
+ * ของเดิมเขียนแบบนั้นได้เพราะแพ็กยาวเคยมีราคาส่วนลดฝังอยู่ในแคตตาล็อก
+ */
+export function Hero({ monthlyTHB }: { monthlyTHB?: number }) {
+  const shown = monthlyTHB === undefined ? plans : plansFor(monthlyTHB);
+  const cheapest = Math.min(...shown.map((p) => p.perMonthTHB));
 
   return (
     <section id="top" className="relative pb-[var(--sp-md)] pt-[var(--sp-hero)]">

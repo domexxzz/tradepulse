@@ -53,7 +53,7 @@ export default async function Home() {
       <Background3D />
       <Navbar />
       <main>
-        <Hero />
+        <Hero monthlyTHB={promo.monthlyTHB} />
         <MarketTicker />
 
         <ProblemSolution />
