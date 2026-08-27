@@ -6,19 +6,21 @@ $ErrorActionPreference = "Continue"
 $bot = "C:\Users\User\OneDrive\Desktop\Bot Tradingview"
 Set-Location $bot
 
-Write-Output "step1 download patch v2"
+Write-Output "step1 download patch"
 curl.exe -s https://quantvisionx.com/botpatch2.py -o botpatch2.py
 
 Write-Output "step2 apply patch"
-python botpatch2.py
+python botpatch2.py "$bot\tlapi.py"
 
 Write-Output "step3 check syntax"
 python -m py_compile tlapi.py
 if ($LASTEXITCODE -ne 0) {
-  Write-Output "SYNTAX_FAIL restoring tlapi.py.bak3"
-  if (Test-Path "tlapi.py.bak3") { Copy-Item "tlapi.py.bak3" "tlapi.py" -Force; Write-Output "restored" }
+  Write-Output "SYNTAX_FAIL restoring tlapi.py.bak_v3"
+  if (Test-Path "tlapi.py.bak_v3") { Copy-Item "tlapi.py.bak_v3" "tlapi.py" -Force; Write-Output "restored" }
   return
 }
+$s = [IO.File]::ReadAllText("$bot\tlapi.py", [Text.Encoding]::UTF8)
+Write-Output ("verify has_V3=" + $s.Contains("ROBUST_DATE_V3"))
 
 Write-Output "step4 restart bridge"
 $c = Get-NetTCPConnection -LocalPort 8787 -State Listen -ErrorAction SilentlyContinue

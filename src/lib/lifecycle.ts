@@ -26,6 +26,9 @@ import { formatTHB } from "@/lib/utils";
 /** เตือนล่วงหน้ากี่วันก่อนหมดอายุ */
 export const EXPIRY_REMINDER_DAYS = 3;
 
+/** ไม่มีวันหมดอายุของแพ็กเกจให้ยึด = ให้เท่าสเปคขั้นต่ำ 1 เดือน (ห้ามให้บอทเพิ่มแบบไม่จำกัดวัน) */
+const DEFAULT_GRANT_DAYS = 30;
+
 const planName = (code: string) => plans.find((p) => p.id === code)?.name ?? code;
 
 /* ------------------------------------------------------------------ */
@@ -168,12 +171,13 @@ export async function syncTradingViewGrant(userId: string, daysOverride?: number
     // ให้สิทธิ์บน TradingView หมดอายุพร้อมแพ็กเกจ เผื่อ cron ฝั่งเราไม่ทำงานสักวัน
     const { sub, isActive } = await getUserSubscription(userId);
     // แอดมินเลือกจำนวนวันเองได้ (daysOverride) — ไม่งั้นยึดตามวันหมดอายุแพ็กเกจ
+    // ไม่มีแพ็กเกจให้ยึดก็ยังต้องส่งจำนวนวันไป ห้ามปล่อยให้บอทเพิ่มแบบไม่มีวันหมดอายุ
     const days =
       daysOverride && daysOverride > 0
         ? daysOverride
         : isActive && sub?.currentPeriodEnd
           ? Math.max(1, daysUntil(sub.currentPeriodEnd))
-          : undefined;
+          : DEFAULT_GRANT_DAYS;
 
     const res = await grantTradingViewAccess(user.tradingViewUsername, days);
 
