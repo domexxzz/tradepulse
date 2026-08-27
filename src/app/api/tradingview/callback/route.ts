@@ -39,21 +39,32 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "invalid json" }, { status: 400 });
   }
 
+  // [TEMP DIAG] บันทึกสิ่งที่บอทส่งมาจริง เพื่อหาสาเหตุที่สิทธิ์ไม่ขึ้นบน TradingView
+  // ปิดบัง secret ไม่ให้หลุดลง log — เอาออกเมื่อวินิจฉัยเสร็จ
+  try {
+    const raw = body as Record<string, unknown> | null;
+    console.log("[tv-callback] payload:", JSON.stringify({ ...raw, secret: raw?.secret ? "<set>" : "<missing>" }));
+  } catch {}
+
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
+    console.log("[tv-callback] REJECT 400 invalid payload:", JSON.stringify(parsed.error.issues));
     return NextResponse.json({ error: "invalid payload" }, { status: 400 });
   }
 
   const { secret, action, username, ok, error } = parsed.data;
   if (!secretMatches(secret)) {
+    console.log("[tv-callback] REJECT 401 secret ไม่ตรงกับ TV_BOT_SECRET บน Vercel");
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  console.log(`[tv-callback] ผ่าน auth — action=${action} username=${username} ok=${ok} error=${error ?? "-"}`);
 
   const user = await prisma.user.findFirst({
     where: { tradingViewUsername: { equals: username, mode: "insensitive" } },
     select: { id: true, name: true, email: true },
   });
   if (!user) {
+    console.log(`[tv-callback] REJECT 404 ไม่พบสมาชิกที่ใช้ tradingViewUsername="${username}"`);
     return NextResponse.json({ error: "ไม่พบสมาชิกที่ใช้ username นี้" }, { status: 404 });
   }
 
@@ -62,6 +73,7 @@ export async function POST(req: Request) {
     orderBy: { createdAt: "desc" },
   });
   if (!grant) {
+    console.log(`[tv-callback] REJECT 404 ไม่พบคิวสิทธิ์ของ userId=${user.id}`);
     return NextResponse.json({ error: "ไม่พบคิวสิทธิ์ของสมาชิกรายนี้" }, { status: 404 });
   }
 
