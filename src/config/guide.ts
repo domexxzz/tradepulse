@@ -237,10 +237,10 @@ const gold: GuideSuite = {
   bestFor: "Scalping / Intraday ตามเทรนด์",
   timeframe: "กราฟ 1–5 นาที · bias จาก HTF 4 ชั่วโมง",
   chart: {
-    src: "/images/charts/gold-suite.webp",
-    alt: "หน้าชาร์ต XAUUSD ที่เปิดชุด Gold Booster และ Gold Core แสดงป้าย BUY/SELL, เส้น TP/SL 500 จุด, เส้น Supertrend และ EMA200",
+    src: "/images/charts/gold-suite-snap.webp",
+    alt: "หน้าชาร์ต XAUUSD ไทม์เฟรม 1 ชั่วโมง ที่เปิดชุด Gold Booster และ Gold Core แสดงเส้น Supertrend แบบขั้นบันได, เส้น EMA200, ป้าย BUY และเส้น TP/SL คงที่ 500 จุด พร้อม BOS และ CHoCH/MSS",
     width: 1800,
-    height: 820,
+    height: 734,
   },
   videos: [
     {
