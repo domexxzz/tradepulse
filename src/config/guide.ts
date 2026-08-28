@@ -547,10 +547,23 @@ export const guideSuites: GuideSuite[] = [smc, gold, ict];
  * ffmpeg -ss 95 -t 50 -i <ต้นฉบับ> \
  *   -vf "crop=736:348:0:96,scale=1472:696:flags=lanczos,unsharp=5:5:0.8:5:5:0.0" \
  *   -c:v libx264 -preset slow -crf 30 -an -movflags +faststart
+ *
+ * รอบสอง (-v2) กดพื้นหลังให้เข้มเท่าภาพนิ่งทั้งเว็บ — bg 15 -> 8 เท่ากับภาพชุดอื่น
+ * เข้ารหัสทับของที่ผ่านการบีบมาแล้ว จึงลด crf จาก 30 เป็น 26 กันไม่ให้ artifact
+ * ในโทนมืดทับซ้อนกันจนเห็น (เส้นโค้งไปกดช่วงเดียวกับที่ artifact ของ h264 อยู่พอดี)
+ * ผลลัพธ์ไฟล์เล็กลงด้วยซ้ำ 3.3 MB -> 2.8 MB เพราะภาพเข้มขึ้นบีบได้ดีกว่า
+ * poster ปรับด้วยเส้นโค้งเดียวกันจากไฟล์ภาพเดิม ไม่ได้ดึงเฟรมใหม่ เฟรมจึงตรงกันแน่นอน
+ *
+ * ffmpeg -i qvx-hero.mp4 \
+ *   -vf "curves=all='0/0 0.06/0.034 0.25/0.24 1/1'" \
+ *   -c:v libx264 -preset slow -crf 26 -pix_fmt yuv420p -an -movflags +faststart \
+ *   qvx-hero-v2.mp4
+ *
+ * (!) เปลี่ยนชื่อไฟล์ทุกครั้งที่เข้ารหัสใหม่ — เบราว์เซอร์กับ CDN แคชตาม URL
  */
 export const heroClip: GuideVideo = {
-  src: "/videos/qvx-hero.mp4",
-  poster: "/images/videos/qvx-hero.webp",
+  src: "/videos/qvx-hero-v2.mp4",
+  poster: "/images/videos/qvx-hero-v2.webp",
   label: "อินดิเคเตอร์ QVX ทำงานบนกราฟ XAUUSD — ป้าย BUY/SELL, โซน และโครงสร้างตลาด",
   duration: "0:45",
   width: 1718,
