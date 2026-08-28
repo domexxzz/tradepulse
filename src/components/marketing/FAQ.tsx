@@ -11,7 +11,7 @@ export function FAQ() {
           {faqs.map((f) => (
             <details
               key={f.q}
-              className="group card-surface rounded-xl px-5 py-4 [&_summary::-webkit-details-marker]:hidden"
+              className="group card-frame rounded-xl px-5 py-4 [&_summary::-webkit-details-marker]:hidden"
             >
               <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-medium">
                 <span>{f.q}</span>

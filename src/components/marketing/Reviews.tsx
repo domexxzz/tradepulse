@@ -73,7 +73,7 @@ function ReviewCard({ review }: { review: PublicReview }) {
   const planName = plans.find((p) => p.id === review.plan)?.name;
 
   return (
-    <figure className="flex h-full flex-col rounded-2xl border border-border bg-background/40 p-5">
+    <figure className="card-frame flex h-full flex-col rounded-2xl p-5">
       <div className="flex" aria-label={`ให้ ${review.rating} จาก 5 ดาว`}>
         {Array.from({ length: 5 }).map((_, i) => (
           <Star

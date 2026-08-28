@@ -43,7 +43,7 @@ export function Community() {
         </div>
 
         <div className="mx-auto w-full max-w-sm">
-          <div className="card-surface rounded-2xl p-6">
+          <div className="card-frame rounded-2xl p-6">
             <h3 className="text-sm font-semibold">สิทธิ์การเข้าถึงในเซิร์ฟเวอร์</h3>
 
             <div className="mt-4 space-y-3">

@@ -16,7 +16,7 @@ export function EmailCapture() {
   return (
     <section id="newsletter" className="section-md">
       <div className="container-x">
-        <div className="mx-auto max-w-3xl rounded-3xl border border-border bg-surface p-8 sm:p-10">
+        <div className="card-frame mx-auto max-w-3xl rounded-3xl p-8 sm:p-10">
           {state.ok ? (
             <div className="text-center">
               <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-brand/10 text-brand">

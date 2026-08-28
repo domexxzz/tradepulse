@@ -17,9 +17,15 @@
   --surface-2: #111a14;
   --surface-3: #16211a;
 
-  /* ---- เส้น: บางมากเป็นค่าเริ่มต้น เข้มขึ้นเมื่อต้องการแบ่งจริง ---- */
-  --border: #18231b;
-  --border-strong: #24332a;
+  /* ---- เส้น: บางมากเป็นค่าเริ่มต้น เข้มขึ้นเมื่อต้องการแบ่งจริง ----
+     ค่าเดิม #18231b / #24332a จางจนการ์ดกลืนกับพื้น (ฟีดแบคลูกค้ารอบ V4)
+     ดันขึ้นและเอียงไปทางเขียวมากขึ้น แต่ยังเป็นเขียวหม่น ไม่ใช่นีออน
+     ⚠️ --border ถูกใช้ทั้ง `* { border-color }` และเส้นคั่นทั้งเว็บ
+     ดันแรงกว่านี้แล้วหน้าจะรก เพราะเส้นทุกเส้นเด้งขึ้นมาพร้อมกัน */
+  --border: #1c2f21;
+  --border-strong: #2b4a32;
+  /* ขอบเฉพาะการ์ด — เขียวกว่าเส้นทั่วไปหนึ่งขั้น ใช้ผ่าน .card-frame เท่านั้น */
+  --border-card: color-mix(in srgb, var(--brand) 15%, #2b4a32);
 
   /* ---- ตัวอักษร: ขาวอมเขียวนิด ๆ ให้เข้ากับพื้น ---- */
   --foreground: #eef4ec;
@@ -63,6 +69,7 @@
   --color-surface-3: var(--surface-3);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
+  --color-border-card: var(--border-card);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-faint: var(--faint);
@@ -169,6 +176,115 @@ body {
    ============================================================ */
 .card-surface { background: var(--surface); border: 1px solid var(--border); }
 .card-soft { background: var(--surface-2); border: 1px solid var(--border); }
+
+/**
+ * กรอบการ์ดมาตรฐานของทั้งเว็บ (ฟีดแบคลูกค้ารอบ V4)
+ *
+ * โจทย์: "เส้นขอบสีเขียวที่ตัดกับพื้นหลังชัดขึ้น แต่แสงต้องนุ่ม ไม่เป็น Neon/Glow แรง
+ * และเพิ่มลาย/Layer ภายในกรอบแบบบาง ๆ ให้ดูมีมิติและพรีเมียม
+ * โดยไม่ให้ลายแย่งเนื้อหาหรือกราฟ"
+ *
+ * แปลเป็นค่าจริงสามชั้น:
+ *   1. ขอบ  = --border-card (เขียวกว่าเส้นทั่วไป แต่ยังหม่น)
+ *   2. แสง  = เงาดำนุ่ม + วงเขียวจาง ๆ ที่ alpha .05 — ไม่ใช่ glow
+ *             (glow แบบนีออนต้อง alpha .3+ ซึ่งลูกค้าบอกว่าไม่เอา)
+ *   3. ลาย  = ไล่แสงมุมบนซ้าย + เส้นทแยงถี่ alpha .016
+ *             ต่ำพอที่กราฟกับตัวหนังสือยังชนะสายตาเสมอ
+ *
+ * ⚠️ ลายต้องอยู่ "ใต้" เนื้อหา — ::before ที่เป็น absolute จะพ่นทับเนื้อหา
+ * ถ้าไม่มี z-index:-1 คู่กับ isolation:isolate ที่ตัวการ์ด
+ * (pointer-events:none กันแค่การคลิก ไม่ได้กันการบัง)
+ */
+.card-frame {
+  position: relative;
+  isolation: isolate;
+  background: var(--surface);
+  border: 1px solid var(--border-card);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .035),
+    0 18px 44px -34px rgba(0, 0, 0, .95),
+    0 0 26px -14px rgba(110, 227, 74, .10);
+}
+.card-frame::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(125% 85% at 0% 0%, rgba(110, 227, 74, .05), transparent 58%),
+    repeating-linear-gradient(115deg, rgba(255, 255, 255, .016) 0 1px, transparent 1px 7px);
+}
+
+/* การ์ดพื้นเข้มขึ้นหนึ่งขั้น — ใช้กับการ์ดที่ซ้อนอยู่ในกรอบอื่นอีกที */
+.card-frame-soft { background: var(--surface-2); }
+
+/**
+ * บล็อกโปร Founding 300 (PromoCard)
+ *
+ * พื้นเขียวเข้มกว่าการ์ดทั่วไปหนึ่งขั้น เพื่อให้แยกออกจากการ์ดข้าง ๆ ได้
+ * โดยไม่ต้องเพิ่มความสว่างของขอบจนกลายเป็นนีออน
+ */
+.promo-offer {
+  background:
+    radial-gradient(130% 90% at 50% -10%, rgba(110, 227, 74, .10), transparent 60%),
+    linear-gradient(170deg, #101c12 0%, #0b130d 62%, #080d09 100%);
+  border-color: color-mix(in srgb, var(--brand) 30%, var(--border-card));
+}
+
+/* ป้ายหัวบล็อก — พื้นเขียวทึบเล็กน้อย ตัวอักษรเขียวสว่าง */
+.promo-offer__badge {
+  background: linear-gradient(180deg, rgba(110, 227, 74, .20), rgba(110, 227, 74, .10));
+  border: 1px solid color-mix(in srgb, var(--brand) 42%, transparent);
+  color: var(--brand-strong);
+  text-transform: uppercase;
+}
+
+/* กล่องนับสิทธิ์ และกล่องสิทธิประโยชน์ — พื้นเข้มกว่าการ์ดแม่ ให้ดูเป็นชั้นซ้อน */
+.promo-offer__seats,
+.promo-offer__perks {
+  background: rgba(4, 8, 5, .55);
+  border: 1px solid color-mix(in srgb, var(--brand) 16%, var(--border));
+}
+
+/**
+ * แถบสิทธิ์แบบขีด — อ่านเป็น "จำนวนที่นั่ง" ได้ทันที ต่างจากแถบทึบที่บอกแค่เปอร์เซ็นต์
+ * ขีดที่ยังไม่ติดไม่ได้ซ่อน แต่หรี่ลง เพื่อให้เห็นว่าทั้งหมดมีกี่ขีด
+ */
+.promo-offer__bar { display: flex; gap: 3px; }
+.promo-offer__bar > span {
+  flex: 1;
+  height: 14px;
+  border-radius: 3px;
+  background: rgba(110, 227, 74, .08);
+  box-shadow: inset 0 0 0 1px rgba(110, 227, 74, .10);
+}
+.promo-offer__bar > span[data-lit] {
+  background: linear-gradient(180deg, var(--brand-strong), var(--brand-deep));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .28);
+}
+
+/* แพ็กเกจที่แนะนำ — เด่นด้วยขอบเขียวกว่าและพื้นสว่างขึ้น ไม่ใช้เงาเรืองแรง */
+.plan-card-featured {
+  background: var(--surface-2);
+  border-color: color-mix(in srgb, var(--brand) 38%, var(--border-card));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .05),
+    0 24px 60px -38px rgba(0, 0, 0, .95),
+    0 0 40px -16px rgba(110, 227, 74, .22);
+}
+
+/* การ์ดที่กดได้ — ขอบเขียวขึ้นตอนชี้ ไม่ใช่เรืองแสง */
+.card-frame-link { transition: border-color .25s ease, box-shadow .25s ease, transform .25s ease; }
+.card-frame-link:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--brand) 34%, var(--border-card));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .05),
+    0 22px 52px -34px rgba(0, 0, 0, .95),
+    0 0 34px -12px rgba(110, 227, 74, .18);
+}
 
 /* การ์ดที่ยกขึ้นมาเมื่อชี้ — ใช้เฉพาะการ์ดที่กดได้ */
 .card-lift { transition: border-color .25s ease, transform .25s ease, background-color .25s ease; }

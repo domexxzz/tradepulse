@@ -58,7 +58,7 @@ export default async function GuidePage() {
       <h1 className="mt-4 font-display text-3xl font-bold sm:text-4xl">{title}</h1>
       <p className="mt-4 max-w-3xl leading-relaxed text-muted">{description}</p>
 
-      <p className="mt-6 flex gap-3 rounded-xl border border-border bg-surface/60 p-4 text-sm leading-relaxed text-muted">
+      <p className="card-frame mt-6 flex gap-3 rounded-xl p-4 text-sm leading-relaxed text-muted">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
         <span>{mediaNote}</span>
       </p>
@@ -105,7 +105,7 @@ export default async function GuidePage() {
           {sharedCautions.map((c) => (
             <li
               key={c}
-              className="rounded-xl border border-border bg-surface/60 px-4 py-3 text-sm leading-relaxed text-foreground/85"
+              className="card-frame rounded-xl px-4 py-3 text-sm leading-relaxed text-foreground/85"
             >
               {c}
             </li>

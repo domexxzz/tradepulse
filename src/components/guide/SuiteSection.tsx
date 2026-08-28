@@ -28,7 +28,7 @@ export function SuiteSection({ suite }: { suite: GuideSuite }) {
         </p>
       </header>
 
-      <figure className="mt-8 overflow-hidden rounded-2xl border border-border bg-surface p-1.5">
+      <figure className="card-frame mt-8 overflow-hidden rounded-2xl p-1.5">
         <Image
           src={suite.chart.src}
           alt={suite.chart.alt}
@@ -46,7 +46,7 @@ export function SuiteSection({ suite }: { suite: GuideSuite }) {
         {suite.videos.map((v) => (
           <figure
             key={v.src}
-            className="overflow-hidden rounded-2xl border border-border bg-surface p-1.5"
+            className="card-frame overflow-hidden rounded-2xl p-1.5"
           >
             <LoopingClip src={v.src} poster={v.poster} label={v.label} />
             <figcaption className="flex items-center justify-between gap-2 px-3 py-2 text-xs text-muted">
@@ -77,7 +77,7 @@ export function SuiteSection({ suite }: { suite: GuideSuite }) {
         </h3>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           {suite.settings.map((g) => (
-            <div key={g.group} className="rounded-2xl border border-border bg-surface/60 p-5">
+            <div key={g.group} className="card-frame rounded-2xl p-5">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-brand">{g.group}</p>
               <ul className="mt-3 space-y-1.5">
                 {g.items.map((item) => (
@@ -110,7 +110,7 @@ export function SuiteSection({ suite }: { suite: GuideSuite }) {
         />
       </div>
 
-      <div className="mt-8 rounded-2xl border border-border bg-surface/60 p-6">
+      <div className="card-frame mt-8 rounded-2xl p-6">
         <h3 className="font-display text-lg font-semibold">วิธีใช้ให้คุ้มที่สุด</h3>
         <ol className="mt-4 space-y-3">
           {suite.steps.map((s, i) => (
@@ -145,7 +145,7 @@ function ListCard({
   const dot = tone === "warn" ? "bg-amber-400" : "bg-brand";
 
   return (
-    <div className="rounded-2xl border border-border bg-surface/60 p-5">
+    <div className="card-frame rounded-2xl p-5">
       <h3 className="flex items-center gap-2 font-display text-base font-semibold">
         <span className={accent}>{icon}</span>
         {title}

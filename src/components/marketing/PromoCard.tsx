@@ -1,0 +1,174 @@
+import { CheckCircle2, ChevronRight, Crown, Flame, Info } from "lucide-react";
+import { formatTHB } from "@/lib/utils";
+import { MONTHLY_PROMO, MONTHLY_REGULAR } from "@/config/plans";
+import type { PromoState } from "@/lib/pricing";
+
+/** จำนวนขีดในแถบสิทธิ์ — แบ่งเป็นขีดเพราะอ่านเป็น "จำนวนที่นั่ง" ง่ายกว่าแถบทึบ */
+const SEGMENTS = 20;
+
+/**
+ * สิ่งที่ราคา Founding ให้จริง — ทุกข้อตรวจสอบได้จากโค้ด ไม่ใช่คำโฆษณา
+ *   ข้อ 1 = lockPromoPriceIfEligible() ใน lib/pricing.ts ที่เขียน User.lockedMonthlyTHB
+ *   ข้อ 2 = planIncludes ใน config/plans.ts
+ *   ข้อ 3 = getPromoState() ที่สลับไป MONTHLY_REGULAR เมื่อที่นั่งหมด
+ */
+const PERKS: string[] = [
+  `จ่ายครั้งแรกแล้วราคาถูกล็อกทันที ต่ออายุกี่รอบก็ ${formatTHB(MONTHLY_PROMO)} เท่าเดิม`,
+  "ได้ฟีเจอร์ครบเท่าราคาเต็ม พร้อมอัปเดตใหม่ตลอดอายุสมาชิก",
+  `ครบ 300 สิทธิ์เมื่อไหร่ ราคากลับเป็น ${formatTHB(MONTHLY_REGULAR)}/เดือน สำหรับคนที่สมัครหลังจากนั้น`,
+];
+
+interface Copy {
+  badge: string;
+  title: string;
+  subtitle: string;
+  perksTitle: string;
+  detailsLabel: string;
+  detailsHref: string;
+}
+
+/**
+ * ข้อความสองชุด ต่างกันที่ "อยู่ตรงไหนของเส้นทางลูกค้า"
+ *   hero    — ยังไม่รู้ราคา หน้าที่คือสะกิดให้เลื่อนลงไปดูตารางราคา
+ *   pricing — เห็นตารางแล้ว หน้าที่คือเทียบราคาปกติกับราคาพิเศษให้ชัด
+ */
+const COPY: Record<"hero" | "pricing", Copy> = {
+  hero: {
+    badge: "EXCLUSIVE OFFER",
+    title: "300 ท่านแรกเท่านั้น",
+    subtitle: "ราคาโปรโมชั่น จำกัดสิทธิ์",
+    perksTitle: "สิทธิ์ราคาพิเศษนี้",
+    detailsLabel: "รายละเอียดโปรโมชั่นเพิ่มเติม",
+    detailsHref: "#pricing",
+  },
+  pricing: {
+    badge: "FOUNDING 300",
+    title: "สิทธิ์ราคาเปิดตัวสำหรับ 300 สมาชิกแรก",
+    subtitle: "",
+    perksTitle: "สิทธิ์ Founding 300",
+    detailsLabel: "ดูเงื่อนไขโปรโมชั่นทั้งหมด",
+    detailsHref: "#faq",
+  },
+};
+
+/**
+ * บล็อกโปร Founding 300 — ใช้ทั้งบนหัวหน้าเว็บและในหน้าราคา
+ *
+ * ตัวเลขที่นั่งมาจากยอดสมาชิกที่จ่ายเงินจริง (getPromoState) ไม่ใช่ตัวเลขปลอม
+ * ที่ตั้งไว้ให้ดูเร่งรีบ — เต็มแล้วก็บอกตามตรงว่าเต็ม
+ *
+ * ⚠️ แถบขีดแสดง "สิทธิ์ที่เหลือ" ไม่ใช่ "สิทธิ์ที่ใช้ไป"
+ * เพราะป้ายข้างบนเขียนว่า "เหลือสิทธิ์เพียง N" ถ้าแถบวิ่งสวนกับป้าย คนอ่านจะงง
+ * (aria-label กำกับไว้ให้ screen reader อ่านได้ตรงกับที่ตาเห็น)
+ */
+export function PromoCard({
+  promo,
+  variant = "pricing",
+  className = "",
+}: {
+  promo: PromoState;
+  variant?: "hero" | "pricing";
+  className?: string;
+}) {
+  if (!promo.active) {
+    return (
+      <div
+        className={`card-frame mx-auto flex w-fit max-w-full items-center gap-2.5 rounded-2xl px-5 py-3.5 text-sm text-muted ${className}`}
+      >
+        <CheckCircle2 className="h-4 w-4 shrink-0 text-brand" />
+        โปรเปิดตัว {promo.seats} ที่นั่งแรกเต็มแล้ว — ราคาปัจจุบัน{" "}
+        <b className="text-foreground">{formatTHB(MONTHLY_REGULAR)}/เดือน</b>
+      </div>
+    );
+  }
+
+  const copy = COPY[variant];
+  const BadgeIcon = variant === "hero" ? Flame : Crown;
+  const lit = Math.max(1, Math.round((promo.remaining / promo.seats) * SEGMENTS));
+
+  return (
+    <div className={`promo-offer card-frame mx-auto w-full max-w-xl rounded-3xl px-5 pb-6 pt-7 sm:px-7 ${className}`}>
+      <p className="promo-offer__badge mx-auto flex w-fit items-center gap-1.5 rounded-full px-3.5 py-1 text-[11px] font-bold tracking-wide">
+        <BadgeIcon className="h-3.5 w-3.5 shrink-0" />
+        {copy.badge}
+      </p>
+
+      <h3 className="display mt-3.5 text-center text-[length:var(--display-sm)]">{copy.title}</h3>
+      {copy.subtitle && (
+        <p className="mt-1 text-center text-sm font-semibold text-brand">{copy.subtitle}</p>
+      )}
+
+      {/* เทียบราคา — เฉพาะในหน้าราคา บนหัวหน้าเว็บมีป้ายราคาของการ์ดอยู่แล้ว ใส่ซ้ำจะรก
+
+          ใช้ grid สองแถวแทนกล่องคู่ที่วางเรียงกัน เพราะตัวเลขสองฝั่งคนละขนาด
+          ถ้าเรียงเป็นกล่องคู่แล้วจัด items-end ป้ายหัวจะเหลื่อมกันตามความสูงของราคา
+          แยกเป็นแถว "ป้าย" กับแถว "ราคา" ป้ายจึงอยู่ระดับเดียวกันเสมอ
+
+          ⚠️ ห้ามวางคอมเมนต์ JSX ไว้ข้างใน `cond && ( ... )` เพราะมันนับเป็น
+          ลูกตัวที่สอง แล้ว JSX รับได้แค่ตัวเดียว (TS2657) */}
+      {variant === "pricing" && (
+        <div className="mx-auto mt-5 grid w-fit grid-cols-2 items-end gap-x-8 justify-items-center">
+          <p className="text-[11px] text-faint">ราคาปกติ</p>
+          <p className="text-[11px] font-medium text-brand">ราคาพิเศษ</p>
+          <p className="tnum mt-1 text-sm text-faint line-through">
+            {formatTHB(MONTHLY_REGULAR)}/เดือน
+          </p>
+          <p className="mt-1 flex items-baseline gap-1">
+            <span className="display tnum text-gradient-brand text-[length:var(--display-sm)]">
+              {formatTHB(MONTHLY_PROMO)}
+            </span>
+            <span className="text-xs text-muted">/เดือน</span>
+          </p>
+        </div>
+      )}
+
+      <div className="promo-offer__seats mt-5 rounded-2xl px-4 py-3.5">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+          <span className="text-sm text-muted">เหลือสิทธิ์เพียง</span>
+          <span className="flex items-baseline gap-1.5">
+            <b className="display tnum text-brand text-[length:var(--display-sm)]">
+              {promo.remaining}
+            </b>
+            <span className="tnum text-sm text-muted">/ {promo.seats} สิทธิ์</span>
+          </span>
+        </div>
+
+        <div
+          className="promo-offer__bar mt-2.5"
+          role="progressbar"
+          aria-valuenow={promo.remaining}
+          aria-valuemin={0}
+          aria-valuemax={promo.seats}
+          aria-label={`เหลือสิทธิ์ราคาพิเศษ ${promo.remaining} จาก ${promo.seats} ที่นั่ง`}
+        >
+          {Array.from({ length: SEGMENTS }, (_, i) => (
+            <span key={i} data-lit={i < lit ? "" : undefined} />
+          ))}
+        </div>
+      </div>
+
+      <div className="promo-offer__perks mt-4 rounded-2xl px-4 py-3.5">
+        <p className="flex items-center gap-2 text-[13px] font-semibold">
+          <Info className="h-3.5 w-3.5 shrink-0 text-brand" />
+          {copy.perksTitle}
+        </p>
+        <ul className="mt-2 space-y-1.5">
+          {PERKS.map((perk) => (
+            <li key={perk} className="flex gap-2 text-xs leading-relaxed text-muted">
+              <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-brand" aria-hidden />
+              {perk}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <a
+        href={copy.detailsHref}
+        className="mt-4 flex items-center justify-center gap-1 text-[13px] font-medium text-brand transition-colors hover:text-brand-strong"
+      >
+        {copy.detailsLabel}
+        <ChevronRight className="h-3.5 w-3.5" />
+      </a>
+    </div>
+  );
+}

@@ -32,7 +32,7 @@ export function RealResults() {
             <Link
               key={s.id}
               href={`/guide#${s.id}`}
-              className="group overflow-hidden rounded-2xl border border-border bg-surface/60 transition-colors hover:border-brand/40"
+              className="group card-frame card-frame-link overflow-hidden rounded-2xl"
             >
               <Image
                 src={s.chart.src}

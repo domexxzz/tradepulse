@@ -30,7 +30,7 @@ export function Demo() {
         />
 
         <div className="mt-10 grid gap-8 lg:grid-cols-[1.6fr_1fr]">
-          <div className="card-soft rounded-2xl p-4">
+          <div className="card-frame card-frame-soft rounded-2xl p-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               {hasTabs ? (
                 <div className="inline-flex rounded-full border border-border bg-background p-1" role="group" aria-label="เลือกตัวอย่างกราฟ">

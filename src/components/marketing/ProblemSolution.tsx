@@ -12,7 +12,7 @@ export function ProblemSolution() {
         />
         <div className="mt-12 grid gap-5 md:grid-cols-3">
           {problems.map((p) => (
-            <div key={p.problem} className="card-surface rounded-2xl p-6">
+            <div key={p.problem} className="card-frame rounded-2xl p-6">
               <div className="text-sm font-semibold text-down">ปัญหา</div>
               <p className="mt-1.5 font-medium">{p.problem}</p>
               <div className="my-4 flex items-center gap-2 text-brand">

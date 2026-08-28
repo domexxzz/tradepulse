@@ -14,7 +14,7 @@ export function HowItWorks() {
         />
         <ol className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {steps.map((s) => (
-            <li key={s.no} className="card-soft rounded-2xl p-6">
+            <li key={s.no} className="card-frame card-frame-soft rounded-2xl p-6">
               <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand font-display text-lg font-bold text-brand-ink">
                 {s.no}
               </span>

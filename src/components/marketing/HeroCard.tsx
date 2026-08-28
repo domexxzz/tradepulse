@@ -1,7 +1,9 @@
 import { ShieldCheck } from "lucide-react";
 import { Icon } from "@/components/common/Icon";
 import { ProductCard } from "@/components/marketing/ProductCard";
+import { PromoCard } from "@/components/marketing/PromoCard";
 import { trustItems } from "@/config/features";
+import type { PromoState } from "@/lib/pricing";
 
 /**
  * หัวหน้าเว็บ — การ์ดสรุปสินค้าใบเดียว แทน Hero เลย์เอาท์เดิม
@@ -18,7 +20,7 @@ import { trustItems } from "@/config/features";
  * ⚠️ Hero.tsx ยังอยู่ในโปรเจกต์ ไม่ได้ลบทิ้ง เผื่อจะย้อนกลับไปใช้เลย์เอาท์เดิม
  * ย้อนกลับ: เปลี่ยน <HeroCard /> ใน app/page.tsx กลับเป็น <Hero monthlyTHB={...} />
  */
-export function HeroCard({ monthlyTHB }: { monthlyTHB: number }) {
+export function HeroCard({ promo }: { promo: PromoState }) {
   // ระยะบนน้อยกว่า Hero เดิม (--sp-hero = 152px บนจอกว้าง)
   // เพราะการ์ดมี padding ในตัวอีก 48px ซ้อนกันแล้วกลายเป็นช่องว่าง 200px
   // ที่อ่านเป็น "หน้าเว็บโหลดไม่ครบ" มากกว่าพื้นที่หายใจ
@@ -41,7 +43,11 @@ export function HeroCard({ monthlyTHB }: { monthlyTHB: number }) {
       </div>
 
       <div className="container-x">
-        <ProductCard monthlyTHB={monthlyTHB} asHero className="rise rise-1" />
+        <ProductCard monthlyTHB={promo.monthlyTHB} asHero className="rise rise-1" />
+
+        {/* บล็อกโปร Founding 300 — ลูกค้าขอให้มีตั้งแต่หน้าจอแรก ไม่ต้องเลื่อนไปหน้าราคาก่อน
+            ลิงก์ "รายละเอียด" ในบล็อกนี้พาไป #pricing ตามที่สั่งไว้ */}
+        <PromoCard promo={promo} variant="hero" className="rise rise-2 mt-10" />
 
         {/* จุดเด่นสั้น ๆ — อยู่นอกการ์ด ไม่ให้แย่งความสนใจจากพาดหัวและราคา */}
         <ul className="mx-auto mt-12 flex max-w-4xl flex-wrap items-center justify-center gap-x-8 gap-y-3">

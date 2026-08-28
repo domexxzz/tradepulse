@@ -20,7 +20,7 @@ export function BacktestStats() {
         />
         <div className="mx-auto mt-10 grid max-w-4xl grid-cols-2 gap-4 sm:grid-cols-3">
           {shown.map((m) => (
-            <div key={m.label} className="card-surface rounded-2xl p-6 text-center">
+            <div key={m.label} className="card-frame rounded-2xl p-6 text-center">
               <div className={`font-display text-3xl font-bold ${m.good ? "text-gradient-brand" : ""}`}>
                 {m.value}
                 {m.suffix && <span className="text-xl">{m.suffix}</span>}

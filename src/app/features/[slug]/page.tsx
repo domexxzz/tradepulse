@@ -122,7 +122,7 @@ export default async function FeatureDetailPage({
         </div>
       )}
 
-      <section className="mt-8 rounded-2xl border border-border bg-surface p-6">
+      <section className="card-frame mt-8 rounded-2xl p-6">
         <h2 className="font-display text-lg font-semibold">วิธีใช้งาน</h2>
         <p className="mt-3 leading-relaxed text-foreground/85">{feature.howto}</p>
       </section>
@@ -140,7 +140,7 @@ export default async function FeatureDetailPage({
               <Link
                 key={f.slug}
                 href={`/features/${f.slug}`}
-                className="group rounded-2xl border border-border bg-surface/60 p-4 transition-colors hover:border-brand/40"
+                className="group card-frame card-frame-link rounded-2xl p-4"
               >
                 <span className="grid h-9 w-9 place-items-center rounded-lg bg-brand/10 text-brand">
                   <Icon name={f.icon} className="h-[18px] w-[18px]" />

@@ -130,7 +130,7 @@ export function ProductCard({
 
         {/* กราฟจริงที่รันอินดิเคเตอร์ — กรอบบางซ้อนสองชั้นให้ดูเป็นหน้าจอ ไม่ใช่ภาพแปะ */}
         <figure className="mt-8">
-          <div className="overflow-hidden rounded-2xl border border-border-strong bg-surface p-1 shadow-[0_30px_80px_-50px_rgba(0,0,0,1)]">
+          <div className="card-frame overflow-hidden rounded-2xl p-1">
             {asHero ? (
               <LoopingClip
                 src={heroClip.src}

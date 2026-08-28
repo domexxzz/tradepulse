@@ -30,7 +30,7 @@ function FeatureList({ items }: { items: typeof coreFeatures }) {
         <Link
           key={f.slug}
           href={`/features/${f.slug}`}
-          className="group flex flex-col rounded-2xl border border-border bg-surface/60 p-5 transition-colors hover:border-brand/40"
+          className="group card-frame card-frame-link flex flex-col rounded-2xl p-5"
         >
           <span className="grid h-10 w-10 place-items-center rounded-lg bg-brand/10 text-brand">
             <Icon name={f.icon} className="h-5 w-5" />

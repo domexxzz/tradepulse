@@ -13,7 +13,7 @@ export function FeatureCard({ feature }: { feature: Feature }) {
   const { title, slug, desc, howto, icon, image } = feature;
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-surface/60 transition-colors hover:border-brand/40">
+    <article className="group card-frame card-frame-link flex flex-col overflow-hidden rounded-2xl">
       {/* ช่องภาพ */}
       <div className="relative aspect-[16/10] overflow-hidden border-b border-border">
         {image ? (
