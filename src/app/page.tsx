@@ -1,7 +1,7 @@
 import { Background3D } from "@/components/common/Background3D";
 import { Navbar } from "@/components/common/Navbar";
 import { Footer } from "@/components/common/Footer";
-import { Hero } from "@/components/marketing/Hero";
+import { HeroCard } from "@/components/marketing/HeroCard";
 import { MarketTicker } from "@/components/marketing/MarketTicker";
 import { ProblemSolution } from "@/components/marketing/ProblemSolution";
 import { HowItWorks } from "@/components/marketing/HowItWorks";
@@ -11,7 +11,6 @@ import { BacktestStats } from "@/components/marketing/BacktestStats";
 import { TelegramAlerts } from "@/components/marketing/TelegramAlerts";
 import { Community } from "@/components/marketing/Community";
 import { Reviews } from "@/components/marketing/Reviews";
-import { ProductCard } from "@/components/marketing/ProductCard";
 import { Pricing } from "@/components/marketing/Pricing";
 import { FAQ } from "@/components/marketing/FAQ";
 import { EmailCapture } from "@/components/marketing/EmailCapture";
@@ -31,7 +30,7 @@ export const revalidate = 300;
 /**
  * ลำดับของหน้าแรก — เล่าเป็นเรื่องเดียว ไม่ใช่กองรวมกัน
  *
- *   เห็นของ (Hero + กราฟจริง)
+ *   เห็นของ + รู้ราคา (การ์ดสรุปสินค้า = หัวหน้าเว็บ)
  *   → ราคาวิ่งอยู่จริง (ticker)
  *   → ทำไมต้องใช้ (ปัญหา → วิธีแก้ → ใช้ยังไง)
  *   → มีอะไรบ้าง (ฟีเจอร์หลัก → เครื่องมือเสริม)
@@ -40,7 +39,10 @@ export const revalidate = 300;
  *   → ตัดสินใจ (ราคา → คำถาม → รับข่าวสาร)
  *
  * ตัดออกไป 4 อัน: การ์ดกราฟข้อมูลสมมติ, เดโมที่ซ้ำกับกราฟสด,
- * แถบจุดเด่น (ย้ายไปอยู่ใน Hero) และรายการสิทธิประโยชน์ที่ซ้ำกับหน้าราคา
+ * แถบจุดเด่น (ย้ายไปอยู่ใน HeroCard) และรายการสิทธิประโยชน์ที่ซ้ำกับหน้าราคา
+ *
+ * หัวหน้าเว็บเป็นการ์ดสรุปสินค้าใบเดียวกับหน้า /card — คำอธิบาย คลิปกราฟ และราคา
+ * อยู่ในกรอบเดียว เลย์เอาท์ Hero เดิมยังอยู่ที่ marketing/Hero.tsx เผื่อย้อนกลับ
  */
 
 export default async function Home() {
@@ -51,7 +53,7 @@ export default async function Home() {
       <Background3D />
       <Navbar />
       <main>
-        <Hero monthlyTHB={promo.monthlyTHB} />
+        <HeroCard monthlyTHB={promo.monthlyTHB} />
         <MarketTicker />
 
         {/* ปูปัญหาให้ก่อน แล้วค่อยเข้าฟีเจอร์ */}
@@ -68,15 +70,6 @@ export default async function Home() {
         <TelegramAlerts />
         <BacktestStats />
         <Reviews />
-
-        {/* การ์ดสรุปสินค้าใบเดียว — ปิดช่วง "พิสูจน์" ก่อนเข้าตารางราคา
-            ตอบ "ตกลงซื้ออะไร ราคาเท่าไร" ให้คนที่เลื่อนผ่านมายาวแล้วในหน้าจอเดียว
-            และเป็นใบเดียวกับที่หน้า /card ใช้แคปเป็นภาพโฆษณา */}
-        <section className="section-md">
-          <div className="container-x">
-            <ProductCard monthlyTHB={promo.monthlyTHB} />
-          </div>
-        </section>
 
         <Pricing />
         <HowItWorks />

@@ -147,3 +147,31 @@ git checkout design/v2-redesign
 ```bash
 git checkout main
 ```
+
+---
+
+## หัวหน้าเว็บ: การ์ดสรุปสินค้า (แทน Hero เดิม)
+
+ตั้งแต่ commit `HEAD` เป็นต้นไป หัวหน้าแรกเป็น **การ์ดสรุปสินค้าใบเดียว**
+(คำอธิบาย + คลิปกราฟ + ราคา อยู่ในกรอบเดียว) แทน Hero เลย์เอาท์เดิม
+
+| ไฟล์ | สถานะ |
+|---|---|
+| `src/components/marketing/HeroCard.tsx` | กรอบ section ของหัวหน้าเว็บ — ถือ `id="top"`, เส้นเลเซอร์, trustItems, บรรทัดคำเตือน |
+| `src/components/marketing/ProductCard.tsx` | ตัวการ์ด ใช้ร่วมกับหน้า `/card` — โหมดหัวหน้าเว็บเปิดด้วย prop `asHero` |
+| `src/components/marketing/Hero.tsx` | **ยังอยู่ ไม่ได้ลบ** แต่ไม่มีใครเรียกแล้ว |
+
+ย้อนกลับไปใช้ Hero เดิม — แก้ที่ `src/app/page.tsx` สองบรรทัด:
+
+```
+import { Hero } from "@/components/marketing/Hero";   // แทน HeroCard
+<Hero monthlyTHB={promo.monthlyTHB} />                // แทน <HeroCard ... />
+```
+
+ไม่ต้องแตะไฟล์อื่น เพราะ Hero เดิมถือ `id="top"` กับเส้นเลเซอร์อยู่ในตัวอยู่แล้ว
+
+### สลับสื่อในการ์ดหัวหน้าเว็บ
+
+ค่าเริ่มต้นใช้ **คลิป Bar Replay** (`heroClip`) ซึ่งมีลายน้ำ "การเล่นซ้ำ" ติดอยู่ในพิกเซล
+ถ้าอยากได้ภาพนิ่งที่ไม่มีลายน้ำแทน ให้เอาเงื่อนไข `asHero` ออกจากบล็อก `<figure>`
+ใน `ProductCard.tsx` แล้วให้ใช้ `<Image>` ทั้งสองโหมด — ภาพชาร์ตทั้งสามชุดสะอาดหมด
