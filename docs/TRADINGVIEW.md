@@ -481,3 +481,22 @@ EXPIRY_OK DomeDev 2026-10-12 DATED:Oct 12, 2026
 
 **ดู log ของบอทต้อง redirect ทั้ง stdout และ stderr** — `print()` ไป stdout,
 logging ของ aiohttp ไป stderr ถ้าเก็บแค่ stderr จะไม่เห็นบรรทัด `tv expiry ...` เลย
+
+## ให้ botkeeper เปิดเองตอน login — ใช้ Registry Run key
+
+บนคอมเฟิร์ส `schtasks /create` โดน **Access denied** ทั้งแบบมีและไม่มี `/rl highest`
+และ Startup shortcut ก็ไม่ยอมสตาร์ตจริง วิธีที่ใช้ได้คือ Registry Run key ของ user เอง
+(ไม่ต้องสิทธิ์ Admin):
+
+```powershell
+Set-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name "BotKeeper" `
+  -Value 'powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File C:\BotTV\botkeeper.ps1'
+```
+
+**กับดักที่เสียเวลาไปมาก:** `Start-Process ... -RedirectStandardOutput` ของ PowerShell
+จองไฟล์แบบ exclusive ถ้า process เดิมยังถือ handle อยู่จะ throw แล้ว **ลูปค้างทั้งตัว**
+ผลคือ watchdog ตายเงียบ ๆ ทั้งที่ `Get-Process` ยังเห็น powershell อยู่ (ดูเหมือนทำงาน
+แต่ log ไม่ขยับเลย) แก้โดยให้ `cmd /c ... >> file 2>> file` เป็นคน redirect แทน
+และครอบ try แยกแต่ละงาน + เขียน `alive` ทุก 30 นาทีเพื่อให้รู้ว่ายังไม่ตาย
+
+เช็กสุขภาพเร็ว ๆ: `Get-Content C:\BotTV\keeper.log -Tail 5` — ถ้าเงียบเกิน 30 นาที = ตายแล้ว
