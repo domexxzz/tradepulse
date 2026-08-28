@@ -312,3 +312,23 @@ export const allFeatures: FeatureEntry[] = [
 export function getFeatureBySlug(slug: string): FeatureEntry | undefined {
   return allFeatures.find((f) => f.slug === slug);
 }
+
+/**
+ * ข้อความบน "การ์ดสรุปสินค้า" — ใช้ร่วมกันระหว่างหน้าแรกกับหน้า /card
+ *
+ * พาดหัวแยกบรรทัดเองด้วย headlineLines ไม่ปล่อยให้เบราว์เซอร์ตัด
+ * เพราะการ์ดเป็นงานจัดวางที่จุดตัดบรรทัดมีผลกับองค์ประกอบ
+ * ถ้าปล่อยอิสระ จุดตัดจะขยับตามความกว้างจอ และภาษาไทยยังโดน ICU ตัดกลางคำอีก
+ * (ดูหมายเหตุยาวที่ .display ใน globals.css)
+ *
+ * ⚠️ ราคาไม่ได้อยู่ในนี้ — ต้องมาจาก getPromoState เสมอ
+ * ราคาบนการ์ดที่ไม่ตรงกับหน้าชำระเงินคือปัญหาที่แก้ทีหลังไม่ได้
+ */
+export const productCard = {
+  brandLine: "QVX · Quant Vision X",
+  headlineLines: ["Complete XAUUSD Analysis", "in One TradingView System"],
+  subtitle:
+    "อินดิเคเตอร์วิเคราะห์ทองคำ รวมโครงสร้างราคา โซนสำคัญ และระบบสัญญาณไว้ในตัวเดียว",
+  /** บรรทัดจุดเด่นคั่นด้วยจุด — สั้นพอให้กวาดตาผ่านได้ในครั้งเดียว */
+  highlights: ["Buy / Sell Signal", "Entry · TP / SL", "โครงสร้างตลาด + โซน OB / FVG"],
+} as const;

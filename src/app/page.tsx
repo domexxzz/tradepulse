@@ -11,6 +11,7 @@ import { BacktestStats } from "@/components/marketing/BacktestStats";
 import { TelegramAlerts } from "@/components/marketing/TelegramAlerts";
 import { Community } from "@/components/marketing/Community";
 import { Reviews } from "@/components/marketing/Reviews";
+import { ProductCard } from "@/components/marketing/ProductCard";
 import { Pricing } from "@/components/marketing/Pricing";
 import { FAQ } from "@/components/marketing/FAQ";
 import { EmailCapture } from "@/components/marketing/EmailCapture";
@@ -67,6 +68,15 @@ export default async function Home() {
         <TelegramAlerts />
         <BacktestStats />
         <Reviews />
+
+        {/* การ์ดสรุปสินค้าใบเดียว — ปิดช่วง "พิสูจน์" ก่อนเข้าตารางราคา
+            ตอบ "ตกลงซื้ออะไร ราคาเท่าไร" ให้คนที่เลื่อนผ่านมายาวแล้วในหน้าจอเดียว
+            และเป็นใบเดียวกับที่หน้า /card ใช้แคปเป็นภาพโฆษณา */}
+        <section className="section-md">
+          <div className="container-x">
+            <ProductCard monthlyTHB={promo.monthlyTHB} />
+          </div>
+        </section>
 
         <Pricing />
         <HowItWorks />

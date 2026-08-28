@@ -45,6 +45,9 @@
   --display-sm: clamp(1.5rem, 1.2rem + 1.4vw, 2rem);
   --display-md: clamp(1.9rem, 1.4rem + 2.4vw, 2.9rem);
   --display-lg: clamp(2.4rem, 1.5rem + 4.4vw, 4.4rem);
+  /* ตัวเลขราคาบนการ์ดสรุปสินค้า — ตั้งใจให้ใหญ่กว่าพาดหัวราว 1.2 เท่า
+     เพราะการ์ดใบนี้จบที่ราคา ถ้าเท่าพาดหัวจะกลายเป็นสองจุดเด่นแย่งกัน */
+  --price-xl: clamp(2.3rem, 1.75rem + 2.8vw, 3.4rem);
 
   /* ---- จังหวะของ section ---- */
   --sp-hero: clamp(6rem, 4rem + 9vw, 9.5rem);
@@ -176,6 +179,46 @@ body {
   background: var(--brand-wash);
   border: 1px solid color-mix(in srgb, var(--brand) 22%, transparent);
   color: var(--brand);
+}
+
+/* ============================================================
+   การ์ดสรุปสินค้า (ProductCard) — ใช้ทั้งหน้าแรกและหน้า /card
+   ============================================================ */
+
+/**
+ * พื้นการ์ดสามชั้น: แสงเขียวมุมบนซ้าย + แสงเข้มมุมล่างขวา + ไล่เฉดทึบ
+ * เขียนเป็นคลาสเดียวแทน utility เพราะสามชั้นนี้ยาวจนอ่านไม่ออกถ้าเขียนใน className
+ * และการ์ดถูกเรียกจากสองหน้า จึงควรมีนิยามอยู่ที่เดียว
+ */
+.promo-card {
+  background:
+    radial-gradient(118% 88% at 10% -6%, rgba(110, 227, 74, .16), transparent 56%),
+    radial-gradient(92% 76% at 94% 110%, rgba(61, 156, 36, .22), transparent 62%),
+    linear-gradient(168deg, #0e1710 0%, #0a100c 54%, #070b08 100%);
+}
+
+/**
+ * วงแสงเบลอ "หลัง" การ์ด — ให้การ์ดลอยขึ้นจากพื้น ไม่ใช่แปะแบน ๆ
+ * ต้องใส่ที่ตัวครอบ (ไม่ใช่ตัวการ์ด) พร้อม position:relative + isolation:isolate
+ * เพราะ z-index:-1 จะอยู่หลัง "ลูก" ของ stacking context นั้น
+ * ถ้าใส่ที่ตัวการ์ดเอง แสงจะไปอยู่หลังพื้นการ์ดแล้วมองไม่เห็นเลย
+ */
+.promo-card-glow::before,
+.promo-card-glow::after {
+  content: ""; position: absolute; z-index: -1;
+  border-radius: 9999px; filter: blur(88px); pointer-events: none;
+}
+.promo-card-glow::before { inset: -16% 44% 58% -14%; background: rgba(110, 227, 74, .20); }
+.promo-card-glow::after  { inset: 54% -12% -18% 46%; background: rgba(61, 156, 36, .22); }
+
+/* ป้ายราคา — แผ่นแก้วบางลอยเหนือการ์ด ให้ตัวเลขเป็นจุดจบสายตา */
+.price-sticker {
+  background: linear-gradient(180deg, rgba(255, 255, 255, .085), rgba(255, 255, 255, .022));
+  border: 1px solid color-mix(in srgb, var(--brand) 28%, transparent);
+  box-shadow:
+    0 26px 64px -34px rgba(110, 227, 74, .6),
+    inset 0 1px 0 rgba(255, 255, 255, .10);
+  backdrop-filter: blur(8px);
 }
 
 /* ============================================================
