@@ -16,11 +16,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping bridge-health endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          code=$(curl -s -o /tmp/body.txt -w "%{http_code}" -m 30 \
-            "https://quantvisionx.com/api/cron/bridge-health?secret=${{ secrets.CRON_SECRET }}")
-          echo "HTTP $code"
-          cat /tmp/body.txt
+          # ส่ง secret ผ่าน header (curl --get + --data-urlencode ก็ได้ แต่ header ชัวร์กว่า)
+          code=$(curl -s -o body.txt -w "%{http_code}" -m 30 \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "https://quantvisionx.com/api/cron/bridge-health")
+          echo "HTTP ${code}"
+          cat body.txt || true
+          echo ""
           # 200 = เช็กสำเร็จ (บริดจ์จะปกติหรือล่มก็ได้ endpoint จัดการเอง)
-          # ถ้าเว็บเองล่ม (ไม่ใช่ 200) ให้ job แดงเพื่อให้ GitHub เตือน
-          test "$code" = "200"
+          # ไม่ 200 = เว็บเองมีปัญหา ให้ job แดงเพื่อให้ GitHub เตือน
+          if [ "${code}" != "200" ]; then
+            echo "endpoint ไม่ตอบ 200"
+            exit 1
+          fi
