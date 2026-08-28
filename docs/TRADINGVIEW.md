@@ -436,3 +436,22 @@ Select-String -Path C:\BotTV\cf.log -Pattern "trycloudflare.com"
 `chrome.exe --user-data-dir="C:/tv-bot-chrome" --profile-directory=Default`
 
 **เทสผ่าน:** grant DomeDev → `EXPIRY_OK ... DATED:Sep 27, 2026`
+
+## botkeeper — แก้ปัญหา URL ของ quick tunnel เปลี่ยนทุกครั้ง
+
+`scripts/bot/botkeeper.ps1` (สำเนาใช้งานอยู่ที่ `C:\BotTV\botkeeper.ps1` บนคอมเฟิร์ส)
+วนลูปทุก 60 วินาที ทำ 3 อย่าง:
+
+1. บริดจ์ตาย → เปิดใหม่
+2. cloudflared ตาย → เปิดใหม่
+3. **URL เปลี่ยน → PATCH `TV_BOT_URL` บน Vercel + สั่ง redeploy ให้เอง**
+
+ข้อ 3 คือหัวใจ — Cloudflare quick tunnel สุ่ม URL ใหม่ทุกครั้งที่รีสตาร์ต ถ้าไม่อัปเดตเอง
+เว็บจะเรียกบอทไม่เจอหลังรีบูต ตัวนี้ทำให้ไม่ต้องแก้มืออีก (ทางเลือกแทน named tunnel
+ที่ต้องย้าย DNS ของ quantvisionx.com ไป Cloudflare ซึ่งเสี่ยงกับเว็บที่ใช้งานจริงอยู่)
+
+ต้องมีไฟล์ `C:\BotTV\vercel_token.txt` (Vercel API token, ไม่ commit) — สคริปต์อ่านจากไฟล์
+ไม่ฝัง token ไว้ในโค้ด · log อยู่ที่ `C:\BotTV\keeper.log`
+เปิดเองตอน login ผ่าน Startup shortcut `BotKeeper.lnk`
+
+**ทดสอบผ่าน:** URL เปลี่ยน → `vercel env updated` + `redeploy triggered` → health `primaryUp:true`
