@@ -32,3 +32,19 @@ jobs:
             echo "endpoint ไม่ตอบ 200"
             exit 1
           fi
+
+      - name: ไล่งานที่ค้างไม่สำเร็จ
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          # สั่งบอทซ้ำให้คิวที่ค้างเกิน 10 นาที + สร้างลิงก์เชิญที่หายไป
+          code=$(curl -s -o rec.txt -w "%{http_code}" -m 120 \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "https://quantvisionx.com/api/cron/reconcile")
+          echo "HTTP ${code}"
+          cat rec.txt || true
+          echo ""
+          if [ "${code}" != "200" ]; then
+            echo "reconcile ไม่ตอบ 200"
+            exit 1
+          fi
