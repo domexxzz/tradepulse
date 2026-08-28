@@ -9,6 +9,7 @@ import { plansForUser } from "@/lib/pricing";
 import { activateMembership } from "@/lib/lifecycle";
 import { parseSlipDataUrl } from "@/lib/slip";
 import { verifySlip, slipAutoApprove, slipVerifyEnabled } from "@/lib/slip-verify";
+import { readSlipQr } from "@/lib/slip-qr";
 import { formatTHB } from "@/lib/utils";
 import { sendAdminAlert } from "@/lib/telegram";
 
@@ -54,6 +55,20 @@ export type SlipState = { ok?: boolean; error?: string; note?: string };
  * สมาชิกแนบสลิป (base64 data URL)
  * ตรวจสามชั้น: ไฟล์ถูกต้อง -> ไม่ใช่สลิปที่เคยใช้แล้ว -> (ถ้าเปิดไว้) ให้ผู้ให้บริการอ่านยอด
  */
+/**
+ * ต่อท้ายผลอ่าน QR ให้แอดมินเห็นในหน้าตรวจสลิป
+ * "อ่าน QR ไม่ได้" ไม่ใช่ความผิดปกติ (บางธนาคารไม่ฝัง QR / ภาพครอปมาแล้ว)
+ * แต่แอดมินควรรู้ว่าใบนี้ระบบกันซ้ำได้ในระดับไหน
+ */
+function qrNote(base: string, qr: { found: boolean; ref?: string }): string {
+  const tail = qr.found
+    ? qr.ref
+      ? `· QR: ${qr.ref}`
+      : "· อ่าน QR ได้"
+    : "· ไม่พบ QR ในสลิป (กันซ้ำด้วยไฟล์รูปเท่านั้น)";
+  return base ? `${base} ${tail}` : tail;
+}
+
 export async function submitSlip(_prev: SlipState, formData: FormData): Promise<SlipState> {
   const session = await auth();
   if (!session?.user?.id) return { error: "กรุณาเข้าสู่ระบบ" };
@@ -77,6 +92,28 @@ export async function submitSlip(_prev: SlipState, formData: FormData): Promise<
       data: { verifyStatus: "DUPLICATE", verifyNote: "สลิปนี้ถูกใช้กับออเดอร์อื่นแล้ว", verifiedAt: new Date() },
     });
     return { error: "สลิปนี้ถูกใช้ยืนยันการชำระเงินไปแล้ว กรุณาแนบสลิปของรายการนี้" };
+  }
+
+  // ชั้นที่สอง: QR ที่ธนาคารฝังในสลิป — ผูกกับ "รายการโอน" ไม่ใช่ "ไฟล์รูป"
+  // จึงจับได้แม้ถ่ายรูปสลิปเดิมใหม่หรือครอปใหม่ ซึ่ง sha256 ด้านบนจับไม่ได้
+  // อ่านในเครื่องเราเอง ไม่ต้องพึ่งบริการภายนอก จึงทำงานเสมอโดยไม่มีค่าใช้จ่าย
+  const qr = await readSlipQr(parsed.slip.base64);
+  if (qr.found && qr.payload) {
+    const usedQr = await prisma.slipOrder.findFirst({
+      where: { transRef: qr.payload, NOT: { id: order.id } },
+      select: { id: true },
+    });
+    if (usedQr) {
+      await prisma.slipOrder.update({
+        where: { id: order.id },
+        data: {
+          verifyStatus: "DUPLICATE",
+          verifyNote: "รายการโอนนี้ถูกใช้ไปแล้ว (ตรวจจาก QR ในสลิป)",
+          verifiedAt: new Date(),
+        },
+      });
+      return { error: "รายการโอนนี้ถูกใช้ยืนยันการชำระเงินไปแล้ว กรุณาแนบสลิปของรายการนี้" };
+    }
   }
 
   const verify = await verifySlip({
@@ -108,9 +145,11 @@ export async function submitSlip(_prev: SlipState, formData: FormData): Promise<
       slipMime: parsed.slip.mime,
       slipHash: parsed.slip.hash,
       status: "SUBMITTED",
-      transRef: verify.transRef ?? null,
+      // เลขจากบริการตรวจสลิปดีที่สุดถ้ามี แต่ไม่มีก็ใช้ QR แทนได้
+      // ต้องเก็บลงคอลัมน์เดียวกัน ไม่งั้นรอบหน้าไม่มีอะไรให้เทียบ
+      transRef: verify.transRef ?? qr.payload ?? null,
       verifyStatus: verify.status,
-      verifyNote: verify.note,
+      verifyNote: qrNote(verify.note, qr),
       verifiedAt: slipVerifyEnabled ? new Date() : null,
     },
   });
