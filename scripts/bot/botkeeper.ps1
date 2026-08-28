@@ -25,7 +25,11 @@ function Note($m) {
 function Ensure-Bridge {
   if (Get-NetTCPConnection -LocalPort 8787 -State Listen -EA SilentlyContinue) { return }
   Note "bridge down -> starting"
-  Start-Process "python" -ArgumentList "-u", "tv_bridge.py" -WorkingDirectory $dir -WindowStyle Hidden
+  # เก็บทั้งสองสาย: print() ของบอทไป stdout ส่วน logging ของ aiohttp ไป stderr
+  # ถ้าเก็บแค่ stderr จะไม่เห็นบรรทัด tv expiry / EXPIRY_OK ซึ่งเป็นตัวบอกผลจริง
+  Start-Process "python" -ArgumentList "-u", "tv_bridge.py" `
+    -WorkingDirectory $dir -WindowStyle Hidden `
+    -RedirectStandardError "$dir\bot.log" -RedirectStandardOutput "$dir\bot_out.log"
   Start-Sleep 12
 }
 
