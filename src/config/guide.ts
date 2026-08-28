@@ -88,7 +88,7 @@ const smc: GuideSuite = {
   bestFor: "Scalping / Intraday แบบ SMC",
   timeframe: "กราฟ 1–5 นาที · bias จาก HTF 4 ชั่วโมง",
   chart: {
-    src: "/images/charts/smc-suite-v2.webp",
+    src: "/images/charts/smc-suite-v3.webp",
     alt: "หน้าชาร์ต XAUUSD ไทม์เฟรม 1 ชั่วโมง ที่เปิดชุด SMC Unified Suite แสดงโซน OB / FVG / RJB, โครงสร้าง HH/HL/LH/LL, BOS, CHoCH/MSS, เส้น Supertrend, EMA200 และป้ายราคาโซนถัดไป",
     width: 1600,
     height: 802,
@@ -237,7 +237,7 @@ const gold: GuideSuite = {
   bestFor: "Scalping / Intraday ตามเทรนด์",
   timeframe: "กราฟ 1–5 นาที · bias จาก HTF 4 ชั่วโมง",
   chart: {
-    src: "/images/charts/gold-suite-snap.webp",
+    src: "/images/charts/gold-suite-snap-v3.webp",
     alt: "หน้าชาร์ต XAUUSD ไทม์เฟรม 1 ชั่วโมง ที่เปิดชุด Gold Booster และ Gold Core แสดงเส้น Supertrend แบบขั้นบันได, เส้น EMA200, ป้าย BUY และเส้น TP/SL คงที่ 500 จุด พร้อม BOS และ CHoCH/MSS",
     width: 1800,
     height: 734,
@@ -374,7 +374,7 @@ const ict: GuideSuite = {
   bestFor: "ICT / SMC Scalping – Intraday",
   timeframe: "กราฟ 1–5 นาที · เฉพาะ 14:00–23:00 น. (เวลาไทย)",
   chart: {
-    src: "/images/charts/ict-suite-v2.webp",
+    src: "/images/charts/ict-suite-v3.webp",
     alt: "หน้าชาร์ต XAUUSD ไทม์เฟรม 1 ชั่วโมง ที่เปิดชุด ICT SD Signal แสดงป้าย ICT BUY / ICT SELL, เส้นสภาพคล่อง LQ+ / LQ−, BOS, CHoCH/MSS, เส้น TP/SL 500 จุด และ EMA200",
     width: 1326,
     height: 744,
