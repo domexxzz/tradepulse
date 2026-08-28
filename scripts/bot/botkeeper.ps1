@@ -81,6 +81,26 @@ function Update-Vercel($url) {
   }
 }
 
+# ยิงงานประจำของเว็บเอง เป็นตัวสำรองของ GitHub Actions
+# GitHub ปิด scheduled workflow อัตโนมัติถ้า repo เงียบ 60 วัน แล้วเงียบไปเฉย ๆ
+# ตัวเฝ้าจึงไม่ควรมีที่เดียว - เครื่องนี้รันอยู่แล้วทุกนาที ใช้เป็นตัวที่สองได้ฟรี
+# endpoint ทั้งสองกันเรียกซ้ำอยู่แล้ว ยิงพร้อม GitHub ไม่มีผลเสีย
+function Poke-Web {
+  $f = "$dir\cron_secret.txt"
+  if (-not (Test-Path $f)) { return }
+  $secret = (Get-Content $f -Raw).Trim()
+  if (-not $secret) { return }
+  $h = @{ Authorization = "Bearer $secret" }
+  foreach ($path in @("bridge-health", "reconcile")) {
+    try {
+      Invoke-RestMethod -Headers $h -TimeoutSec 90 `
+        -Uri "https://quantvisionx.com/api/cron/$path" | Out-Null
+    } catch {
+      Note ("poke $path failed: " + $_.Exception.Message)
+    }
+  }
+}
+
 Note "botkeeper started"
 $tick = 0
 while ($true) {
@@ -89,8 +109,11 @@ while ($true) {
     try { Ensure-Bridge } catch { Note ("Ensure-Bridge error: " + $_.Exception.Message) }
     try { Ensure-Tunnel } catch { Note ("Ensure-Tunnel error: " + $_.Exception.Message) }
 
-    # เต้นทุก 30 นาที เพื่อให้รู้ว่ายังมีชีวิต (ถ้า log เงียบยาว = ตายแล้ว)
     $tick++
+    # ทุก 5 นาที (ลูปละ 60 วินาที)
+    if ($tick % 5 -eq 0) { try { Poke-Web } catch { Note ("Poke-Web error: " + $_.Exception.Message) } }
+
+    # เต้นทุก 30 นาที เพื่อให้รู้ว่ายังมีชีวิต (ถ้า log เงียบยาว = ตายแล้ว)
     if ($tick % 30 -eq 0) { Note "alive" }
 
     $url = Get-TunnelUrl
