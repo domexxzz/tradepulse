@@ -1,0 +1,26 @@
+# เฝ้าดูบริดจ์ TradingView จากคลาวด์ GitHub (ฟรี ไม่ต้องใช้ Vercel Pro)
+# ปิง endpoint เฝ้าระวังของเว็บทุก ~10 นาที ถ้าบริดจ์หลัก (server-254) ล่ม
+# endpoint จะแจ้งเตือนแอดมินทาง Telegram เอง
+#
+# ต้องตั้ง repo secret: CRON_SECRET (ค่าเดียวกับบน Vercel) — ตั้งไว้แล้ว
+# GitHub cron เป็น best-effort อาจดีเลย์ 5-15 นาที ซึ่งพอสำหรับเตือนเครื่องดับ
+name: bridge-health
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {} # กดรันเองได้จากหน้า Actions
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping bridge-health endpoint
+        run: |
+          code=$(curl -s -o /tmp/body.txt -w "%{http_code}" -m 30 \
+            "https://quantvisionx.com/api/cron/bridge-health?secret=${{ secrets.CRON_SECRET }}")
+          echo "HTTP $code"
+          cat /tmp/body.txt
+          # 200 = เช็กสำเร็จ (บริดจ์จะปกติหรือล่มก็ได้ endpoint จัดการเอง)
+          # ถ้าเว็บเองล่ม (ไม่ใช่ 200) ให้ job แดงเพื่อให้ GitHub เตือน
+          test "$code" = "200"
