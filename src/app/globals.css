@@ -228,9 +228,17 @@ body {
  */
 .promo-offer {
   background:
-    radial-gradient(130% 90% at 50% -10%, rgba(110, 227, 74, .10), transparent 60%),
+    radial-gradient(130% 90% at 50% -10%, rgba(110, 227, 74, .12), transparent 60%),
     linear-gradient(170deg, #101c12 0%, #0b130d 62%, #080d09 100%);
-  border-color: color-mix(in srgb, var(--brand) 30%, var(--border-card));
+  /* ขอบสว่างกว่าการ์ดอื่นชัด ๆ ตามที่ลูกค้าขอ ("กรอบสีสว่างดูเด่นชัดเจน")
+     ดันจาก 30% เป็น 62% ของสีแบรนด์ — เป็นการ์ดใบเดียวในเว็บที่ได้ขอบระดับนี้
+     จึงยังทำหน้าที่ "ดึงสายตา" ได้ ถ้าให้ทุกใบสว่างเท่านี้จะไม่มีอะไรเด่นเลย
+     เงายังคงนุ่ม (alpha .28) ไม่ใช่ glow นีออนตามที่สั่งไว้รอบก่อน */
+  border-color: color-mix(in srgb, var(--brand) 62%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .06),
+    0 24px 60px -38px rgba(0, 0, 0, .95),
+    0 0 36px -14px rgba(110, 227, 74, .28);
 }
 
 /* ป้ายหัวบล็อก — พื้นเขียวทึบเล็กน้อย ตัวอักษรเขียวสว่าง */
@@ -245,7 +253,9 @@ body {
 .promo-offer__seats,
 .promo-offer__perks {
   background: rgba(4, 8, 5, .55);
-  border: 1px solid color-mix(in srgb, var(--brand) 16%, var(--border));
+  /* กล่องซ้อนข้างในสว่างขึ้นตามกรอบนอก แต่ต้องต่ำกว่ากรอบนอกเสมอ
+     ไม่งั้นจะแข่งกันเองแล้วอ่านไม่ออกว่าอะไรคือขอบของการ์ด */
+  border: 1px solid color-mix(in srgb, var(--brand) 26%, var(--border));
 }
 
 /**

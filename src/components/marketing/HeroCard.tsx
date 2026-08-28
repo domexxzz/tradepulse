@@ -43,11 +43,24 @@ export function HeroCard({ promo }: { promo: PromoState }) {
       </div>
 
       <div className="container-x">
-        <ProductCard monthlyTHB={promo.monthlyTHB} asHero className="rise rise-1" />
+        {/* สองคอลัมน์บนจอกว้าง — ลูกค้าขอให้ "เปิดมาหน้าแรกเจอเลย"
+            ของเดิมบล็อกโปรอยู่ใต้การ์ดซึ่งสูง ~950px ต้องเลื่อนเกือบเต็มจอถึงจะเห็น
+            วางคู่กันแล้วทั้งสองอย่างอยู่ในหน้าจอแรกพร้อมกัน
+            จอแคบกว่า lg ยังเรียงบนล่าง เพราะบีบสองคอลัมน์แล้วกราฟจะเล็กจนอ่านไม่ออก
 
-        {/* บล็อกโปร Founding 300 — ลูกค้าขอให้มีตั้งแต่หน้าจอแรก ไม่ต้องเลื่อนไปหน้าราคาก่อน
-            ลิงก์ "รายละเอียด" ในบล็อกนี้พาไป #pricing ตามที่สั่งไว้ */}
-        <PromoCard promo={promo} variant="hero" className="rise rise-2 mt-10" />
+            items-start ไม่ใช่ stretch ที่เป็นค่าเริ่มต้น — ไม่งั้นบล็อกโปรถูกยืดสูงเท่าการ์ด
+            แล้วเนื้อหาข้างในลอยอยู่กลางกล่องเปล่า */}
+        <div className="grid items-start gap-7 lg:grid-cols-12">
+          <ProductCard
+            monthlyTHB={promo.monthlyTHB}
+            asHero
+            fluid
+            className="rise rise-1 lg:col-span-7"
+          />
+
+          {/* บล็อกโปร Founding 300 — ลิงก์ "รายละเอียด" พาไป #pricing ตามที่สั่ง */}
+          <PromoCard promo={promo} variant="hero" className="rise rise-2 lg:col-span-5" />
+        </div>
 
         {/* จุดเด่นสั้น ๆ — อยู่นอกการ์ด ไม่ให้แย่งความสนใจจากพาดหัวและราคา */}
         <ul className="mx-auto mt-12 flex max-w-4xl flex-wrap items-center justify-center gap-x-8 gap-y-3">

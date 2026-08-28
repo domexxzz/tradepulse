@@ -326,9 +326,20 @@ export function getFeatureBySlug(slug: string): FeatureEntry | undefined {
  */
 export const productCard = {
   brandLine: "QVX · Quant Vision X",
-  headlineLines: ["Complete XAUUSD Analysis", "in One TradingView System"],
+  /**
+   * พาดหัวสั้นสองบรรทัด ตามภาพตัวอย่างที่ลูกค้าส่งมา
+   *
+   * ของเดิมเป็น "Complete XAUUSD Analysis / in One TradingView System" ซึ่งพอ
+   * หัวหน้าเว็บเปลี่ยนเป็นสองคอลัมน์ การ์ดเหลือกว้าง ~580px แล้วบรรทัดแรกยาวเกิน
+   * ตกเป็นสามบรรทัดโดยตัดกลางวลี ("Complete / XAUUSD Analysis / in One...")
+   * วลีไทยสั้นพอที่จะอยู่บรรทัดละวลีได้จริงในความกว้างนี้
+   *
+   * ย้อนกลับเป็นอังกฤษ: แก้สองบรรทัดนี้ แต่ต้องลดขนาดพาดหัวใน ProductCard ด้วย
+   * ไม่งั้นจะตกสามบรรทัดเหมือนเดิม
+   */
+  headlineLines: ["วิเคราะห์ตลาด", "ในระบบเดียว"],
   subtitle:
-    "อินดิเคเตอร์วิเคราะห์ทองคำ รวมโครงสร้างราคา โซนสำคัญ และระบบสัญญาณไว้ในตัวเดียว",
+    "QVX รวมการวิเคราะห์โครงสร้างราคา โซนสำคัญ และระบบสัญญาณ เพื่อช่วยให้เห็นบริบทของตลาด และวางแผนจังหวะเข้าเทรดได้ชัดเจนขึ้น",
   /** บรรทัดจุดเด่นคั่นด้วยจุด — สั้นพอให้กวาดตาผ่านได้ในครั้งเดียว */
   highlights: ["Buy / Sell Signal", "Entry · TP / SL", "โครงสร้างตลาด + โซน OB / FVG"],
 } as const;

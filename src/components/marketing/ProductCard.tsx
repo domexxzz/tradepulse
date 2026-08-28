@@ -29,6 +29,7 @@ export function ProductCard({
   showCta = true,
   eagerChart = false,
   asHero = false,
+  fluid = false,
   className,
 }: {
   /** ราคารายเดือนที่ใช้อยู่จริงตอนนี้ (มาจาก getPromoState) */
@@ -57,6 +58,14 @@ export function ProductCard({
    *      ไม่ใช่ปุ่มเดียวที่พาไปดูตารางราคาเฉย ๆ
    */
   asHero?: boolean;
+  /**
+   * กว้างเต็มพ่อแม่ ไม่จำกัดความกว้างเอง — ใช้ตอนวางการ์ดในคอลัมน์ของ grid
+   *
+   * ต้องเป็น prop ไม่ใช่ส่ง max-w-none มาทาง className เพราะ cn() ในโปรเจกต์นี้
+   * เป็น clsx เปล่า ๆ ไม่มี tailwind-merge — max-w-4xl กับ max-w-none จะติดมาทั้งคู่
+   * แล้วผลลัพธ์ขึ้นกับลำดับใน stylesheet ซึ่งเดาไม่ได้
+   */
+  fluid?: boolean;
   className?: string;
 }) {
   const plans = plansFor(monthlyTHB);
@@ -73,9 +82,9 @@ export function ProductCard({
   return (
     <div
       className={cn(
-        "promo-card-glow relative isolate mx-auto",
+        "promo-card-glow relative isolate",
         // โหมดหัวหน้าเว็บกว้างขึ้นหนึ่งขั้น ไม่งั้นการ์ดจะดูลอยเล็กอยู่กลางจอกว้าง
-        asHero ? "max-w-4xl" : "max-w-3xl",
+        fluid ? "w-full" : asHero ? "mx-auto max-w-4xl" : "mx-auto max-w-3xl",
         className
       )}
     >

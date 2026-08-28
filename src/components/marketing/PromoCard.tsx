@@ -93,34 +93,32 @@ export function PromoCard({
         {copy.badge}
       </p>
 
-      <h3 className="display mt-3.5 text-center text-[length:var(--display-sm)]">{copy.title}</h3>
+      <h3 className="display mt-3.5 text-center text-[length:var(--display-md)]">{copy.title}</h3>
       {copy.subtitle && (
-        <p className="mt-1 text-center text-sm font-semibold text-brand">{copy.subtitle}</p>
+        <p className="mt-1.5 text-center text-base font-semibold text-brand sm:text-lg">{copy.subtitle}</p>
       )}
 
-      {/* เทียบราคา — เฉพาะในหน้าราคา บนหัวหน้าเว็บมีป้ายราคาของการ์ดอยู่แล้ว ใส่ซ้ำจะรก
+      {/* เทียบราคา — โชว์ทั้งสองโหมด ลูกค้าขอให้ "ราคาโปรเด่น" ตั้งแต่หน้าจอแรก
 
           ใช้ grid สองแถวแทนกล่องคู่ที่วางเรียงกัน เพราะตัวเลขสองฝั่งคนละขนาด
           ถ้าเรียงเป็นกล่องคู่แล้วจัด items-end ป้ายหัวจะเหลื่อมกันตามความสูงของราคา
           แยกเป็นแถว "ป้าย" กับแถว "ราคา" ป้ายจึงอยู่ระดับเดียวกันเสมอ
 
-          ⚠️ ห้ามวางคอมเมนต์ JSX ไว้ข้างใน `cond && ( ... )` เพราะมันนับเป็น
-          ลูกตัวที่สอง แล้ว JSX รับได้แค่ตัวเดียว (TS2657) */}
-      {variant === "pricing" && (
-        <div className="mx-auto mt-5 grid w-fit grid-cols-2 items-end gap-x-8 justify-items-center">
-          <p className="text-[11px] text-faint">ราคาปกติ</p>
-          <p className="text-[11px] font-medium text-brand">ราคาพิเศษ</p>
-          <p className="tnum mt-1 text-sm text-faint line-through">
-            {formatTHB(MONTHLY_REGULAR)}/เดือน
-          </p>
-          <p className="mt-1 flex items-baseline gap-1">
-            <span className="display tnum text-gradient-brand text-[length:var(--display-sm)]">
-              {formatTHB(MONTHLY_PROMO)}
-            </span>
-            <span className="text-xs text-muted">/เดือน</span>
-          </p>
-        </div>
-      )}
+          บนหัวหน้าเว็บมีป้ายราคาในการ์ดสินค้าอยู่แล้วก็จริง แต่คนละหน้าที่:
+          ป้ายในการ์ดบอก "จ่ายเท่าไร" ส่วนตรงนี้บอก "ประหยัดจากราคาปกติเท่าไร" */}
+      <div className="mx-auto mt-5 grid w-fit grid-cols-2 items-end gap-x-8 justify-items-center">
+        <p className="text-[11px] text-faint">ราคาปกติ</p>
+        <p className="text-[11px] font-medium text-brand">ราคาพิเศษ</p>
+        <p className="tnum mt-1 text-sm text-faint line-through">
+          {formatTHB(MONTHLY_REGULAR)}/เดือน
+        </p>
+        <p className="mt-1 flex items-baseline gap-1">
+          <span className="display tnum text-gradient-brand text-[length:var(--display-sm)]">
+            {formatTHB(MONTHLY_PROMO)}
+          </span>
+          <span className="text-xs text-muted">/เดือน</span>
+        </p>
+      </div>
 
       <div className="promo-offer__seats mt-5 rounded-2xl px-4 py-3.5">
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
@@ -147,14 +145,14 @@ export function PromoCard({
         </div>
       </div>
 
-      <div className="promo-offer__perks mt-4 rounded-2xl px-4 py-3.5">
-        <p className="flex items-center gap-2 text-[13px] font-semibold">
+      <div className="promo-offer__perks mt-4 rounded-2xl px-3.5 py-3">
+        <p className="flex items-center gap-2 text-xs font-semibold">
           <Info className="h-3.5 w-3.5 shrink-0 text-brand" />
           {copy.perksTitle}
         </p>
         <ul className="mt-2 space-y-1.5">
           {PERKS.map((perk) => (
-            <li key={perk} className="flex gap-2 text-xs leading-relaxed text-muted">
+            <li key={perk} className="flex gap-2 text-[11px] leading-relaxed text-muted">
               <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-brand" aria-hidden />
               {perk}
             </li>
