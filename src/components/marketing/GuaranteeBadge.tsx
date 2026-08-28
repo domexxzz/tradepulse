@@ -3,8 +3,13 @@ import { ShieldCheck } from "lucide-react";
 import { REFUND_DAYS } from "@/config/legal";
 
 /**
- * ป้ายรับประกันคืนเงิน — ใช้ทั้งหน้าราคาบน Landing และหน้าเลือกแพ็กเกจในพอร์ทัลสมาชิก
+ * ป้ายรับประกันคืนเงิน
  * ตัวเลขวันมาจาก REFUND_DAYS ที่เดียว เปลี่ยนแล้วเปลี่ยนตามทุกจุดรวมถึงหน้า /refund
+ *
+ * ⚠️ GuaranteeStrip ตอนนี้ไม่มีใครเรียกแล้ว — เจ้าของโปรเจกต์สั่งถอดออกจากหน้าราคา
+ * เก็บโค้ดไว้เพราะนโยบายจริงยังไม่ได้ยกเลิก (/refund กับ /terms ยังเขียนสัญญา 7 วันอยู่)
+ * ถ้าจะเอากลับ: import แล้ววาง <GuaranteeStrip /> ใต้ <PromoCard> ใน marketing/Pricing.tsx
+ * ส่วน GuaranteeLine ยังใช้อยู่ที่หน้าเลือกแพ็กเกจในพอร์ทัลสมาชิก (account/subscription)
  */
 export function GuaranteeStrip() {
   return (

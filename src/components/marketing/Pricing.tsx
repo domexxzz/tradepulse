@@ -6,7 +6,6 @@ import { paymentsEnabled, paymentMode } from "@/config/site";
 import { createQrOrder } from "@/lib/actions/payment";
 import { formatTHB } from "@/lib/utils";
 import { CheckoutButton } from "./CheckoutButton";
-import { GuaranteeStrip, GuaranteeLine } from "./GuaranteeBadge";
 import { Check } from "lucide-react";
 
 export async function Pricing() {
@@ -24,8 +23,6 @@ export async function Pricing() {
         />
 
         <PromoCard promo={promo} variant="pricing" className="mt-10" />
-
-        <GuaranteeStrip />
 
         <h3 className="mt-12 text-center text-sm font-semibold tracking-wide text-muted">
           เลือกแพ็กเกจ
@@ -100,7 +97,6 @@ export async function Pricing() {
                   ) : (
                     <a href="/register" className={cls}>สมัครบัญชี</a>
                   )}
-                  <GuaranteeLine className="mt-3" />
                 </div>
               </div>
             );
