@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalShell } from "@/components/legal/LegalShell";
 import { site } from "@/config/site";
-import { REFUND_DAYS } from "@/config/legal";
 
 export const metadata: Metadata = {
   title: "ข้อกำหนดการใช้งาน",
@@ -76,8 +75,10 @@ export default function TermsPage() {
           ซึ่งทำได้เองในหน้าบัญชี
         </li>
         <li>
-          เงื่อนไขการคืนเงินอยู่ใน <Link href="/refund">นโยบายการคืนเงิน</Link> — โดยสรุปคือรับประกันคืนเงินภายใน{" "}
-          {REFUND_DAYS} วันนับจากวันที่ได้รับสิทธิ์
+          เงื่อนไขการคืนเงินอยู่ใน <Link href="/refund">นโยบายการคืนเงิน</Link> — โดยสรุปคือ
+          <strong>เมื่อเราเปิดสิทธิ์ใช้งานให้แล้ว จะไม่มีการคืนเงินจากการเปลี่ยนใจ</strong>{" "}
+          เพราะเป็นบริการดิจิทัลที่ส่งมอบทันทีและเรียกคืนไม่ได้
+          ยังคงคืนเงินให้ในกรณีที่เราส่งมอบบริการไม่ได้ ชำระซ้ำซ้อน หรือระบบขัดข้องรุนแรงจนใช้งานไม่ได้
         </li>
       </ul>
 
