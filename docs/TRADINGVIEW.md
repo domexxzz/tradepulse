@@ -455,3 +455,29 @@ Select-String -Path C:\BotTV\cf.log -Pattern "trycloudflare.com"
 เปิดเองตอน login ผ่าน Startup shortcut `BotKeeper.lnk`
 
 **ทดสอบผ่าน:** URL เปลี่ยน → `vercel env updated` + `redeploy triggered` → health `primaryUp:true`
+
+## บั๊กที่ทำให้ "ต่ออายุ" ไม่เคยได้ผล (แก้ใน V18)
+
+โค้ดตรวจผลด้วย `_seen.startswith("DATED")` เฉย ๆ — แค่ถามว่า "มีวันที่ไหม"
+คนที่มีสิทธิ์อยู่แล้วย่อมมีวันเดิมติดอยู่ ระบบจึงตัดสินว่าสำเร็จทันที **ไม่เข้าทาง
+ลบ-แล้วเพิ่มใหม่เลย** ผลคือต่ออายุกี่ครั้งวันก็ไม่เปลี่ยน แต่ log ขึ้น EXPIRY_OK
+
+หลักฐานตอนจับได้:
+```
+EXPIRY_OK DomeDev 2026-10-12 DATED:Sep 27, 2026   <- คนละวันแต่บอก OK
+```
+
+แก้โดยเพิ่ม `_iso()` แปลงวันที่ที่หน้าเว็บโชว์ (`Sep 27, 2026`) เป็น ISO แล้ว
+**เทียบกับวันที่สั่งจริง** ถึงจะถือว่าผ่าน:
+```
+tv verify: DATED:Sep 27, 2026 | iso: 2026-09-27 | want: 2026-10-12
+tv del: clicked / tv after del gone: True / tv re-add: True
+tv verify: DATED:Oct 12, 2026 | iso: 2026-10-12 | want: 2026-10-12
+EXPIRY_OK DomeDev 2026-10-12 DATED:Oct 12, 2026
+```
+
+> บทเรียน: การตรวจผลต้องเทียบกับ "สิ่งที่สั่ง" ไม่ใช่แค่ "มีค่าอยู่"
+> ไม่งั้นระบบจะรายงานว่าสำเร็จทั้งที่ไม่ได้ทำอะไรเลย
+
+**ดู log ของบอทต้อง redirect ทั้ง stdout และ stderr** — `print()` ไป stdout,
+logging ของ aiohttp ไป stderr ถ้าเก็บแค่ stderr จะไม่เห็นบรรทัด `tv expiry ...` เลย
