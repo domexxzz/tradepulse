@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { site, hasLineContact } from "@/config/site";
@@ -22,9 +23,17 @@ export function LegalShell({
       <header className="border-b border-border bg-surface">
         <div className="container-x flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center gap-2" aria-label={`${site.name} หน้าแรก`}>
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand font-display text-sm font-bold text-brand-ink">
-              {site.name.charAt(0)}
-            </span>
+            {/* โลโก้ตัวจริง ไม่ใช่ตัวอักษรตัวแรกในกล่องเขียว
+                ตอนเพิ่มโลโก้เข้า Navbar กับ Footer หน้ากฎหมายถูกมองข้ามไป
+                เหลือ placeholder เดิมค้างอยู่ที่เดียวในเว็บ
+                alt ว่างเพราะข้อความ "QVX" ข้าง ๆ บอกชื่อแบรนด์อยู่แล้ว */}
+            <Image
+              src="/images/brand/qvx-logo-hex-v1.png"
+              alt=""
+              width={36}
+              height={36}
+              className="h-9 w-9"
+            />
             <span className="font-display text-lg font-bold tracking-tight">{site.name}</span>
           </Link>
           <Link
