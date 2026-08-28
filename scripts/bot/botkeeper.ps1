@@ -25,11 +25,12 @@ function Note($m) {
 function Ensure-Bridge {
   if (Get-NetTCPConnection -LocalPort 8787 -State Listen -EA SilentlyContinue) { return }
   Note "bridge down -> starting"
-  # เก็บทั้งสองสาย: print() ของบอทไป stdout ส่วน logging ของ aiohttp ไป stderr
-  # ถ้าเก็บแค่ stderr จะไม่เห็นบรรทัด tv expiry / EXPIRY_OK ซึ่งเป็นตัวบอกผลจริง
-  Start-Process "python" -ArgumentList "-u", "tv_bridge.py" `
-    -WorkingDirectory $dir -WindowStyle Hidden `
-    -RedirectStandardError "$dir\bot.log" -RedirectStandardOutput "$dir\bot_out.log"
+  # ให้ cmd เป็นคน redirect (>> ต่อท้าย) แทน -RedirectStandardOutput ของ PowerShell
+  # ตัวหลังจองไฟล์แบบ exclusive ถ้า process เดิมยังถือ handle อยู่จะ throw แล้ว
+  # ลูปค้างทั้งตัว ทำให้ watchdog ตายเงียบ ๆ ทั้งที่ยังเห็น process อยู่
+  # print() ไป stdout, logging ของ aiohttp ไป stderr จึงต้องเก็บทั้งสองสาย
+  $cmd = "cd /d `"$dir`" && python -u tv_bridge.py >> `"$dir\bot_out.log`" 2>> `"$dir\bot.log`""
+  Start-Process "cmd.exe" -ArgumentList "/c", $cmd -WindowStyle Hidden
   Start-Sleep 12
 }
 
@@ -81,10 +82,16 @@ function Update-Vercel($url) {
 }
 
 Note "botkeeper started"
+$tick = 0
 while ($true) {
   try {
-    Ensure-Bridge
-    Ensure-Tunnel
+    # แยก try ของแต่ละงาน ถ้างานหนึ่งพัง อีกงานยังเดินต่อ และลูปไม่ตาย
+    try { Ensure-Bridge } catch { Note ("Ensure-Bridge error: " + $_.Exception.Message) }
+    try { Ensure-Tunnel } catch { Note ("Ensure-Tunnel error: " + $_.Exception.Message) }
+
+    # เต้นทุก 30 นาที เพื่อให้รู้ว่ายังมีชีวิต (ถ้า log เงียบยาว = ตายแล้ว)
+    $tick++
+    if ($tick % 30 -eq 0) { Note "alive" }
 
     $url = Get-TunnelUrl
     if ($url) {
