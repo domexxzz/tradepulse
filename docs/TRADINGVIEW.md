@@ -409,3 +409,30 @@ callback ใน .env แก้เป็น `quantvisionx.com` แล้ว
 **เทสผ่านครบวง:** grant DomeDev → EXPIRY_OK until 2026-09-27 บน 254
 
 > คอมเบสยังเก็บไว้เป็นสำรอง (บริดจ์เดิม + watchdog ยังอยู่) ไม่ได้ลบ
+
+## ย้ายมา "คอมเฟิร์ส" + ใช้ Cloudflare Tunnel (28 ส.ค. 2569 เย็น)
+
+ตัวหลักตอนนี้ = **คอมเฟิร์ส** (Tailscale `desktop-8qjh30a` / 100.111.137.19, user `oneye`)
+บอทอยู่ `C:\BotTV` · โปรไฟล์ Chrome `C:\tv-bot-chrome` · Python 3.12
+
+**Tailscale Funnel ใช้กับเครื่องนี้ไม่ได้** — ตั้งถูกทุกอย่าง (`funnel status` = on,
+`CertDomains` มีโดเมน, ยิงจากในเครื่องได้ 200, ยิงผ่าน Tailscale IP ได้ 200, ACL มี
+`nodeAttrs` funnel ครบ) แต่จากภายนอกได้ 000 เสมอ แม้ reset funnel แล้ว
+→ **เปลี่ยนไปใช้ Cloudflare Tunnel แทน ใช้ได้ทันทีในครั้งแรก**
+
+```powershell
+# โหลดครั้งเดียว
+Invoke-WebRequest -Uri "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe" -OutFile "C:\BotTV\cloudflared.exe"
+# เปิด tunnel (ได้ URL ฟรีแบบสุ่ม)
+Start-Process "C:\BotTV\cloudflared.exe" -ArgumentList "tunnel","--url","http://127.0.0.1:8787" -RedirectStandardError "C:\BotTV\cf.log" -WindowStyle Hidden
+Select-String -Path C:\BotTV\cf.log -Pattern "trycloudflare.com"
+```
+
+> ⚠️ **quick tunnel ได้ URL สุ่มใหม่ทุกครั้งที่รีสตาร์ต** — ถ้ารีบูตต้องเอา URL ใหม่ไปตั้ง
+> `TV_BOT_URL` บน Vercel อีกที ถ้าจะให้ถาวรต้องทำ named tunnel (ต้องมีโดเมนใน Cloudflare)
+
+**cookie TradingView ย้ายข้ามเครื่องไม่ได้** (DPAPI ผูก user+เครื่อง) ทุกครั้งที่ย้าย
+ต้องเปิด Chrome ด้วยโปรไฟล์บอทแล้ว login Pyro_Bolt ใหม่:
+`chrome.exe --user-data-dir="C:/tv-bot-chrome" --profile-directory=Default`
+
+**เทสผ่าน:** grant DomeDev → `EXPIRY_OK ... DATED:Sep 27, 2026`
