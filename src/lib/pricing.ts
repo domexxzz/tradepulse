@@ -63,6 +63,38 @@ export async function getPromoState(): Promise<PromoState> {
 /** ผ่อนผันหลังหมดอายุกี่วัน ก่อนถือว่า "ขาดอายุ" แล้วเสียสิทธิ์ราคาล็อก */
 export const PRICE_LOCK_GRACE_DAYS = 7;
 
+/**
+ * เส้นแบ่งกติกาล็อกราคา — ใครจ่ายก่อนเวลานี้ได้ล็อกถาวร
+ *
+ * ก่อนหน้านี้หน้าเว็บเขียนว่า "จ่ายครั้งแรกแล้วราคาถูกล็อกทันที ต่ออายุกี่รอบก็
+ * ฿999 เท่าเดิม" ซึ่งไม่ได้บอกเลยว่าขาดอายุแล้วจะเสียสิทธิ์
+ * คนที่จ่ายเงินตอนนั้นได้รับคำมั่นแบบไม่มีเงื่อนไขไปแล้ว จึงต้องได้ล็อกถาวร
+ *
+ * ตั้งเป็นเที่ยงคืนขึ้นวันที่ 30 ไม่ใช่ 29 ทั้งที่กติกาใหม่ขึ้นเว็บวันที่ 29
+ * เพราะข้อความเก่ายังอยู่บนเว็บตลอดเช้าวันนั้น คนที่จ่ายก่อนโค้ดใหม่ deploy
+ * ก็ยังเห็นคำมั่นแบบเดิม — ตัดที่สิ้นวันจึงครอบคลุมทุกคนที่อาจเห็นข้อความเก่า
+ * (เสียส่วนต่างไม่กี่บาทกับคนไม่กี่คน ดีกว่าเถียงกันว่าใครเห็นเวอร์ชันไหนตอนกี่โมง)
+ *
+ * ⚠️ ห้ามเลื่อนวันนี้ไปข้างหน้าเพื่อ "ล้าง" สิทธิ์กลุ่มเดิม
+ * นี่คือเส้นแบ่งว่าใครได้รับคำมั่นแบบไหน ไม่ใช่ค่าปรับแต่ง
+ * สำเนาข้อความที่โฆษณาไว้ตอนนั้น: git show v8:src/components/marketing/PromoCard.tsx
+ */
+export const PRICE_LOCK_RULE_EFFECTIVE = new Date("2026-08-30T00:00:00+07:00");
+
+/**
+ * สมาชิกคนนี้ได้ล็อกราคาแบบถาวรไหม (จ่ายเงินก่อนกติกาใหม่มีผล)
+ *
+ * ไม่มีประวัติการจ่าย = ไม่ริบ ด้วยเหตุผลเดียวกับ isPriceLockValid —
+ * พิสูจน์ไม่ได้ว่าอยู่ฝั่งไหนของเส้นแบ่ง ให้ตกเป็นประโยชน์ของลูกค้า
+ * (ตามโค้ดจริง คนที่มี lockedMonthlyTHB ต้องมี Payment status "paid" เสมอ
+ * เพราะ lockPromoPriceIfEligible ถูกเรียกหลังบันทึกการจ่ายเงิน
+ * ถ้าไม่มีแปลว่าข้อมูลพัง ซึ่งไม่ควรเอามาลงโทษลูกค้า)
+ */
+export function isPriceLockPermanent(firstPaidAt: Date | null): boolean {
+  if (!firstPaidAt) return true;
+  return firstPaidAt.getTime() < PRICE_LOCK_RULE_EFFECTIVE.getTime();
+}
+
 const GRACE_MS = PRICE_LOCK_GRACE_DAYS * 24 * 60 * 60 * 1000;
 
 /**
@@ -93,19 +125,31 @@ export function isPriceLockValid(
  * สมาชิกที่ถูกล็อกราคาไว้ (300 คนแรก) ได้ราคาเดิม "ตราบที่ต่ออายุต่อเนื่อง"
  * ขาดอายุเกินช่วงผ่อนผันแล้วกลับมาสมัครใหม่ จะได้ราคาปัจจุบันแทน
  *
+ * ยกเว้นสมาชิกที่จ่ายเงินภายในวันที่ 29 สิงหาคม 2026 — กลุ่มนั้นได้ล็อกถาวร
+ * เพราะตอนนั้นหน้าเว็บสัญญาไว้แบบไม่มีเงื่อนไขขาดอายุ
+ *
  * ฟังก์ชันนี้อ่านอย่างเดียว ไม่ลบ lockedMonthlyTHB ทิ้ง — ถ้าลบ แล้วภายหลัง
  * พบว่าคำนวณผิด จะกู้กลับไม่ได้ว่าใครเคยได้ราคาล็อกบ้าง
  */
 export async function monthlyPriceFor(userId: string): Promise<number> {
-  const [user, { sub }] = await Promise.all([
+  const [user, { sub }, firstPaid] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: { lockedMonthlyTHB: true },
     }),
     getUserSubscription(userId),
+    prisma.payment.findFirst({
+      where: { userId, status: "paid" },
+      orderBy: { createdAt: "asc" },
+      select: { createdAt: true },
+    }),
   ]);
 
-  if (user?.lockedMonthlyTHB && isPriceLockValid(sub)) return user.lockedMonthlyTHB;
+  if (user?.lockedMonthlyTHB) {
+    // สมาชิกกลุ่มเดิมได้ล็อกถาวร ไม่ต้องผ่านการเช็คขาดอายุ
+    if (isPriceLockPermanent(firstPaid?.createdAt ?? null)) return user.lockedMonthlyTHB;
+    if (isPriceLockValid(sub)) return user.lockedMonthlyTHB;
+  }
 
   const promo = await getPromoState();
   return promo.monthlyTHB;

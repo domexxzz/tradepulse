@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { PRICE_LOCK_GRACE_DAYS, isPriceLockValid } from "@/lib/pricing";
+import {
+  PRICE_LOCK_GRACE_DAYS,
+  PRICE_LOCK_RULE_EFFECTIVE,
+  isPriceLockPermanent,
+  isPriceLockValid,
+} from "@/lib/pricing";
 
 const NOW = new Date("2026-09-01T12:00:00Z");
 const day = (n: number) => new Date(NOW.getTime() + n * 24 * 60 * 60 * 1000);
@@ -51,5 +56,24 @@ describe("isPriceLockValid", () => {
         NOW
       )
     ).toBe(true);
+  });
+});
+
+describe("isPriceLockPermanent", () => {
+  const effective = PRICE_LOCK_RULE_EFFECTIVE.getTime();
+
+  it("จ่ายก่อนกติกาใหม่มีผล = ล็อกถาวร ไม่ต้องเช็คขาดอายุ", () => {
+    expect(isPriceLockPermanent(new Date(effective - 1))).toBe(true);
+    expect(isPriceLockPermanent(new Date(effective - 30 * 24 * 60 * 60 * 1000))).toBe(true);
+  });
+
+  it("จ่ายตั้งแต่วันที่กติกามีผลเป็นต้นไป = อยู่ใต้กติกาใหม่", () => {
+    expect(isPriceLockPermanent(new Date(effective))).toBe(false);
+    expect(isPriceLockPermanent(new Date(effective + 1))).toBe(false);
+  });
+
+  /** เหตุผลเดียวกับ isPriceLockValid — พิสูจน์ไม่ได้ ให้ตกเป็นประโยชน์ของลูกค้า */
+  it("ไม่มีประวัติการจ่าย = ไม่ริบ", () => {
+    expect(isPriceLockPermanent(null)).toBe(true);
   });
 });
