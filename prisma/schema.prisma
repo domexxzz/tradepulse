@@ -99,6 +99,12 @@ model Subscription {
   id                   String    @id @default(cuid())
   userId               String
   user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /**
+   * ⚠️ planId / plan relation ไม่มีโค้ดไหน join ผ่านเลยสักที่ (ตรวจแล้ว 2026-08-29)
+   * ตัวที่ใช้งานจริงคือ planCode ซึ่งเทียบกับ src/config/plans.ts ไม่ใช่ตาราง Plan
+   * ตาราง Plan เหลือหน้าที่เดียวคือผูก Stripe Price ID และให้หน้าแอดมินเตือน
+   * เวลาราคาใน DB กับใน config ไม่ตรงกัน — อย่าเพิ่งลบทิ้งจนกว่าจะเลิกใช้ Stripe
+   */
   planId               String?
   plan                 Plan?     @relation(fields: [planId], references: [id])
   planCode             String

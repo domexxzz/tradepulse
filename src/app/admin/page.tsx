@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PAYMENT_STATUS } from "@/config/status";
 import { prisma } from "@/lib/prisma";
 import { formatTHB } from "@/lib/utils";
 import { formatThaiDate, daysUntil } from "@/lib/date";
@@ -49,14 +50,14 @@ export default async function AdminDashboard() {
       prisma.user.count(),
       prisma.subscription.count({ where: activeWhere }),
       prisma.accessGrant.count({ where: { status: { in: ["PENDING", "PENDING_REVOKE"] } } }),
-      prisma.payment.aggregate({ _sum: { amountTHB: true }, where: { status: "paid" } }),
+      prisma.payment.aggregate({ _sum: { amountTHB: true }, where: { status: PAYMENT_STATUS.PAID } }),
       prisma.slipOrder.count({ where: { status: "SUBMITTED" } }),
       prisma.subscription.count({
         where: { status: { in: ACTIVE_STATUSES }, currentPeriodEnd: { gte: now, lte: in7Days } },
       }),
       prisma.payment.groupBy({
         by: ["provider"],
-        where: { status: "paid" },
+        where: { status: PAYMENT_STATUS.PAID },
         _sum: { amountTHB: true },
         _count: { _all: true },
       }),

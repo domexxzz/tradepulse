@@ -1,5 +1,6 @@
 import type Stripe from "stripe";
 import { Prisma } from "@prisma/client";
+import { PAYMENT_STATUS } from "@/config/status";
 import { prisma } from "@/lib/prisma";
 import { mapStatus } from "@/lib/stripe";
 
@@ -60,7 +61,7 @@ export async function recordPayment(
 ) {
   try {
     await prisma.payment.create({
-      data: { userId, amountTHB, provider, providerRef, status: "paid" },
+      data: { userId, amountTHB, provider, providerRef, status: PAYMENT_STATUS.PAID },
     });
   } catch (e) {
     // P2002 = ชน unique constraint แปลว่ามีคนบันทึกใบเสร็จของ ref นี้ไปแล้ว ถือว่าสำเร็จ

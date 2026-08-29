@@ -1,4 +1,5 @@
 import type { Subscription } from "@prisma/client";
+import { PAYMENT_STATUS } from "@/config/status";
 import { prisma } from "@/lib/prisma";
 import { getUserSubscription, isSubscriptionActive } from "@/lib/subscription";
 import {
@@ -24,7 +25,7 @@ export interface PromoState {
 export async function countPaidMembers(excludeUserId?: string): Promise<number> {
   const rows = await prisma.payment.findMany({
     where: {
-      status: "paid",
+      status: PAYMENT_STATUS.PAID,
       ...(excludeUserId ? { userId: { not: excludeUserId } } : {}),
     },
     select: { userId: true },
@@ -145,7 +146,7 @@ export async function priceLockStatusFor(userId: string): Promise<PriceLockStatu
     }),
     getUserSubscription(userId),
     prisma.payment.findFirst({
-      where: { userId, status: "paid" },
+      where: { userId, status: PAYMENT_STATUS.PAID },
       orderBy: { createdAt: "asc" },
       select: { createdAt: true },
     }),
