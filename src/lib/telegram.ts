@@ -70,13 +70,27 @@ export async function sendToTopic(timeframe: Timeframe, text: string) {
   return data;
 }
 
-/** แจ้งเตือนแอดมิน (ข้อความธรรมดา) — ตั้ง TELEGRAM_ADMIN_CHAT_ID */
-export async function sendAdminAlert(text: string) {
+export interface AdminAlertResult {
+  sent: boolean;
+  /** เหตุผลที่ส่งไม่ได้ — ใช้ตอนดีบัก/ยิงทดสอบ */
+  reason?: string;
+}
+
+/**
+ * แจ้งเตือนแอดมิน (ข้อความธรรมดา) — ตั้ง TELEGRAM_ADMIN_CHAT_ID
+ *
+ * คืนสถานะจริงเสมอ (ไม่กลืน error เงียบ ๆ): ตัวเรียกแบบ fire-and-forget
+ * ไม่สนค่าที่คืนก็ได้ แต่ endpoint ทดสอบจะได้บอกได้ว่าส่งสำเร็จหรือไม่เพราะอะไร
+ * เคยเจอมาแล้วว่าไม่ได้ตั้ง TELEGRAM_ADMIN_CHAT_ID แล้วเงียบไปเฉย ๆ
+ * กว่าจะรู้ก็ตอนบริดจ์ล่มจริงแล้วไม่มีใครได้รับแจ้ง
+ */
+export async function sendAdminAlert(text: string): Promise<AdminAlertResult> {
   const adminChat = process.env.TELEGRAM_ADMIN_CHAT_ID;
   const adminTopic = process.env.TELEGRAM_ADMIN_TOPIC_ID;
-  if (!TOKEN || !adminChat) return;
+  if (!TOKEN) return { sent: false, reason: "ยังไม่ได้ตั้ง TELEGRAM_BOT_TOKEN" };
+  if (!adminChat) return { sent: false, reason: "ยังไม่ได้ตั้ง TELEGRAM_ADMIN_CHAT_ID (ปลายทางแจ้งเตือน)" };
   try {
-    await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+    const res = await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -86,8 +100,17 @@ export async function sendAdminAlert(text: string) {
         disable_web_page_preview: true,
       }),
     });
-  } catch {
-    /* best-effort */
+    const data = (await res.json().catch(() => ({}))) as { ok?: boolean; description?: string };
+    if (!data.ok) {
+      const reason = data.description ?? `HTTP ${res.status}`;
+      console.error("sendAdminAlert: telegram ปฏิเสธ:", reason);
+      return { sent: false, reason };
+    }
+    return { sent: true };
+  } catch (e) {
+    const reason = e instanceof Error ? e.message : "unknown";
+    console.error("sendAdminAlert: ส่งไม่สำเร็จ:", reason);
+    return { sent: false, reason };
   }
 }
 
