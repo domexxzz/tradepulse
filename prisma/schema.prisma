@@ -133,6 +133,10 @@ model AccessGrant {
   grantedAt           DateTime?
   revokedAt           DateTime?
   createdAt           DateTime      @default(now())
+
+  // คิวแอดมินและ callback ของ TradingView กรองด้วยสองคอลัมน์นี้เป็นหลัก
+  @@index([status])
+  @@index([userId])
 }
 
 model Payment {
@@ -141,9 +145,19 @@ model Payment {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   amountTHB   Int
   provider    String   @default("stripe")
-  providerRef String?
+  /**
+   * เลขอ้างอิงจากช่องทางที่ได้เงิน — unique เพื่อกันบันทึกเงินก้อนเดียวซ้ำ
+   * เดิมกันซ้ำด้วยการ findFirst แล้วค่อย create ซึ่ง race ได้เต็ม ๆ
+   * (webhook ของ Stripe ยิงซ้ำเป็นเรื่องปกติเวลา timeout)
+   * NULL ซ้ำกันได้ตามพฤติกรรม unique index ของ Postgres ซึ่งถูกต้องแล้ว
+   */
+  providerRef String?  @unique
   status      String
   createdAt   DateTime @default(now())
+
+  // countPaidMembers() ยิงทุกครั้งที่เรนเดอร์หน้าแรก และกรองด้วย status
+  @@index([status])
+  @@index([userId])
 }
 
 model Review {

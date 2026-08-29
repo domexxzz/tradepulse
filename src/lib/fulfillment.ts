@@ -1,4 +1,5 @@
 import type Stripe from "stripe";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { mapStatus } from "@/lib/stripe";
 
@@ -45,6 +46,11 @@ export async function upsertSubscription(
 /**
  * บันทึกใบเสร็จแบบกันซ้ำ (idempotent ตาม providerRef)
  * provider = ช่องทางที่ได้เงินมา (stripe / web / line / facebook / tiktok ...)
+ *
+ * ⚠️ ห้ามกลับไปใช้ findFirst แล้วค่อย create
+ * นั่นคือ check-then-act ที่ race ได้จริง — webhook ของ Stripe ยิงซ้ำเป็นเรื่องปกติ
+ * เวลา timeout สองคำขอวิ่งพร้อมกันจะไม่เจอแถวเดิมทั้งคู่ แล้วสร้างใบเสร็จซ้ำสองใบ
+ * สำหรับเงินก้อนเดียว ให้ unique index บน providerRef เป็นตัวตัดสิน แล้วจับ P2002 แทน
  */
 export async function recordPayment(
   userId: string,
@@ -52,11 +58,15 @@ export async function recordPayment(
   providerRef: string,
   provider = "stripe"
 ) {
-  const exists = await prisma.payment.findFirst({ where: { providerRef } });
-  if (exists) return;
-  await prisma.payment.create({
-    data: { userId, amountTHB, provider, providerRef, status: "paid" },
-  });
+  try {
+    await prisma.payment.create({
+      data: { userId, amountTHB, provider, providerRef, status: "paid" },
+    });
+  } catch (e) {
+    // P2002 = ชน unique constraint แปลว่ามีคนบันทึกใบเสร็จของ ref นี้ไปแล้ว ถือว่าสำเร็จ
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") return;
+    throw e;
+  }
 }
 
 /** สร้างคิวขอสิทธิ์ TradingView เฉพาะเมื่อยังไม่มีที่ active อยู่ (กันซ้ำ) */

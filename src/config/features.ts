@@ -251,6 +251,8 @@ export interface Step {
   no: string;
   title: string;
   desc: string;
+  image: string;
+  imageAlt: string;
 }
 /**
  * ขั้นตอนตั้งแต่สมัครจนเปิดกราฟใช้งานได้จริง
@@ -261,10 +263,34 @@ export interface Step {
  * ขั้นที่ 4 ใช้คำว่า "หลังตรวจสอบ" ไม่ใช่ "ทันที" เพราะสลิปต้องผ่านการตรวจก่อน
  */
 export const steps: Step[] = [
-  { no: "1", title: "สมัครสมาชิก", desc: "สร้างบัญชีด้วยอีเมล ใช้เวลาไม่ถึงนาที" },
-  { no: "2", title: "เลือกแพ็กเกจ", desc: "เลือกระยะเวลาที่ต้องการ ชำระผ่าน PromptPay แล้วแนบสลิป" },
-  { no: "3", title: "แจ้ง TradingView Username", desc: "กรอกในหน้าบัญชี เพื่อให้ทีมงานเพิ่มสิทธิ์ให้ถูกบัญชี" },
-  { no: "4", title: "รับสิทธิ์ใช้งาน", desc: "หลังตรวจสอบ เพิ่มอินดิเคเตอร์เข้ากราฟ พร้อมลิงก์เข้ากลุ่ม Telegram" },
+  {
+    no: "1",
+    title: "สมัครสมาชิก",
+    desc: "สร้างบัญชีด้วยอีเมล ใช้เวลาไม่ถึงนาที",
+    image: "/images/how-it-works/qvx-step-01-register.webp",
+    imageAlt: "ภาพประกอบฟอร์มสมัครสมาชิกพร้อมเครื่องหมายยืนยัน",
+  },
+  {
+    no: "2",
+    title: "เลือกแพ็กเกจ",
+    desc: "เลือกระยะเวลาที่ต้องการ ชำระผ่าน PromptPay แล้วแนบสลิป",
+    image: "/images/how-it-works/qvx-step-02-package.webp",
+    imageAlt: "ภาพประกอบการเลือกแพ็กเกจจากการ์ดสามตัวเลือก",
+  },
+  {
+    no: "3",
+    title: "แจ้ง TradingView Username",
+    desc: "กรอกในหน้าบัญชี เพื่อให้ทีมงานเพิ่มสิทธิ์ให้ถูกบัญชี",
+    image: "/images/how-it-works/qvx-step-03-tradingview-username.webp",
+    imageAlt: "ภาพประกอบโปรไฟล์ผู้ใช้เชื่อมกับช่องกรอกและกุญแจ",
+  },
+  {
+    no: "4",
+    title: "รับสิทธิ์ใช้งาน",
+    desc: "หลังตรวจสอบ เพิ่มอินดิเคเตอร์เข้ากราฟ พร้อมลิงก์เข้ากลุ่ม Telegram",
+    image: "/images/how-it-works/qvx-step-04-access-granted.webp",
+    imageAlt: "ภาพประกอบกราฟแท่งเทียนพร้อมแม่กุญแจปลดล็อก",
+  },
 ];
 
 export interface TrustItem {

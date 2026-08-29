@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { steps } from "@/config/features";
 
@@ -15,6 +16,16 @@ export function HowItWorks() {
         <ol className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {steps.map((s) => (
             <li key={s.no} className="card-frame card-frame-soft rounded-2xl p-6">
+              <div className="overflow-hidden rounded-xl border border-border/70 bg-[#111A14]">
+                <Image
+                  src={s.image}
+                  alt={s.imageAlt}
+                  width={1600}
+                  height={1000}
+                  sizes="(min-width: 1024px) 240px, (min-width: 640px) 45vw, 100vw"
+                  className="h-auto w-full"
+                />
+              </div>
               <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand font-display text-lg font-bold text-brand-ink">
                 {s.no}
               </span>
