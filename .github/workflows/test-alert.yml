@@ -1,0 +1,31 @@
+# ปุ่มกดทดสอบระบบแจ้งเตือนแอดมิน Telegram — กดรันเองจากหน้า Actions
+#
+# ยิง /api/cron/test-alert ด้วย CRON_SECRET ที่เก็บเป็น repo secret
+# ไม่รันตามเวลา (ไม่มี schedule) — ตั้งใจให้กดเองตอนอยากเช็ก
+# response JSON จะบอกว่า sent:true หรือไม่ พร้อม reason ถ้าส่งไม่ได้
+name: test-alert
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: ยิงข้อความทดสอบเข้าช่องแอดมิน
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          code=$(curl -s -o body.txt -w "%{http_code}" -m 30 \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "https://quantvisionx.com/api/cron/test-alert")
+          echo "HTTP ${code}"
+          echo "response:"
+          cat body.txt || true
+          echo ""
+          # 200 = endpoint ทำงาน (ส่งได้หรือไม่ดูที่ field sent ใน response)
+          # ไม่ 200 = ยืนยันตัวตนไม่ผ่าน/เว็บมีปัญหา
+          if [ "${code}" != "200" ]; then
+            echo "test-alert ไม่ตอบ 200"
+            exit 1
+          fi
