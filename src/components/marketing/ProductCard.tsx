@@ -137,7 +137,7 @@ export function ProductCard({
           </p>
           <p className="mt-2.5 text-[13px] font-medium text-foreground">
             {discounted
-              ? "ราคา Founding 300 — ล็อกราคานี้ไว้ตลอดอายุสมาชิก"
+              ? "ราคา Founding 300 — ล็อกราคานี้ไว้ตราบที่ต่ออายุต่อเนื่อง"
               : "ชำระเป็นรอบ ไม่ตัดบัตรอัตโนมัติ"}
           </p>
           <p className="tnum mt-1 text-[13px] text-muted">

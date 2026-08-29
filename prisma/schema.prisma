@@ -23,7 +23,9 @@ model User {
   passwordHash        String?
   role                String    @default("USER")
   tradingViewUsername String?
-  /** ราคารายเดือนที่ล็อกไว้ให้สมาชิกโปรโมชัน 300 คนแรก — ต่ออายุกี่รอบก็จ่ายเท่านี้ */
+  /** ราคารายเดือนที่ล็อกไว้ให้สมาชิกโปรโมชัน 300 คนแรก
+      ใช้ได้ตราบที่ยังไม่ขาดอายุ — เงื่อนไขจริงอยู่ที่ isPriceLockValid() ใน lib/pricing.ts
+      ไม่ลบค่านี้ทิ้งตอนขาดอายุ เพื่อให้ยังตรวจย้อนได้ว่าใครเคยได้ราคาล็อก */
   lockedMonthlyTHB Int?
   discordUserId   String?  @unique
   discordUsername String?

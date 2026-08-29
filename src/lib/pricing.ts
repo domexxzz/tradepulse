@@ -1,4 +1,6 @@
+import type { Subscription } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { getUserSubscription, isSubscriptionActive } from "@/lib/subscription";
 import {
   MONTHLY_PROMO,
   MONTHLY_REGULAR,
@@ -58,16 +60,52 @@ export async function getPromoState(): Promise<PromoState> {
   }
 }
 
+/** ผ่อนผันหลังหมดอายุกี่วัน ก่อนถือว่า "ขาดอายุ" แล้วเสียสิทธิ์ราคาล็อก */
+export const PRICE_LOCK_GRACE_DAYS = 7;
+
+const GRACE_MS = PRICE_LOCK_GRACE_DAYS * 24 * 60 * 60 * 1000;
+
+/**
+ * ราคาที่ล็อกไว้ยังใช้ได้อยู่ไหม — ล็อกอยู่ได้ตราบที่ยังไม่ขาดอายุ
+ *
+ * แยกเป็นฟังก์ชันบริสุทธิ์เพื่อให้ทดสอบได้โดยไม่ต้องมี DB
+ *
+ * ⚠️ ทุกทางที่ "พิสูจน์ไม่ได้ว่าขาดอายุ" ให้ถือว่าล็อกยังอยู่ ไม่ใช่ริบทิ้ง
+ * เก็บเงินเกินเพราะข้อมูลไม่ครบ เสียหายกว่าการเก็บน้อยไปมาก — ลูกค้าเสียเงินจริง
+ * และเราผิดคำที่โฆษณาไว้ ส่วนเก็บน้อยไปแค่เสียรายได้ส่วนต่างชั่วคราว
+ *
+ * มีช่วงผ่อนผันเพราะถ้าไม่มี คนที่ต่ออายุช้าไปวันเดียวจะเสียส่วนลดถาวร
+ * ซึ่งรุนแรงเกินไปสำหรับความผิดพลาดเล็กน้อย
+ */
+export function isPriceLockValid(
+  sub: Pick<Subscription, "status" | "currentPeriodEnd" | "stripeSubscriptionId"> | null,
+  now: Date = new Date()
+): boolean {
+  if (!sub) return true;
+  if (isSubscriptionActive(sub, now)) return true;
+  if (!sub.currentPeriodEnd) return true;
+  return now.getTime() <= sub.currentPeriodEnd.getTime() + GRACE_MS;
+}
+
 /**
  * ราคารายเดือนที่ผู้ใช้คนนี้ต้องจ่ายจริง
- * สมาชิกที่ถูกล็อกราคาไว้ (300 คนแรก) ได้ราคาเดิมตลอด ไม่ว่าโปรจะหมดไปแล้วหรือยัง
+ *
+ * สมาชิกที่ถูกล็อกราคาไว้ (300 คนแรก) ได้ราคาเดิม "ตราบที่ต่ออายุต่อเนื่อง"
+ * ขาดอายุเกินช่วงผ่อนผันแล้วกลับมาสมัครใหม่ จะได้ราคาปัจจุบันแทน
+ *
+ * ฟังก์ชันนี้อ่านอย่างเดียว ไม่ลบ lockedMonthlyTHB ทิ้ง — ถ้าลบ แล้วภายหลัง
+ * พบว่าคำนวณผิด จะกู้กลับไม่ได้ว่าใครเคยได้ราคาล็อกบ้าง
  */
 export async function monthlyPriceFor(userId: string): Promise<number> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { lockedMonthlyTHB: true },
-  });
-  if (user?.lockedMonthlyTHB) return user.lockedMonthlyTHB;
+  const [user, { sub }] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { lockedMonthlyTHB: true },
+    }),
+    getUserSubscription(userId),
+  ]);
+
+  if (user?.lockedMonthlyTHB && isPriceLockValid(sub)) return user.lockedMonthlyTHB;
 
   const promo = await getPromoState();
   return promo.monthlyTHB;

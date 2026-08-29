@@ -1,18 +1,21 @@
 import { CheckCircle2, ChevronRight, Crown, Flame, Info } from "lucide-react";
 import { formatTHB } from "@/lib/utils";
 import { MONTHLY_PROMO, MONTHLY_REGULAR } from "@/config/plans";
-import type { PromoState } from "@/lib/pricing";
+import { PRICE_LOCK_GRACE_DAYS, type PromoState } from "@/lib/pricing";
 
 /**
  * สิ่งที่ราคา Founding ให้จริง — ทุกข้อตรวจสอบได้จากโค้ด ไม่ใช่คำโฆษณา
- *   ข้อ 1 = lockPromoPriceIfEligible() ใน lib/pricing.ts ที่เขียน User.lockedMonthlyTHB
- *   ข้อ 2 = planIncludes ใน config/plans.ts
- *   ข้อ 3 = getPromoState() ที่สลับไป MONTHLY_REGULAR เมื่อที่นั่งหมด
+ *   ข้อ 1-2 = isPriceLockValid() ใน lib/pricing.ts ที่ยอมให้ล็อกอยู่ต่อเมื่อยังไม่ขาดอายุ
+ *   ข้อ 3   = ช่วงผ่อนผัน PRICE_LOCK_GRACE_DAYS แล้วตกไปที่ getPromoState()
+ *
+ * ⚠️ ข้อความชุดนี้ผูกกับตรรกะราคาโดยตรง แก้ข้อความแล้วต้องเช็คว่าโค้ดยังทำตามนั้นจริง
+ * ก่อนหน้านี้เคยเขียนว่า "ต่ออายุกี่รอบก็ราคาเดิม" ทั้งที่ตอนนั้นโค้ดล็อกถาวร
+ * ไม่สนว่าขาดอายุหรือไม่ — คำโฆษณาเข้มกว่าที่ระบบบังคับจริง ซึ่งอันตรายเวลามีข้อพิพาท
  */
 const PERKS: string[] = [
-  `จ่ายครั้งแรกแล้วราคาถูกล็อกทันที ต่ออายุกี่รอบก็ ${formatTHB(MONTHLY_PROMO)} เท่าเดิม`,
-  "ได้ฟีเจอร์ครบเท่าราคาเต็ม พร้อมอัปเดตใหม่ตลอดอายุสมาชิก",
-  `ครบ 300 สิทธิ์เมื่อไหร่ ราคากลับเป็น ${formatTHB(MONTHLY_REGULAR)}/เดือน สำหรับคนที่สมัครหลังจากนั้น`,
+  "รับสิทธิ์ราคานี้ตลอดอายุการใช้งาน เมื่อไม่ขาดอายุ",
+  "สิทธิ์ราคานี้จะคงอยู่ต่อเนื่อง ทุกการต่ออายุ",
+  `หากขาดอายุเกิน ${PRICE_LOCK_GRACE_DAYS} วันแล้วสมัครใหม่ จะเป็นราคาปกติ ${formatTHB(MONTHLY_REGULAR)}/เดือน`,
 ];
 
 interface Copy {
