@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ProfileBadge, type PortalProfile } from "@/components/portal/ProfileBadge";
 import { site } from "@/config/site";
 import { cn } from "@/lib/utils";
 
@@ -10,14 +11,14 @@ import { cn } from "@/lib/utils";
  */
 export function PortalShell({
   badge,
-  who,
+  profile,
   sidebar,
   children,
 }: {
   /** ป้ายข้าง ๆ โลโก้ เช่น ADMIN — ไม่ใส่ก็ได้ */
   badge?: string;
-  /** ชื่อหรืออีเมลคนที่ล็อกอินอยู่ */
-  who: string;
+  /** คนที่ล็อกอินอยู่ + สถานะสมาชิก */
+  profile: PortalProfile;
   sidebar: React.ReactNode;
   children: React.ReactNode;
 }) {
@@ -36,7 +37,7 @@ export function PortalShell({
               </span>
             )}
           </Link>
-          <span className="truncate text-sm text-muted">{who}</span>
+          <ProfileBadge {...profile} />
         </div>
       </header>
 
