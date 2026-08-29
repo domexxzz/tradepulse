@@ -1,12 +1,13 @@
 import { auth } from "@/auth";
 import { getUserSubscription } from "@/lib/subscription";
 import { plans, planIncludes, type Plan } from "@/config/plans";
-import { plansForUser } from "@/lib/pricing";
+import { plansForUser, priceLockStatusFor } from "@/lib/pricing";
 import { paymentMode } from "@/config/site";
 import { formatTHB } from "@/lib/utils";
 import { formatThaiDate } from "@/lib/date";
 import { createQrOrder } from "@/lib/actions/payment";
 import { CheckoutButton } from "@/components/marketing/CheckoutButton";
+import { PriceLockNote } from "@/components/account/PriceLockNote";
 import { Check } from "lucide-react";
 
 function PlanCards({ plans: list }: { plans: Plan[] }) {
@@ -48,11 +49,16 @@ export default async function SubscriptionPage() {
   const session = await auth();
   const { sub, isActive, daysLeft } = await getUserSubscription(session!.user.id);
   const userPlans = await plansForUser(session!.user.id);
+  const lock = await priceLockStatusFor(session!.user.id);
   const plan = plans.find((p) => p.id === sub?.planCode);
 
   return (
     <div className="space-y-8">
       <h1 className="display text-[length:var(--display-sm)]">แพ็คเกจของฉัน</h1>
+
+      {/* วางไว้บนสุดก่อนตัวแพ็กเกจ เพราะเป็นเงื่อนไขที่ใช้กับ "ทุก" การต่ออายุข้างล่าง
+          ไม่ใช่รายละเอียดของแพ็กเกจใบใดใบหนึ่ง */}
+      <PriceLockNote lock={lock} />
 
       {isActive && sub ? (
         <>

@@ -120,18 +120,24 @@ export function isPriceLockValid(
 }
 
 /**
- * ราคารายเดือนที่ผู้ใช้คนนี้ต้องจ่ายจริง
+ * สถานะสิทธิ์ราคาล็อกของสมาชิกคนหนึ่ง
  *
- * สมาชิกที่ถูกล็อกราคาไว้ (300 คนแรก) ได้ราคาเดิม "ตราบที่ต่ออายุต่อเนื่อง"
- * ขาดอายุเกินช่วงผ่อนผันแล้วกลับมาสมัครใหม่ จะได้ราคาปัจจุบันแทน
- *
- * ยกเว้นสมาชิกที่จ่ายเงินภายในวันที่ 29 สิงหาคม 2026 — กลุ่มนั้นได้ล็อกถาวร
- * เพราะตอนนั้นหน้าเว็บสัญญาไว้แบบไม่มีเงื่อนไขขาดอายุ
- *
- * ฟังก์ชันนี้อ่านอย่างเดียว ไม่ลบ lockedMonthlyTHB ทิ้ง — ถ้าลบ แล้วภายหลัง
- * พบว่าคำนวณผิด จะกู้กลับไม่ได้ว่าใครเคยได้ราคาล็อกบ้าง
+ *   none      ไม่เคยได้ราคาล็อก (สมัครหลังที่นั่ง Founding เต็ม)
+ *   permanent จ่ายก่อนกติกาใหม่ ล็อกถาวร ขาดอายุแล้วกลับมาก็ยังได้ราคาเดิม
+ *   active    ล็อกอยู่ตราบที่ต่ออายุต่อเนื่อง
+ *   lost      ขาดอายุเกินช่วงผ่อนผันแล้ว สิทธิ์สิ้นสุด
  */
-export async function monthlyPriceFor(userId: string): Promise<number> {
+export type PriceLockStatus =
+  | { kind: "none" }
+  | { kind: "permanent" | "active" | "lost"; monthlyTHB: number };
+
+/**
+ * แหล่งความจริงเดียวของเรื่องราคาล็อก — ทั้งการคิดราคาและการแสดงผลใช้ตัวนี้
+ *
+ * ถ้าแยกกันคิด หน้าเว็บจะบอกสมาชิกอย่างหนึ่งแต่ระบบเก็บเงินอีกอย่าง
+ * ซึ่งเป็นบั๊กที่ลูกค้าเจอก่อนเราเสมอ และเถียงยากเพราะเป็นเรื่องเงิน
+ */
+export async function priceLockStatusFor(userId: string): Promise<PriceLockStatus> {
   const [user, { sub }, firstPaid] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
@@ -145,11 +151,29 @@ export async function monthlyPriceFor(userId: string): Promise<number> {
     }),
   ]);
 
-  if (user?.lockedMonthlyTHB) {
-    // สมาชิกกลุ่มเดิมได้ล็อกถาวร ไม่ต้องผ่านการเช็คขาดอายุ
-    if (isPriceLockPermanent(firstPaid?.createdAt ?? null)) return user.lockedMonthlyTHB;
-    if (isPriceLockValid(sub)) return user.lockedMonthlyTHB;
-  }
+  const monthlyTHB = user?.lockedMonthlyTHB;
+  if (!monthlyTHB) return { kind: "none" };
+
+  if (isPriceLockPermanent(firstPaid?.createdAt ?? null)) return { kind: "permanent", monthlyTHB };
+  if (isPriceLockValid(sub)) return { kind: "active", monthlyTHB };
+  return { kind: "lost", monthlyTHB };
+}
+
+/**
+ * ราคารายเดือนที่ผู้ใช้คนนี้ต้องจ่ายจริง
+ *
+ * สมาชิกที่ถูกล็อกราคาไว้ (300 คนแรก) ได้ราคาเดิม "ตราบที่ต่ออายุต่อเนื่อง"
+ * ขาดอายุเกินช่วงผ่อนผันแล้วกลับมาสมัครใหม่ จะได้ราคาปัจจุบันแทน
+ *
+ * ยกเว้นสมาชิกที่จ่ายเงินภายในวันที่ 29 สิงหาคม 2026 — กลุ่มนั้นได้ล็อกถาวร
+ * เพราะตอนนั้นหน้าเว็บสัญญาไว้แบบไม่มีเงื่อนไขขาดอายุ
+ *
+ * ไม่ลบ lockedMonthlyTHB ทิ้ง — ถ้าลบ แล้วภายหลังพบว่าคำนวณผิด
+ * จะกู้กลับไม่ได้ว่าใครเคยได้ราคาล็อกบ้าง
+ */
+export async function monthlyPriceFor(userId: string): Promise<number> {
+  const lock = await priceLockStatusFor(userId);
+  if (lock.kind === "permanent" || lock.kind === "active") return lock.monthlyTHB;
 
   const promo = await getPromoState();
   return promo.monthlyTHB;
