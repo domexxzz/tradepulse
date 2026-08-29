@@ -1,33 +1,34 @@
 import { ShieldCheck } from "lucide-react";
 import { Icon } from "@/components/common/Icon";
-import { ProductCard } from "@/components/marketing/ProductCard";
+import { Button } from "@/components/ui/Button";
+import { LoopingClip } from "@/components/guide/LoopingClip";
 import { PromoCard } from "@/components/marketing/PromoCard";
-import { trustItems } from "@/config/features";
+import { productCard, trustItems } from "@/config/features";
+import { heroClip } from "@/config/guide";
+import { plansFor } from "@/config/plans";
+import { tradingView } from "@/config/site";
+import { formatTHB } from "@/lib/utils";
 import type { PromoState } from "@/lib/pricing";
 
 /**
- * หัวหน้าเว็บ — การ์ดสรุปสินค้าใบเดียว แทน Hero เลย์เอาท์เดิม
+ * หัวหน้าเว็บ — คอลัมน์เดียว กึ่งกลาง เรียงลงมาตามลำดับที่ลูกค้ากำหนด
  *
- * ตัวการ์ดอยู่ใน ProductCard (asHero) ไฟล์นี้ทำหน้าที่เป็น "กรอบ section"
- * ที่ถือของซึ่ง Hero เดิมถืออยู่ และจะหายไปถ้าเอา Hero ออกเฉย ๆ:
+ *   1. ส่วนแนะนำ QVX   ไม่มีกรอบ ใช้พื้นหลังเว็บต่อเนื่อง
+ *   2. การ์ดโปรโมชั่น   มีกรอบแยกจากพื้นชัดเจน เพราะเป็นข้อมูลสำคัญ
+ *   3. ปุ่มดำเนินการ    อยู่นอกกรอบ ต่อจากการ์ดโปร
+ *   4. คลิปกราฟ        กรอบบางพอให้เห็นขอบจอ ไม่ใช่การ์ดใหญ่ครอบ
  *
- *   id="top"                 โลโก้ใน Navbar ลิงก์มาที่ #top ถ้าไม่มี anchor กดแล้วไม่ไปไหน
- *   pt-[var(--sp-hero)]      navbar เป็น fixed สูง 64px ไม่เผื่อระยะบนไว้ การ์ดจะมุดใต้แถบเมนู
- *   .hero-market-depth       เส้นเลเซอร์ + จุดพัลส์เรดาร์ที่เคยขอให้ย้อนกลับมาใช้
- *   trustItems               แถบจุดเด่นสี่ข้อ
- *   บรรทัดคำเตือน             "เครื่องมือช่วยวิเคราะห์ ไม่ใช่สัญญาณการันตีกำไร"
+ * ⚠️ ของเดิมเป็นสองคอลัมน์ และห่อส่วนแนะนำไว้ในการ์ดใบใหญ่ (ProductCard asHero)
+ * ลูกค้าสั่งเลิกทั้งสองอย่าง — กรอบใบใหญ่ทำให้ "การ์ดซ้อนการ์ด" แล้วการ์ดโปรไม่เด่น
+ * ProductCard ยังอยู่ ใช้ที่หน้า /card สำหรับแคปเป็นภาพโฆษณาเท่านั้น
  *
- * ⚠️ Hero.tsx ยังอยู่ในโปรเจกต์ ไม่ได้ลบทิ้ง เผื่อจะย้อนกลับไปใช้เลย์เอาท์เดิม
- * ย้อนกลับ: เปลี่ยน <HeroCard /> ใน app/page.tsx กลับเป็น <Hero monthlyTHB={...} />
+ * สิ่งที่ section นี้ถือไว้และจะหายถ้าเอาออก: id="top" (โลโก้ navbar ลิงก์มา),
+ * ระยะเลี่ยง navbar ที่เป็น fixed, เส้นเลเซอร์, แถบ trustItems, บรรทัดคำเตือน
  */
 export function HeroCard({ promo }: { promo: PromoState }) {
-  // ระยะบนน้อยกว่า Hero เดิม (--sp-hero = 152px บนจอกว้าง)
-  // เพราะการ์ดมี padding ในตัวอีก 48px ซ้อนกันแล้วกลายเป็นช่องว่าง 200px
-  // ที่อ่านเป็น "หน้าเว็บโหลดไม่ครบ" มากกว่าพื้นที่หายใจ
-  // 96/112px ยังเคลียร์ navbar ที่สูง 64px ได้สบาย
-  //
-  // ⚠️ คอมเมนต์ตรงนี้ต้องเป็น // ห้ามใช้ {/* */} — มันจะกลายเป็นลูกอีกตัว
-  // ข้าง <section> ที่ระดับบนสุดของ return แล้ว parser พัง (Expected ',', got 'ident')
+  const plans = plansFor(promo.monthlyTHB);
+  const entry = plans.find((p) => p.months === 1) ?? plans[0];
+
   return (
     <section
       id="top"
@@ -43,26 +44,62 @@ export function HeroCard({ promo }: { promo: PromoState }) {
       </div>
 
       <div className="container-x">
-        {/* สองคอลัมน์บนจอกว้าง — ลูกค้าขอให้ "เปิดมาหน้าแรกเจอเลย"
-            ของเดิมบล็อกโปรอยู่ใต้การ์ดซึ่งสูง ~950px ต้องเลื่อนเกือบเต็มจอถึงจะเห็น
-            วางคู่กันแล้วทั้งสองอย่างอยู่ในหน้าจอแรกพร้อมกัน
-            จอแคบกว่า lg ยังเรียงบนล่าง เพราะบีบสองคอลัมน์แล้วกราฟจะเล็กจนอ่านไม่ออก
+        {/* 1. ส่วนแนะนำ — ไม่มีกรอบ กึ่งกลางทั้งบนคอมและมือถือ */}
+        <div className="rise rise-1 mx-auto max-w-2xl text-center">
+          <p className="eyebrow">{productCard.brandLine}</p>
 
-            items-start ไม่ใช่ stretch ที่เป็นค่าเริ่มต้น — ไม่งั้นบล็อกโปรถูกยืดสูงเท่าการ์ด
-            แล้วเนื้อหาข้างในลอยอยู่กลางกล่องเปล่า */}
-        <div className="grid items-start gap-7 lg:grid-cols-12">
-          <ProductCard
-            monthlyTHB={promo.monthlyTHB}
-            asHero
-            fluid
-            className="rise rise-1 lg:col-span-7"
-          />
+          {/* บรรทัดแรกขาว ที่เหลือไล่เฉดเขียว ตามภาพตัวอย่าง */}
+          <h1 className="display mt-4 text-[length:var(--display-lg)]">
+            {productCard.headlineLines.map((line, i) => (
+              <span key={line} className="block">
+                {i === 0 ? line : <span className="text-gradient-brand">{line}</span>}
+              </span>
+            ))}
+          </h1>
 
-          {/* บล็อกโปร Founding 300 — ลิงก์ "รายละเอียด" พาไป #pricing ตามที่สั่ง */}
-          <PromoCard promo={promo} variant="hero" className="rise rise-2 lg:col-span-5" />
+          <p className="lede mx-auto mt-6">{productCard.subtitle}</p>
         </div>
 
-        {/* จุดเด่นสั้น ๆ — อยู่นอกการ์ด ไม่ให้แย่งความสนใจจากพาดหัวและราคา */}
+        {/* 2. การ์ดโปรโมชั่น — ใบเดียวในหน้าที่มีกรอบ จึงดึงสายตาได้เต็มที่ */}
+        <PromoCard promo={promo} variant="hero" className="rise rise-2 mt-10" />
+
+        {/* 3. ปุ่มดำเนินการ — นอกกรอบ ต่อจากการ์ดโปร */}
+        <div className="rise rise-3 mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <Button href="#pricing" size="lg">
+            เริ่มใช้งาน · เริ่มต้น {formatTHB(entry.priceTHB)}/เดือน
+          </Button>
+          {/* ชี้ไปกราฟจริงบน TradingView ไม่ใช่ section ในหน้านี้ —
+              ปลายทางตรงกับข้อความบนปุ่ม และ TradingView ฝัง iframe ไม่ได้ */}
+          <Button
+            href={tradingView.chartUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            variant="outline"
+            size="lg"
+          >
+            ดูการทำงานบน TradingView
+          </Button>
+        </div>
+
+        {/* 4. คลิปกราฟ — กรอบบางพอให้ดูเป็นหน้าจอ ไม่ใช่การ์ดใหญ่ครอบอีกชั้น */}
+        <figure className="rise rise-4 mx-auto mt-12 max-w-4xl">
+          <div className="card-frame overflow-hidden rounded-2xl p-1">
+            <LoopingClip
+              src={heroClip.src}
+              poster={heroClip.poster}
+              label={heroClip.label}
+              width={heroClip.width}
+              height={heroClip.height}
+              eager
+            />
+          </div>
+          <figcaption className="mt-3 text-center text-xs leading-relaxed text-faint">
+            คลิปจากกราฟจริงที่รันอินดิเคเตอร์ บันทึกในโหมด Bar Replay ของ TradingView ·
+            เป็นการเดินย้อนหลังเพื่อสาธิต ไม่ใช่การเทรดสด และไม่ใช่การรับประกันผลในอนาคต
+          </figcaption>
+        </figure>
+
+        {/* จุดเด่นสั้น ๆ ปิดท้าย section */}
         <ul className="mx-auto mt-12 flex max-w-4xl flex-wrap items-center justify-center gap-x-8 gap-y-3">
           {trustItems.map((t) => (
             <li key={t.label} className="flex items-center gap-2 text-sm text-muted">

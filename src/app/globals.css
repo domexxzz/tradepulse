@@ -259,20 +259,41 @@ body {
 }
 
 /**
- * แถบสิทธิ์แบบขีด — อ่านเป็น "จำนวนที่นั่ง" ได้ทันที ต่างจากแถบทึบที่บอกแค่เปอร์เซ็นต์
- * ขีดที่ยังไม่ติดไม่ได้ซ่อน แต่หรี่ลง เพื่อให้เห็นว่าทั้งหมดมีกี่ขีด
+ * แถบสิทธิ์ — เส้นเดียวบางและเรียบ (ฟีดแบคลูกค้า: เลิกใช้แบบหลายขีด)
+ *
+ * ข้อกำหนดจากลูกค้าแปลเป็นค่าจริง:
+ *   "แถบบางและเรียบ"          -> สูง 6px ปลายมน ไม่มีขอบใน
+ *   "จุดแสงนุ่ม ๆ เฉพาะปลายแถบ" -> ::after ที่ปลายส่วนที่เติม เงา blur 10px alpha .45
+ *   "ไม่ใช้นีออนหรือ glow แรง"  -> ตัวแถบไม่มีเงาเลย มีแต่จุดปลาย และ alpha ต่ำกว่า .5
+ *   "ตัวเลขต้องเด่นกว่าแถบ"     -> ตัวเลขใช้ --display-md (46px) ส่วนแถบสูง 6px
+ *
+ * overflow ต้องเป็น visible ไม่ใช่ hidden ไม่งั้นจุดแสงปลายแถบจะถูกตัดครึ่ง
  */
-.promo-offer__bar { display: flex; gap: 3px; }
-.promo-offer__bar > span {
-  flex: 1;
-  height: 14px;
-  border-radius: 3px;
-  background: rgba(110, 227, 74, .08);
-  box-shadow: inset 0 0 0 1px rgba(110, 227, 74, .10);
+.promo-offer__bar {
+  position: relative;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(110, 227, 74, .10);
+  overflow: visible;
 }
-.promo-offer__bar > span[data-lit] {
-  background: linear-gradient(180deg, var(--brand-strong), var(--brand-deep));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .28);
+.promo-offer__bar > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--brand-deep), var(--brand) 72%, var(--brand-strong));
+  transition: width .4s ease;
+}
+.promo-offer__bar > span::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 50%;
+  height: 12px;
+  width: 12px;
+  margin: -6px -6px 0 0;
+  border-radius: 999px;
+  background: var(--brand-strong);
+  box-shadow: 0 0 10px 2px rgba(110, 227, 74, .45);
 }
 
 /* แพ็กเกจที่แนะนำ — เด่นด้วยขอบเขียวกว่าและพื้นสว่างขึ้น ไม่ใช้เงาเรืองแรง */

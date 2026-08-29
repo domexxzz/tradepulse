@@ -3,9 +3,6 @@ import { formatTHB } from "@/lib/utils";
 import { MONTHLY_PROMO, MONTHLY_REGULAR } from "@/config/plans";
 import type { PromoState } from "@/lib/pricing";
 
-/** จำนวนขีดในแถบสิทธิ์ — แบ่งเป็นขีดเพราะอ่านเป็น "จำนวนที่นั่ง" ง่ายกว่าแถบทึบ */
-const SEGMENTS = 20;
-
 /**
  * สิ่งที่ราคา Founding ให้จริง — ทุกข้อตรวจสอบได้จากโค้ด ไม่ใช่คำโฆษณา
  *   ข้อ 1 = lockPromoPriceIfEligible() ใน lib/pricing.ts ที่เขียน User.lockedMonthlyTHB
@@ -84,7 +81,11 @@ export function PromoCard({
 
   const copy = COPY[variant];
   const BadgeIcon = variant === "hero" ? Flame : Crown;
-  const lit = Math.max(1, Math.round((promo.remaining / promo.seats) * SEGMENTS));
+  /**
+   * สัดส่วนสิทธิ์ที่ยังเหลือ ใช้เป็นความยาวแถบ
+   * พื้นขั้นต่ำ 2% เพื่อให้จุดแสงปลายแถบยังมีที่ยืนตอนสิทธิ์เกือบหมด ไม่ถูกตัดหาย
+   */
+  const pct = Math.max(2, Math.round((promo.remaining / promo.seats) * 100));
 
   return (
     <div className={`promo-offer card-frame mx-auto w-full max-w-xl rounded-3xl px-5 pb-6 pt-7 sm:px-7 ${className}`}>
@@ -98,33 +99,11 @@ export function PromoCard({
         <p className="mt-1.5 text-center text-base font-semibold text-brand sm:text-lg">{copy.subtitle}</p>
       )}
 
-      {/* เทียบราคา — โชว์ทั้งสองโหมด ลูกค้าขอให้ "ราคาโปรเด่น" ตั้งแต่หน้าจอแรก
-
-          ใช้ grid สองแถวแทนกล่องคู่ที่วางเรียงกัน เพราะตัวเลขสองฝั่งคนละขนาด
-          ถ้าเรียงเป็นกล่องคู่แล้วจัด items-end ป้ายหัวจะเหลื่อมกันตามความสูงของราคา
-          แยกเป็นแถว "ป้าย" กับแถว "ราคา" ป้ายจึงอยู่ระดับเดียวกันเสมอ
-
-          บนหัวหน้าเว็บมีป้ายราคาในการ์ดสินค้าอยู่แล้วก็จริง แต่คนละหน้าที่:
-          ป้ายในการ์ดบอก "จ่ายเท่าไร" ส่วนตรงนี้บอก "ประหยัดจากราคาปกติเท่าไร" */}
-      <div className="mx-auto mt-5 grid w-fit grid-cols-2 items-end gap-x-8 justify-items-center">
-        <p className="text-[11px] text-faint">ราคาปกติ</p>
-        <p className="text-[11px] font-medium text-brand">ราคาพิเศษ</p>
-        <p className="tnum mt-1 text-sm text-faint line-through">
-          {formatTHB(MONTHLY_REGULAR)}/เดือน
-        </p>
-        <p className="mt-1 flex items-baseline gap-1">
-          <span className="display tnum text-gradient-brand text-[length:var(--display-sm)]">
-            {formatTHB(MONTHLY_PROMO)}
-          </span>
-          <span className="text-xs text-muted">/เดือน</span>
-        </p>
-      </div>
-
       <div className="promo-offer__seats mt-5 rounded-2xl px-4 py-3.5">
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
           <span className="text-sm text-muted">เหลือสิทธิ์เพียง</span>
           <span className="flex items-baseline gap-1.5">
-            <b className="display tnum text-brand text-[length:var(--display-sm)]">
+            <b className="display tnum text-brand text-[length:var(--display-md)]">
               {promo.remaining}
             </b>
             <span className="tnum text-sm text-muted">/ {promo.seats} สิทธิ์</span>
@@ -139,9 +118,8 @@ export function PromoCard({
           aria-valuemax={promo.seats}
           aria-label={`เหลือสิทธิ์ราคาพิเศษ ${promo.remaining} จาก ${promo.seats} ที่นั่ง`}
         >
-          {Array.from({ length: SEGMENTS }, (_, i) => (
-            <span key={i} data-lit={i < lit ? "" : undefined} />
-          ))}
+          {/* แถบเดียวเรียบ ๆ ไม่ใช่หลายขีด — จุดแสงนุ่มอยู่ปลายแถบเท่านั้น (::after ใน globals.css) */}
+          <span style={{ width: `${pct}%` }} />
         </div>
       </div>
 
