@@ -1,6 +1,34 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  /**
+   * Security header พื้นฐาน — ของเดิมมีแต่ HSTS ที่ Vercel ใส่ให้เอง
+   *
+   * frame-ancestors คือตัวที่จำเป็นที่สุด: หน้าแอดมินมีปุ่มกดครั้งเดียวแล้วมีผลจริง
+   * (อนุมัติออเดอร์ = แจกสิทธิ์ฟรี, ถอนสิทธิ์, ลบรีวิว) ถ้าฝัง iframe ได้
+   * คนร้ายเอาหน้าแอดมินไปซ้อนใต้ปุ่มปลอมบนเว็บตัวเอง แล้วหลอกให้แอดมิน
+   * ที่ล็อกอินค้างอยู่กดโดยไม่รู้ว่ากำลังกดอะไร
+   *
+   * ใส่ทั้ง X-Frame-Options และ CSP frame-ancestors เพราะเบราว์เซอร์เก่าอ่านตัวแรก
+   * ตัวใหม่อ่านตัวหลัง — CSP ตัวนี้จำกัดแค่การถูกฝัง ไม่แตะสคริปต์หรือสไตล์
+   * จึงไม่เสี่ยงทำหน้าเว็บพังแบบ CSP เต็มรูปแบบ
+   *
+   * nosniff กันเบราว์เซอร์เดาชนิดไฟล์เอง — สำคัญกับ /api/admin/slip/[id]
+   * ที่เสิร์ฟไบต์จากไฟล์ที่ลูกค้าอัปโหลดเข้าเซสชันของแอดมิน
+   */
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+        ],
+      },
+    ];
+  },
   experimental: {
     // รูปสลิปจากมือถือมักใหญ่กว่าเพดาน default 1MB ของ Server Actions แล้วพังเป็น 413
     // ฝั่ง client บีบรูปก่อนส่งอยู่แล้ว (SlipUploadForm) ตัวนี้เป็น safety net เผื่อรูปที่บีบแล้วยังใหญ่
