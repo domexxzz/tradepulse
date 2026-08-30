@@ -38,11 +38,24 @@ export default async function AccountOverview({
     ? await prisma.telegramGrant.findFirst({
         where: { userId, status: { in: ["PENDING", "ADDED"] } },
         orderBy: { createdAt: "desc" },
-        select: { status: true, inviteLink: true },
+        select: { id: true, status: true, inviteLink: true },
       })
     : null;
-  const telegramInvite = telegramGrant?.inviteLink ?? process.env.TELEGRAM_INVITE_URL;
   const inGroup = telegramGrant?.status === "ADDED";
+
+  // ลิงก์ทักบอทก่อนเข้ากลุ่ม — ทางเดียวที่ทำให้บอทส่ง DM หาสมาชิกได้
+  // Telegram ห้ามบอททักคนก่อน สมาชิกต้องกด Start เอง พอกดแล้วบอทตอบลิงก์กลุ่มกลับไปให้
+  // ไม่ตั้ง TELEGRAM_BOT_USERNAME = ใช้ลิงก์เชิญตรง ๆ แบบเดิม (แค่ส่ง DM ไม่ได้)
+  const botUsername = process.env.TELEGRAM_BOT_USERNAME?.replace(/^@/, "");
+  const telegram = telegramRowCopy({
+    inGroup,
+    botStartUrl:
+      botUsername && telegramGrant?.id
+        ? `https://t.me/${botUsername}?start=${telegramGrant.id}`
+        : null,
+    personalInvite: telegramGrant?.inviteLink ?? null,
+    fallbackInvite: process.env.TELEGRAM_INVITE_URL ?? null,
+  });
   const cheapest = Math.min(...plans.map((p) => p.perMonthTHB));
 
   return (
@@ -140,17 +153,9 @@ export default async function AccountOverview({
               done={inGroup}
               icon={<Send className="h-4 w-4" />}
               title="กลุ่มสัญญาณ Telegram"
-              detail={
-                inGroup
-                  ? "คุณอยู่ในกลุ่มแล้ว"
-                  : telegramGrant?.inviteLink
-                    ? "ลิงก์ของคุณคนเดียว ใช้ได้ครั้งเดียว — ส่งต่อให้คนอื่นจะถูกปฏิเสธ"
-                    : telegramInvite
-                      ? "กดเข้ากลุ่มรับสัญญาณสด"
-                      : "ทีมงานจะส่งลิงก์เชิญให้เร็ว ๆ นี้"
-              }
-              href={inGroup ? undefined : telegramInvite}
-              cta="เข้ากลุ่ม"
+              detail={telegram.detail}
+              href={telegram.href}
+              cta={telegram.cta}
               external
             />
           </div>
@@ -158,6 +163,48 @@ export default async function AccountOverview({
       )}
     </>
   );
+}
+
+/**
+ * ข้อความ ลิงก์ และปุ่มของแถว "กลุ่มสัญญาณ Telegram"
+ *
+ * แยกออกมาเพราะมีห้าสถานะ เขียนซ้อนใน JSX แล้วอ่านไม่ออก
+ * ลำดับสำคัญ: ถ้ามีลิงก์บอทให้ใช้ลิงก์บอทเสมอ แม้สมาชิกจะอยู่ในกลุ่มแล้ว
+ * เพราะคนที่เข้ากลุ่มด้วยลิงก์เชิญตรง ๆ ยังไม่เคยกด Start จึงยังรับ DM ไม่ได้
+ */
+function telegramRowCopy({
+  inGroup, botStartUrl, personalInvite, fallbackInvite,
+}: {
+  inGroup: boolean;
+  botStartUrl: string | null;
+  personalInvite: string | null;
+  fallbackInvite: string | null;
+}): { detail: string; href?: string; cta: string } {
+  if (botStartUrl) {
+    return inGroup
+      ? {
+          detail: "คุณอยู่ในกลุ่มแล้ว — เชื่อมต่อบอทเพื่อรับหลักฐานสิทธิ์และแจ้งเตือนทางแชทส่วนตัว",
+          href: botStartUrl,
+          cta: "เชื่อมต่อบอท",
+        }
+      : {
+          detail: "กดคุยกับบอท แล้วบอทจะส่งลิงก์เข้ากลุ่มของคุณให้ทันที",
+          href: botStartUrl,
+          cta: "เริ่มใช้งาน",
+        };
+  }
+  if (inGroup) return { detail: "คุณอยู่ในกลุ่มแล้ว", cta: "เข้ากลุ่ม" };
+  if (personalInvite) {
+    return {
+      detail: "ลิงก์ของคุณคนเดียว ใช้ได้ครั้งเดียว — ส่งต่อให้คนอื่นจะถูกปฏิเสธ",
+      href: personalInvite,
+      cta: "เข้ากลุ่ม",
+    };
+  }
+  if (fallbackInvite) {
+    return { detail: "กดเข้ากลุ่มรับสัญญาณสด", href: fallbackInvite, cta: "เข้ากลุ่ม" };
+  }
+  return { detail: "ทีมงานจะส่งลิงก์เชิญให้เร็ว ๆ นี้", cta: "เข้ากลุ่ม" };
 }
 
 function DeliveryRow({
@@ -188,10 +235,21 @@ function DeliveryRow({
           <ArrowRight className="h-3.5 w-3.5" />
         </a>
       )}
-      {href && done && !external && (
-        <Link href={href} className="text-sm text-muted transition-colors hover:text-brand">
-          {cta}
-        </Link>
+      {href && done && (
+        external ? (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-muted transition-colors hover:text-brand"
+          >
+            {cta}
+          </a>
+        ) : (
+          <Link href={href} className="text-sm text-muted transition-colors hover:text-brand">
+            {cta}
+          </Link>
+        )
       )}
     </div>
   );

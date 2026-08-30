@@ -46,8 +46,27 @@ POST {TV_BOT_URL}/revoke    {"secret":"...", "username":"someone"}
 
 ```
 POST https://โดเมนเว็บ/api/tradingview/callback
-{"secret":"...", "action":"grant", "username":"someone", "ok":true, "error":null}
+{"secret":"...", "action":"grant", "username":"someone", "ok":true, "error":null,
+ "proof":"<PNG base64 ไม่ใส่ก็ได้>"}
 ```
+
+`proof` คือภาพกล่อง Manage access ที่บอทแคปไว้เป็นหลักฐานให้ลูกค้า
+เว็บจะ decode แล้วส่งเข้า DM Telegram ของเจ้าของ username นั้นให้อัตโนมัติ
+ไม่ส่งมาก็ทำงานได้ตามปกติ แค่ลูกค้าไม่ได้รับรูป
+
+| ค่าที่ callback ตอบใน `proof` | แปลว่า |
+|---|---|
+| `sent` | ส่งเข้า DM ลูกค้าแล้ว |
+| `no-telegram-account` | สมาชิกยังไม่ได้ผูกบัญชี Telegram |
+| `needs-start` | ผูกแล้วแต่ไม่เคยกด Start กับบอท — Telegram ห้ามบอททักก่อน |
+| `invalid-png` | base64 ที่ส่งมาไม่ใช่ไฟล์ PNG |
+| `failed` | Telegram ปฏิเสธด้วยเหตุอื่น |
+
+ทุกกรณีที่ไม่ใช่ `sent` จะเด้งแจ้งแอดมินให้ส่งภาพเองแทน
+และ**ไม่**ทำให้ callback ล้ม — สถานะสิทธิ์ถูกบันทึกไปก่อนหน้านั้นแล้ว
+
+> ⚠️ ฝั่งบอทยังไม่ได้ส่ง `proof` มา ต้องแก้ `tlapi.py` บนเครื่องบอทก่อน
+> (ดูหัวข้อ "ภาพหลักฐานสิทธิ์" ด้านล่าง)
 
 > `days` คำนวณจากวันหมดอายุแพ็กเกจจริง เพื่อให้สิทธิ์บน TradingView หมดพร้อมกัน
 > เผื่อ cron ฝั่งเราไม่ทำงานสักวันก็ยังไม่มีใครใช้ฟรีเกินกำหนด
@@ -500,3 +519,28 @@ Set-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name "Bo
 และครอบ try แยกแต่ละงาน + เขียน `alive` ทุก 30 นาทีเพื่อให้รู้ว่ายังไม่ตาย
 
 เช็กสุขภาพเร็ว ๆ: `Get-Content C:\BotTV\keeper.log -Tail 5` — ถ้าเงียบเกิน 30 นาที = ตายแล้ว
+
+## ภาพหลักฐานสิทธิ์ที่ส่งให้ลูกค้า (31 ส.ค. 2569)
+
+ลูกค้าอยากเห็นหลักฐานว่าได้สิทธิ์จริง ไม่ใช่แค่ข้อความบอกว่าสำเร็จ
+ภาพที่ใช้คือกล่อง **Manage access** ที่โชว์ username กับวันหมดอายุของเขาเอง
+
+**ฝั่งเว็บทำเสร็จแล้ว** — `/api/tradingview/callback` รับ `proof` และส่งเข้า DM ให้
+
+**ฝั่งบอทยังต้องแก้** (อยู่บนคอมเฟิร์ส `C:\BotTV` ไม่ได้อยู่ใน repo นี้):
+
+1. ก๊อป `tvshot.py` ขึ้นเครื่องบอทไว้ข้าง ๆ `tlapi.py`
+2. ใน `add_indicator_access` ตรงหลังบรรทัดที่พิมพ์ `EXPIRY_OK` เรียก
+   `capture_access_proof_b64(driver, username)` แล้วส่งค่าที่ได้ต่อให้ `tv_bridge.py`
+3. `tv_bridge.py` ใส่ค่านั้นลงใน field `proof` ของ callback
+
+`renew_indicator_access` มีโค้ดแคปอยู่ก่อนแล้ว (ส่งเข้า Telegram ของคนที่สั่ง `/re`)
+แต่ใช้ซ้ำไม่ได้ตรง ๆ เพราะสองเรื่อง:
+
+- หากล่องด้วย `//div[contains(@class,'dialog-')]` — TradingView ใช้ CSS module
+  ชื่อ hash (ตรวจของจริง 31 ส.ค. 2569: `menuWrap-lBIxIwtz`, `button-XNUivTou`)
+  XPath นั้นแมตช์หลายกล่อง `find_element` คืนตัวแรกใน DOM ซึ่งอาจเป็นกล่องที่ซ่อนอยู่
+  → ได้ภาพเปล่า `tvshot.py` ยึด `div[role='dialog']` ที่มองเห็นจริงแทน
+- **แคปทั้งรายการ = ลูกค้าเห็น username กับวันหมดอายุของลูกค้าคนอื่นทั้งหมด**
+  `tvshot.py` พิมพ์ชื่อลงช่องค้นหาให้เหลือแถวเดียวก่อนแคป และถ้ากรองไม่สำเร็จ
+  จะ **ไม่แคปเลย** ดีกว่าปล่อยภาพที่มีข้อมูลคนอื่นหลุดออกไป

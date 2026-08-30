@@ -58,7 +58,12 @@ if (action === "set") {
     url,
     secret_token: SECRET,
     // ขอเฉพาะเหตุการณ์ที่ใช้จริง — ไม่ต้องรับข้อความทุกข้อความในกลุ่ม
-    allowed_updates: ["chat_join_request"],
+    //
+    // "message" จำเป็นสำหรับ /start ในแชทส่วนตัว ซึ่งเป็นทางเดียวที่สมาชิก
+    // จะให้สิทธิ์บอททัก DM ได้ (Telegram ห้ามบอททักคนก่อน) ถ้าไม่มีตัวนี้
+    // จะส่งภาพหลักฐานสิทธิ์หรือแจ้งเตือนใกล้หมดอายุหาสมาชิกไม่ได้เลย
+    // webhook กรองเองอยู่แล้วว่ารับเฉพาะ /start จากแชทส่วนตัว
+    allowed_updates: ["chat_join_request", "message"],
     drop_pending_updates: true,
   });
   console.log(r.ok ? `✅ ตั้ง webhook แล้ว: ${url}` : `❌ ล้มเหลว: ${r.description}`);

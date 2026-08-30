@@ -206,3 +206,101 @@ export async function isGroupMember(telegramUserId: string | number): Promise<bo
     return false;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* ส่งข้อความ / รูป ตรงถึงสมาชิกรายคน (DM)                                */
+/* ------------------------------------------------------------------ */
+
+export interface DmResult {
+  sent: boolean;
+  /** เหตุผลที่ส่งไม่ได้ — เก็บไว้ให้แอดมินอ่าน ไม่ใช่ให้ลูกค้าเห็น */
+  reason?: string;
+  /**
+   * true = ส่งไม่ได้เพราะสมาชิกยังไม่เคยเปิดแชทกับบอท ไม่ใช่ระบบพัง
+   *
+   * Telegram ห้ามบอททักคนก่อนเด็ดขาด สมาชิกต้องกด Start กับบอทเองอย่างน้อยครั้งเดียว
+   * ข้อยกเว้นเดียวคือช่วง 5 นาทีหลังส่งคำขอเข้ากลุ่ม ซึ่งปิดไปตอน approveJoinRequest แล้ว
+   * และรูปหลักฐานจากบอท TradingView มาถึงช้ากว่านั้น (Selenium ใช้ 60-120 วินาที)
+   * ตัวเรียกจึงต้องแยกกรณีนี้ออก แล้วให้แอดมินส่งต่อมือแทน ไม่ใช่ retry
+   */
+  needsStart?: boolean;
+}
+
+/** caption ของ Telegram ยาวได้ 1024 ตัวอักษร ยาวกว่านั้นถูกปฏิเสธทั้งข้อความ */
+const CAPTION_MAX = 1024;
+
+function classifyDmError(status: number, description?: string): DmResult {
+  const reason = description ?? `HTTP ${status}`;
+  const needsStart =
+    status === 403 ||
+    /chat not found/i.test(reason) ||
+    /can't initiate conversation/i.test(reason) ||
+    /bot was blocked/i.test(reason);
+  return { sent: false, reason, needsStart };
+}
+
+/** ข้อความธรรมดาถึงสมาชิกรายคน */
+export async function sendMessageToUser(
+  telegramUserId: string | number,
+  text: string
+): Promise<DmResult> {
+  if (!TOKEN) return { sent: false, reason: "ยังไม่ได้ตั้ง TELEGRAM_BOT_TOKEN" };
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+      method: "POST",
+      signal: AbortSignal.timeout(10_000),
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        chat_id: String(telegramUserId),
+        text,
+        disable_web_page_preview: true,
+      }),
+    });
+    const data = (await res.json().catch(() => ({}))) as { ok?: boolean; description?: string };
+    if (!data.ok) return classifyDmError(res.status, data.description);
+    return { sent: true };
+  } catch (e) {
+    return { sent: false, reason: e instanceof Error ? e.message : "unknown" };
+  }
+}
+
+/**
+ * ส่งรูปถึงสมาชิกรายคน — ใช้ส่งภาพหลักฐานสิทธิ์ TradingView
+ *
+ * ต้องเป็น multipart ไม่ใช่ JSON เพราะ Telegram รับไฟล์เป็น form field เท่านั้น
+ * caption ส่งเป็นข้อความล้วน (ไม่ตั้ง parse_mode) จะได้ไม่ต้อง escape ชื่อผู้ใช้
+ * ที่มาจากข้างนอก — พลาดทีเดียวข้อความถูกปฏิเสธทั้งใบ
+ *
+ * ใช้ sendPhoto เพราะขึ้นเป็นรูปในแชทเลย แลกกับที่ Telegram บีบเป็น JPEG
+ * (ภาพจาก tvshot.py เรนเดอร์มาที่ scale 2 อยู่แล้ว ตัวหนังสือจึงยังอ่านออก)
+ * ถ้าวันหลังอยากได้ไฟล์ต้นฉบับคมเป๊ะ เปลี่ยนไปใช้ sendDocument แทนได้
+ */
+export async function sendPhotoToUser(
+  telegramUserId: string | number,
+  photo: Uint8Array,
+  caption?: string
+): Promise<DmResult> {
+  if (!TOKEN) return { sent: false, reason: "ยังไม่ได้ตั้ง TELEGRAM_BOT_TOKEN" };
+  try {
+    const form = new FormData();
+    form.append("chat_id", String(telegramUserId));
+    if (caption) form.append("caption", caption.slice(0, CAPTION_MAX));
+    form.append(
+      "photo",
+      new Blob([photo as BlobPart], { type: "image/png" }),
+      "tradingview-access.png"
+    );
+
+    const res = await fetch(`https://api.telegram.org/bot${TOKEN}/sendPhoto`, {
+      method: "POST",
+      // อัปโหลดไฟล์ช้ากว่าส่งข้อความ ให้เวลามากกว่าปกติ
+      signal: AbortSignal.timeout(20_000),
+      body: form,
+    });
+    const data = (await res.json().catch(() => ({}))) as { ok?: boolean; description?: string };
+    if (!data.ok) return classifyDmError(res.status, data.description);
+    return { sent: true };
+  } catch (e) {
+    return { sent: false, reason: e instanceof Error ? e.message : "unknown" };
+  }
+}
