@@ -1,14 +1,17 @@
 import Image from "next/image";
-import { AlertTriangle, Check, Eye, Repeat, SlidersHorizontal } from "lucide-react";
+import { AlertTriangle, Check, Eye, SlidersHorizontal } from "lucide-react";
 import type { GuideSuite } from "@/config/guide";
-import { LoopingClip } from "@/components/guide/LoopingClip";
 
 /**
  * หนึ่งชุดอินดิเคเตอร์บนหน้า /guide
  *
- * ลำดับการเล่า: เห็นหน้าชาร์ตก่อน → ดูคลิปว่ามันขยับยังไง → แล้วค่อยลงรายละเอียด
- * ว่าเปิดอะไร ตั้งค่าเท่าไร ใช้ตอนไหน และไม่ควรใช้ตอนไหน
+ * ลำดับการเล่า: เห็นหน้าชาร์ตก่อน → แล้วค่อยลงรายละเอียดว่าเปิดอะไร ตั้งค่าเท่าไร
+ * ใช้ตอนไหน และไม่ควรใช้ตอนไหน
  * การ์ดสรุปภาพอยู่ท้ายสุด เพราะเป็นของไว้เซฟไปเปิดตอนตั้งค่าจริง ไม่ใช่ของไว้อ่านบนเว็บ
+ *
+ * เคยมีคลิปวนซ้ำคั่นระหว่างหน้าชาร์ตกับรายละเอียด — น็อตขอเอาออก 30 ส.ค. 2026
+ * ข้อมูลคลิปเดิม (src / poster / label / duration ของทั้งสามชุด) ดูได้ที่
+ * `git show 820dd84:src/config/guide.ts` ถ้าจะเอากลับมา
  */
 export function SuiteSection({ suite }: { suite: GuideSuite }) {
   return (
@@ -46,24 +49,6 @@ export function SuiteSection({ suite }: { suite: GuideSuite }) {
           ตัวอย่างหน้าชาร์ต XAUUSD เมื่อเปิด {suite.name}
         </figcaption>
       </figure>
-
-      <div className="mt-6 grid gap-5 md:grid-cols-2">
-        {suite.videos.map((v) => (
-          <figure
-            key={v.src}
-            className="card-frame overflow-hidden rounded-2xl p-1.5"
-          >
-            <LoopingClip src={v.src} poster={v.poster} label={v.label} />
-            <figcaption className="flex items-center justify-between gap-2 px-3 py-2 text-xs text-muted">
-              <span className="inline-flex items-center gap-1.5">
-                <Repeat className="h-3 w-3 text-brand" />
-                {v.label}
-              </span>
-              <span className="tabular-nums">วนซ้ำ · {v.duration}</span>
-            </figcaption>
-          </figure>
-        ))}
-      </div>
 
       <div className="mt-8 grid gap-5 md:grid-cols-2">
         <ListCard icon={<Eye className="h-4 w-4" />} title="สิ่งที่เห็นบนกราฟ" items={suite.onChart} />

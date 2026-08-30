@@ -8,13 +8,13 @@
  * เพื่อสาธิตการทำงาน ไม่ใช่บันทึกการเทรดสด — ห้ามพาดหัวว่าเป็นผลการเทรดจริง
  * ข้อความกำกับอยู่ที่ `mediaNote` ด้านล่าง ใช้ร่วมกันทั้งหน้า /guide และหน้าแรก
  *
- * คลิปในคู่มือทั้งสี่ตัวเป็นการอัดจอ iPad 736x512 เข้ารหัสใหม่ด้วย
- *   ffmpeg -i <ต้นฉบับ> -vf "crop=736:348:0:96" -c:v libx264 -preset slow -crf 30 -an -movflags +faststart
- * ที่ครอปเพราะต้นฉบับติดแถบสถานะเครื่อง เมนู TradingView ทูลบาร์วาด (ด้านบน)
- * และแถบ replay กับทูลบาร์แอป (ด้านล่าง) มาด้วย เหลือไว้แค่กราฟ แกนราคา และแกนเวลา
+ * หน้า /guide เคยมีคลิปวนซ้ำของแต่ละชุดคั่นระหว่างหน้าชาร์ตกับรายละเอียด
+ * น็อตขอเอาออกวันที่ 30 ส.ค. 2026 — ตอนนี้เหลือเฉพาะภาพนิ่ง
+ * ข้อมูลคลิปเดิมทั้งสี่ตัวและวิธีเข้ารหัสดูได้ที่ `git show 820dd84:src/config/guide.ts`
+ * ไฟล์ .mp4 กับ poster ยังอยู่ใน public/ แต่ไม่มีหน้าไหนอ้างถึงแล้ว
  *
- * คลิป Hero เป็นคนละไฟล์ อัดมาใหม่ที่ 1718x584 ซึ่งกว้างและคมกว่าชุดข้างบนมาก
- * ไม่ต้องครอปเพราะไม่มี UI ของแอปติดมาแล้ว เข้ารหัสด้วย -crf 24 -an เฉย ๆ
+ * คลิป Hero เป็นคนละไฟล์ ยังใช้อยู่บนหน้าแรก อัดมาที่ 1718x584 ไม่ต้องครอป
+ * เพราะไม่มี UI ของแอปติดมา เข้ารหัสด้วย -crf 24 -an (รายละเอียดอยู่ที่ heroClip ท้ายไฟล์)
  *
  * ไฟล์ poster สร้างจากคลิปตัวจริงเสมอ สัดส่วนจึงตรงกับ width/height ที่ส่งเข้า LoopingClip
  */
@@ -38,8 +38,8 @@ export interface GuideVideo {
   duration: string;
   /**
    * ขนาดจริงของไฟล์ ใช้กันภาพกระโดด (CLS) ตอนคลิปยังไม่โหลด
-   * ไม่ใส่ = ใช้ค่าเริ่มต้น 736x348 ใน LoopingClip ซึ่งเป็นสัดส่วนของคลิปในคู่มือทั้งสี่ตัว
-   * ใส่เมื่อคลิปนั้นสัดส่วนต่างออกไป เช่นคลิป Hero ที่อัดมากว้างกว่า
+   * ไม่ใส่ = ใช้ค่าเริ่มต้น 736x348 ใน LoopingClip ซึ่งเป็นสัดส่วนของคลิปคู่มือชุดเดิม
+   * ตอนนี้เหลือ heroClip ตัวเดียวที่ใช้ชนิดนี้ และใส่ขนาดไว้แล้วเพราะอัดมากว้างกว่า
    */
   width?: number;
   height?: number;
@@ -60,7 +60,6 @@ export interface GuideSuite {
   bestFor: string;
   timeframe: string;
   chart: GuideImage;
-  videos: GuideVideo[];
   /** สิ่งที่เห็นบนกราฟ */
   onChart: string[];
   /** ต้องเปิดฟังก์ชันอะไรบ้าง */
@@ -93,14 +92,6 @@ const smc: GuideSuite = {
     width: 2280,
     height: 1144,
   },
-  videos: [
-    {
-      src: "/videos/qvx-smc-demand-supply.mp4",
-      poster: "/images/videos/qvx-smc-demand-supply.webp",
-      label: "ชุด SMC + Demand/Supply บน XAUUSD 5 นาที",
-      duration: "3:23",
-    },
-  ],
   onChart: [
     "โครงสร้าง HH / HL / LH / LL",
     "ข้อความ BOS และ CHoCH / MSS",
@@ -242,14 +233,6 @@ const gold: GuideSuite = {
     width: 2280,
     height: 1366,
   },
-  videos: [
-    {
-      src: "/videos/qvx-gold-booster-core.mp4",
-      poster: "/images/videos/qvx-gold-booster-core.webp",
-      label: "ชุด Gold Booster + Gold Core บน XAUUSD 5 นาที",
-      duration: "2:49",
-    },
-  ],
   onChart: [
     "ป้าย BUY / SELL ชัดเจน",
     "เส้น TP / SL แบบคงที่ 500 จุด",
@@ -379,20 +362,6 @@ const ict: GuideSuite = {
     width: 2280,
     height: 1108,
   },
-  videos: [
-    {
-      src: "/videos/qvx-ict-sd.mp4",
-      poster: "/images/videos/qvx-ict-sd.webp",
-      label: "ชุด ICT SD Signal บน XAUUSD 5 นาที",
-      duration: "2:30",
-    },
-    {
-      src: "/videos/qvx-ict-smc.mp4",
-      poster: "/images/videos/qvx-ict-smc.webp",
-      label: "ICT SD ใช้ร่วมกับโซน SMC บน XAUUSD 5 นาที",
-      duration: "3:26",
-    },
-  ],
   onChart: [
     "ป้าย ICT BUY และ ICT SELL",
     "โครงสร้าง HH / HL / LH / LL",
