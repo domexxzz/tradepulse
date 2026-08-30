@@ -152,14 +152,64 @@ export async function GET() {
   }
 }
 
-/** ล้างสัญญาณทั้งหมด (แอดมิน — auth ด้วย secret) */
+/**
+ * ลบสัญญาณ — แยกสิทธิ์ตามความร้ายแรงของสิ่งที่ทำ
+ *
+ *   DELETE /api/signals?id=<id>     ลบทีละรายการ  → ใช้ TELEGRAM_SIGNAL_SECRET
+ *   DELETE /api/signals?all=true    ล้างทั้งตาราง → ใช้ CRON_SECRET
+ *
+ * ทำไมล้างทั้งตารางต้องใช้คนละ secret:
+ * TELEGRAM_SIGNAL_SECRET ถูกวางไว้ในหน้าตั้ง Alert บน TradingView (ดู docs/TELEGRAM.md)
+ * ใครที่เห็นหน้านั้น — เพื่อนร่วมงาน ภาพแคป ไฟล์ alert ที่ export ออกมา — ก็ได้ค่านี้ไป
+ * ของเดิมใช้ค่าเดียวกันล้างได้ทั้งตาราง แปลว่าสิทธิ์ "ส่งสัญญาณ" เท่ากับสิทธิ์ "ลบประวัติทิ้ง"
+ * CRON_SECRET อยู่แค่บน Vercel กับ GitHub Actions ไม่เคยถูกแจกออกไปไหน
+ *
+ * และต้องระบุ ?all=true ให้ชัด — คำสั่ง DELETE เปล่า ๆ ไม่ล้างอะไรอีกต่อไป
+ * เดิมพิมพ์ curl -X DELETE ผิดครั้งเดียวก็ประวัติหายทั้งหมดโดยไม่มีอะไรทัดทาน
+ */
 export async function DELETE(req: Request) {
-  const secret = req.headers.get("x-signal-secret") ?? new URL(req.url).searchParams.get("secret");
-  if (!process.env.TELEGRAM_SIGNAL_SECRET || secret !== process.env.TELEGRAM_SIGNAL_SECRET) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const url = new URL(req.url);
+  const given = req.headers.get("x-signal-secret") ?? url.searchParams.get("secret");
+  const id = url.searchParams.get("id");
+  const all = url.searchParams.get("all") === "true";
+
+  if (!given) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+  if (all) {
+    const admin = process.env.CRON_SECRET;
+    if (!admin || given !== admin) {
+      return NextResponse.json(
+        { error: "ล้างทั้งตารางต้องใช้ CRON_SECRET ไม่ใช่ secret ของสัญญาณ" },
+        { status: 401 }
+      );
+    }
+    try {
+      const r = await prisma.signal.deleteMany({});
+      return NextResponse.json({ ok: true, deleted: r.count });
+    } catch {
+      return NextResponse.json({ error: "delete failed" }, { status: 500 });
+    }
   }
+
+  if (!id) {
+    return NextResponse.json(
+      { error: "ต้องระบุ ?id=<id> เพื่อลบรายการเดียว หรือ ?all=true เพื่อล้างทั้งตาราง" },
+      { status: 400 }
+    );
+  }
+
+  // ลบทีละรายการ: ยอมรับทั้ง secret ของสัญญาณและ CRON_SECRET
+  // คนที่ยิงสัญญาณเข้ามาผิดควรลบของตัวเองออกได้โดยไม่ต้องขอ secret ระดับแอดมิน
+  const signalSecret = process.env.TELEGRAM_SIGNAL_SECRET;
+  const adminSecret = process.env.CRON_SECRET;
+  const allowed =
+    (signalSecret && given === signalSecret) || (adminSecret && given === adminSecret);
+  if (!allowed) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
   try {
-    const r = await prisma.signal.deleteMany({});
+    // deleteMany แทน delete เพราะ id ที่ไม่มีอยู่จะได้ count 0 แทนที่จะโยน error
+    const r = await prisma.signal.deleteMany({ where: { id } });
+    if (r.count === 0) return NextResponse.json({ error: "ไม่พบสัญญาณนี้" }, { status: 404 });
     return NextResponse.json({ ok: true, deleted: r.count });
   } catch {
     return NextResponse.json({ error: "delete failed" }, { status: 500 });

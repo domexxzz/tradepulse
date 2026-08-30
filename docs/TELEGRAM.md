@@ -82,6 +82,20 @@ API รับให้แล้วทั้งชื่อฟิลด์แบ�
 - เปลี่ยนกลุ่ม/ห้องปลายทางได้จาก env ไม่ต้องไปแก้ Alert ทีละ 12 ตัว
 
 ## หมายเหตุความปลอดภัย
+### ลบสัญญาณ
+
+```bash
+# ลบทีละรายการ — ใช้ TELEGRAM_SIGNAL_SECRET ได้
+curl -X DELETE "https://โดเมนจริง/api/signals?id=<id>" -H "x-signal-secret: <TELEGRAM_SIGNAL_SECRET>"
+
+# ล้างทั้งตาราง — ต้องใช้ CRON_SECRET และระบุ all=true
+curl -X DELETE "https://โดเมนจริง/api/signals?all=true" -H "x-signal-secret: <CRON_SECRET>"
+```
+
+ที่ล้างทั้งตารางต้องใช้คนละ secret เพราะ `TELEGRAM_SIGNAL_SECRET` ถูกวางไว้ในหน้าตั้ง
+Alert บน TradingView ใครเห็นหน้านั้นก็ได้ค่านี้ไป — สิทธิ์ "ส่งสัญญาณ" จึงไม่ควรเท่ากับ
+สิทธิ์ "ลบประวัติทิ้งทั้งหมด" ส่วน `CRON_SECRET` อยู่แค่บน Vercel กับ GitHub Actions
+
 - `TELEGRAM_BOT_TOKEN` และ `TELEGRAM_SIGNAL_SECRET` เป็นความลับ อยู่ใน `.env` (ไม่ขึ้น repo)
 - `chat_id` / `thread_id` ไม่ใช่ความลับ
 
