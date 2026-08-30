@@ -152,8 +152,8 @@ STRIPE_PRICE_YEAR=price_...
 ### เทสต์
 
 ```bash
-npm test          # ตรรกะล้วน ไม่ต้องมีฐานข้อมูล (25 เคส)
-npm run test:uat  # ชนฐานข้อมูลจริง — ต้องชี้ DATABASE_URL ไปฐานข้อมูลทดสอบเท่านั้น (8 เคส)
+npm test          # ตรรกะล้วน ไม่ต้องมีฐานข้อมูล (66 เคส)
+npm run test:uat  # ชนฐานข้อมูลจริง — ต้องชี้ DATABASE_URL ไปฐานข้อมูลทดสอบเท่านั้น (10 เคส)
 npm run test:watch
 ```
 
@@ -165,7 +165,26 @@ npm run test:watch
 localhost หรือฐานข้อมูลที่ชื่อมี `uat`/`test` ชุดเทสต์จะหยุดทันทีก่อนแตะข้อมูล
 (จำเป็นเพราะ `runMembershipMaintenance()` ทำงานกับทุกแถว ไม่ได้จำกัดเฉพาะข้อมูลทดสอบ)
 
-ถ้ายังไม่มีฐานข้อมูลสำหรับ UAT ให้รัน `npm run setup` หรือสร้างเอง:
+ถ้ายังไม่มีฐานข้อมูลสำหรับ UAT ให้รัน `npm run setup` หรือสร้างเอง
+
+**Docker — ใช้ได้ทุกระบบปฏิบัติการ (วิธีที่แนะนำบน Windows เพราะไม่มี brew):**
+
+พอร์ตต้องเป็น 5433 ให้ตรงกับ `DATABASE_URL` ใน `.env` ส่วน user/password/db
+ใช้ค่าเดียวกับที่อยู่ใน connection string นั้น ไม่งั้นต่อไม่ติด
+
+```bash
+docker run -d --name qvx-uat-db -e POSTGRES_USER=tradepulse -e POSTGRES_PASSWORD=<รหัสใน .env> -e POSTGRES_DB=tradepulse -p 5433:5432 postgres:16-alpine
+```
+
+รอสัก 5 วินาทีให้ Postgres ตื่น แล้วสร้างตาราง:
+
+```bash
+npx prisma migrate deploy
+```
+
+เลิกใช้แล้วลบทิ้งด้วย `docker rm -f qvx-uat-db` (ข้อมูลอยู่ใน container ล้วน ไม่ทิ้งอะไรไว้บนเครื่อง)
+
+**macOS ที่มี Homebrew:**
 
 ```bash
 brew install postgresql@16 && brew services start postgresql@16   # ถ้ายังไม่มี
