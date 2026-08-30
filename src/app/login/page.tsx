@@ -10,7 +10,13 @@ export default function LoginPage() {
     <AuthShell title="เข้าสู่ระบบ" subtitle="ยินดีต้อนรับกลับสู่ QVX">
       <form action={action} className="space-y-4">
         {state.error && <ErrorBox msg={state.error} />}
-        <Field name="email" type="email" label="อีเมล" placeholder="you@example.com" />
+        {/* type="text" ไม่ใช่ "email" — ไม่งั้นเบราว์เซอร์บล็อกชื่อผู้ใช้ที่ไม่มี @ ตั้งแต่ก่อนส่งฟอร์ม */}
+        <Field
+          name="email"
+          type="text"
+          label="อีเมล หรือ ชื่อผู้ใช้"
+          placeholder="you@example.com หรือ yourname"
+        />
         <Field name="password" type="password" label="รหัสผ่าน" placeholder="••••••••" />
         <SubmitBtn pending={pending}>เข้าสู่ระบบ</SubmitBtn>
       </form>

@@ -47,16 +47,22 @@ export async function loginUser(
   _prev: AuthState,
   formData: FormData
 ): Promise<AuthState> {
-  const email = String(formData.get("email") ?? "").toLowerCase().trim();
+  // ช่องเดียวรับได้ทั้งอีเมลและชื่อผู้ใช้ — ชื่อฟิลด์ยังเป็น email เพื่อให้เข้ากับ provider เดิม
+  const identifier = String(formData.get("email") ?? "").toLowerCase().trim();
   const password = String(formData.get("password") ?? "");
   try {
     // แอดมินพาไปหน้าจัดการระบบเลย ไม่ต้องพิมพ์ URL เอง
-    const existing = await prisma.user.findUnique({ where: { email }, select: { role: true } });
+    // ต้องค้นด้วยเงื่อนไขเดียวกับตอนตรวจรหัสผ่าน ไม่งั้นคนที่ล็อกอินด้วยชื่อผู้ใช้
+    // จะหา role ไม่เจอแล้วถูกพาไปหน้าสมาชิกทั้งที่เป็นแอดมิน
+    const existing = await prisma.user.findUnique({
+      where: identifier.includes("@") ? { email: identifier } : { username: identifier },
+      select: { role: true },
+    });
     const redirectTo = existing?.role === "ADMIN" ? "/admin" : "/account";
-    await signIn("credentials", { email, password, redirectTo });
+    await signIn("credentials", { email: identifier, password, redirectTo });
   } catch (e) {
     if (e instanceof AuthError) {
-      return { error: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" };
+      return { error: "อีเมล ชื่อผู้ใช้ หรือรหัสผ่านไม่ถูกต้อง" };
     }
     throw e; // redirect
   }

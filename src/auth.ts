@@ -6,6 +6,14 @@ import { prisma } from "@/lib/prisma";
 import { authConfig } from "@/auth.config";
 import { resolveRole } from "@/lib/admin-bootstrap";
 
+/**
+ * hash หลอกสำหรับกรณีไม่เจอผู้ใช้ — ให้เวลาตอบกลับใกล้เคียงกับตอนเจอ
+ * ถ้าไม่ทำ ผู้ไม่ประสงค์ดีจะจับเวลาแยกได้ว่า "ชื่อนี้มีอยู่จริงแต่รหัสผิด"
+ * ต่างจาก "ไม่มีชื่อนี้" ซึ่งเป็นข้อมูลที่ไม่ควรให้รู้
+ * (ค่านี้เป็น bcrypt ของสตริงสุ่ม ไม่ใช่รหัสผ่านของใคร)
+ */
+const DUMMY_HASH = "$2b$10$CwTycUXWue0Thq9StjUM0uJ8.5cVJ5nQ0zJ3ZoQZ1qYJ4Kk8bXk2W";
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   adapter: PrismaAdapter(prisma),
@@ -28,16 +36,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     ...authConfig.providers,
     Credentials({
       credentials: {
-        email: { label: "อีเมล", type: "email" },
+        // ชื่อฟิลด์ยังเป็น email เพื่อไม่ให้ session/ฟอร์มเดิมพัง แต่รับชื่อผู้ใช้ได้ด้วย
+        email: { label: "อีเมล หรือ ชื่อผู้ใช้", type: "text" },
         password: { label: "รหัสผ่าน", type: "password" },
       },
       async authorize(creds) {
-        const email = String(creds?.email ?? "").toLowerCase().trim();
+        const identifier = String(creds?.email ?? "").toLowerCase().trim();
         const password = String(creds?.password ?? "");
-        if (!email || !password) return null;
+        if (!identifier || !password) return null;
 
-        const user = await prisma.user.findUnique({ where: { email } });
-        if (!user?.passwordHash) return null;
+        // มี @ = อีเมล ไม่มี = ชื่อผู้ใช้ แยกด้วยเงื่อนไขนี้เพื่อไม่ให้ค้นสองรอบทุกครั้ง
+        // ทั้งสองคอลัมน์เก็บเป็นตัวพิมพ์เล็ก จึงเทียบกับค่าที่ lower มาแล้วได้ตรง ๆ
+        const user = await prisma.user.findUnique({
+          where: identifier.includes("@") ? { email: identifier } : { username: identifier },
+        });
+
+        // เทียบ hash ต่อแม้ไม่เจอผู้ใช้ ไม่งั้นเวลาตอบกลับจะต่างกันจนเดาได้ว่าบัญชีไหนมีอยู่จริง
+        if (!user?.passwordHash) {
+          await bcrypt.compare(password, DUMMY_HASH);
+          return null;
+        }
 
         const ok = await bcrypt.compare(password, user.passwordHash);
         if (!ok) return null;
