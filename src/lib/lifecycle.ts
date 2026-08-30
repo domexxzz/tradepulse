@@ -77,30 +77,42 @@ export async function activateMembership(input: ActivateInput): Promise<Activate
   // ต่ออายุแพ็กเกจ QR เดิมได้ในแถวเดียว — แต่แพ็กเกจของ Stripe ต้องปล่อยให้ webhook คุมรอบบิลเอง
   const canExtendInPlace = stillActive && current && !current.stripeSubscriptionId;
 
-  const sub = canExtendInPlace
-    ? await prisma.subscription.update({
-        where: { id: current.id },
-        data: {
-          planCode: input.planCode,
-          status: "ACTIVE",
-          currentPeriodEnd: until,
-          expiredAt: null,
-          expiryNotifiedAt: null, // รอบใหม่ต้องเตือนได้อีกครั้ง
-        },
-      })
-    : await prisma.subscription.create({
-        data: {
-          userId: input.userId,
-          planCode: input.planCode,
-          status: "ACTIVE",
-          currentPeriodEnd: until,
-        },
-      });
+  // เปิดสิทธิ์กับบันทึกใบเสร็จต้องอยู่ใน transaction เดียว: ถ้าขาดตอนกลาง
+  // จะได้สมาชิกที่ใช้งานได้แต่ไม่มีใบเสร็จ (รายได้หาย ที่นั่งโปรนับผิด) โดยไม่มีใครรู้
+  // ส่วนบริการภายนอก (Telegram/Discord/TradingView/อีเมล) และการล็อกราคาโปร
+  // ต้องอยู่ "นอก" transaction — มันช้าและล้มเหลวได้ ไม่ควรลากให้ทั้งก้อน rollback
+  // (ล็อกราคาโปรนับจาก Payment จึงต้องรอให้ commit ก่อน)
+  const sub = await prisma.$transaction(async (tx) => {
+    const s = canExtendInPlace
+      ? await tx.subscription.update({
+          where: { id: current.id },
+          data: {
+            planCode: input.planCode,
+            status: "ACTIVE",
+            currentPeriodEnd: until,
+            expiredAt: null,
+            expiryNotifiedAt: null, // รอบใหม่ต้องเตือนได้อีกครั้ง
+          },
+        })
+      : await tx.subscription.create({
+          data: {
+            userId: input.userId,
+            planCode: input.planCode,
+            status: "ACTIVE",
+            currentPeriodEnd: until,
+          },
+        });
 
-  // แถมสิทธิ์ให้ฟรี (0 บาท) ไม่ต้องบันทึกเป็นรายได้
+    // แถมสิทธิ์ให้ฟรี (0 บาท) ไม่ต้องบันทึกเป็นรายได้
+    if (input.amountTHB > 0) {
+      await recordPayment(input.userId, input.amountTHB, input.providerRef, input.provider, tx);
+    }
+    return s;
+  });
+
+  // จ่ายเงินจริงแล้วถึงจะกินที่นั่งโปรและได้ล็อกราคา — ของแถม 0 บาทไม่นับ
+  // อยู่นอก transaction เพราะนับจาก Payment ที่เพิ่ง commit ไป และล้มได้โดยไม่ควรย้อนการเปิดสิทธิ์
   if (input.amountTHB > 0) {
-    await recordPayment(input.userId, input.amountTHB, input.providerRef, input.provider);
-    // จ่ายเงินจริงแล้วถึงจะกินที่นั่งโปรและได้ล็อกราคา — ของแถม 0 บาทไม่นับ
     await lockPromoPriceIfEligible(input.userId);
   }
   await ensureAccessGrant(input.userId);

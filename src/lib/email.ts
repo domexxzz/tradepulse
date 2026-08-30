@@ -37,6 +37,8 @@ export async function sendEmail({ to, subject, html, text, headers }: SendEmailI
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
+      // ปลายทางค้างไม่ตอบ ต้องตัดทิ้ง ไม่งั้นฟังก์ชันค้างจนหมดเวลา
+      signal: AbortSignal.timeout(10_000),
       headers: {
         Authorization: `Bearer ${API_KEY}`,
         "Content-Type": "application/json",

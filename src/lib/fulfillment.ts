@@ -57,10 +57,13 @@ export async function recordPayment(
   userId: string,
   amountTHB: number,
   providerRef: string,
-  provider = "stripe"
+  provider = "stripe",
+  // รับตัว client ได้ เพื่อให้เรียกภายใน $transaction เดียวกับการเปิดสิทธิ์ได้
+  // ไม่งั้นเปิดสิทธิ์สำเร็จแต่บันทึกใบเสร็จพัง จะได้สมาชิกที่ไม่มีใบเสร็จ
+  client: Prisma.TransactionClient = prisma
 ) {
   try {
-    await prisma.payment.create({
+    await client.payment.create({
       data: { userId, amountTHB, provider, providerRef, status: PAYMENT_STATUS.PAID },
     });
   } catch (e) {

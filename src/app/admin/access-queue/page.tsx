@@ -23,6 +23,9 @@ export default async function AccessQueuePage() {
   const grants = await prisma.accessGrant.findMany({
     orderBy: [{ status: "asc" }, { createdAt: "desc" }],
     include: { user: true },
+    // จำกัดจำนวนแถว ไม่งั้นยิ่งใช้นานหน้ายิ่งช้าจนเปิดไม่ขึ้น
+    // คิวที่ต้องจัดการค้างไม่ถึงเท่านี้ ถ้าถึงแปลว่ามีปัญหาที่ต้นทางต้องไปดู
+    take: 300,
   });
 
   return (

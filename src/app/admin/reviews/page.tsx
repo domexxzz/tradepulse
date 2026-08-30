@@ -3,7 +3,8 @@ import { approveReview, unapproveReview, deleteReview } from "@/lib/actions/admi
 import { Star } from "lucide-react";
 
 export default async function AdminReviewsPage() {
-  const reviews = await prisma.review.findMany({ orderBy: { createdAt: "desc" } });
+  // จำกัดจำนวนแถว ไม่งั้นยิ่งมีรีวิวมากหน้ายิ่งช้าลงเรื่อย ๆ
+  const reviews = await prisma.review.findMany({ orderBy: { createdAt: "desc" }, take: 300 });
 
   return (
     <div className="space-y-6">

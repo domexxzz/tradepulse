@@ -38,6 +38,8 @@ async function api(path: string, init?: RequestInit) {
       ...(init?.headers ?? {}),
     },
     cache: "no-store",
+    // ปลายทางค้างไม่ตอบ ต้องตัดทิ้ง ไม่งั้นฟังก์ชันค้างจนหมดเวลา
+    signal: init?.signal ?? AbortSignal.timeout(10_000),
   });
 }
 

@@ -56,6 +56,8 @@ export async function sendToTopic(timeframe: Timeframe, text: string) {
 
   const res = await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
     method: "POST",
+    // ปลายทางค้างไม่ตอบ ต้องตัดทิ้ง ไม่งั้นฟังก์ชันค้างจนหมดเวลา
+    signal: AbortSignal.timeout(10_000),
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
       chat_id: CHAT_ID,
@@ -92,6 +94,8 @@ export async function sendAdminAlert(text: string): Promise<AdminAlertResult> {
   try {
     const res = await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
       method: "POST",
+      // ปลายทางค้างไม่ตอบ ต้องตัดทิ้ง ไม่งั้นฟังก์ชันค้างจนหมดเวลา
+      signal: AbortSignal.timeout(10_000),
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         chat_id: adminChat,
@@ -139,6 +143,8 @@ async function callApi<T>(method: string, body: Record<string, unknown>): Promis
 
   const res = await fetch(`https://api.telegram.org/bot${TOKEN}/${method}`, {
     method: "POST",
+    // ปลายทางค้างไม่ตอบ ต้องตัดทิ้ง ไม่งั้นฟังก์ชันค้างจนหมดเวลา
+    signal: AbortSignal.timeout(10_000),
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
     cache: "no-store",
