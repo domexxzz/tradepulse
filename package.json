@@ -16,7 +16,8 @@
     "test:uat": "vitest run --config vitest.uat.mts",
     "admin": "node scripts/admin.mjs",
     "setup": "node scripts/setup.mjs",
-    "db:status-audit": "node scripts/status-audit.mjs"
+    "db:status-audit": "node scripts/status-audit.mjs",
+    "images:sizes": "node scripts/image-sizes.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",

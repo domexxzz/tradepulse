@@ -110,16 +110,34 @@ export default async function FeatureDetailPage({
 
       <p className="mt-6 text-lg leading-relaxed text-muted">{feature.desc}</p>
 
+      {/* ภาพวางตามสัดส่วนจริงของไฟล์ ไม่ยัดลงกรอบ 16:9 แล้ว object-cover เหมือนเดิม
+          ของเดิมทำสองอย่างพร้อมกัน: ครอปขอบทิ้ง แล้วซูมส่วนที่เหลือขึ้นเกินขนาดไฟล์
+          (fvg 2.12:1 ถูกซูมจนล้นกรอบ 149px แล้วตัดทิ้งข้างละครึ่ง — แกนราคาหายไปด้วย)
+          ตัวหนังสือบนกราฟเลยเบลอทั้งที่ไฟล์ยังคมอยู่ เหตุผลเดียวกับคลิป Hero
+          ที่บันทึกไว้หัวไฟล์ config/guide.ts — ต้องให้เบราว์เซอร์ย่อ ไม่ใช่ขยาย
+
+          ⚠️ sizes ต้องเป็น 1140px ไม่ใช่ 768px ตามที่ max-w-3xl ข้างล่างเขียนไว้
+          .container-x ตั้ง max-width:1180px และอยู่นอก @layer ส่วน max-w-3xl เป็น
+          utility ที่อยู่ใน @layer utilities — CSS นอก layer ชนะทุก layer เสมอ
+          max-w-3xl บนหน้านี้จึงไม่มีผลเลย ช่องจริงกว้าง 1180-40(padding) = 1140px
+          (วัดจากเบราว์เซอร์แล้ว ไม่ได้คำนวณเอาเอง)
+
+          ของเดิมประกาศ 768px ทั้งที่วางจริง 1138px เบราว์เซอร์เลยโหลดไฟล์ 750px
+          มายืดใส่ช่อง 1138px = ขยาย 1.5 เท่า นี่คือสาเหตุหลักที่ภาพเบลอ
+          ถ้าวันหน้าแก้ให้ max-w-3xl มีผลจริง ต้องกลับมาลดตัวเลขนี้เป็น 728px ด้วย */}
       {feature.image && (
-        <div className="relative mt-8 aspect-[16/9] overflow-hidden rounded-2xl border border-border">
+        <figure className="mt-8">
           <Image
-            src={feature.image}
+            src={feature.image.src}
             alt={`ตัวอย่างการใช้งาน ${feature.title} บนกราฟจริง`}
-            fill
-            sizes="(max-width: 768px) 100vw, 768px"
-            className="object-cover"
+            width={feature.image.width}
+            height={feature.image.height}
+            sizes="(max-width: 1180px) calc(100vw - 2.5rem), 1140px"
+            quality={90}
+            priority
+            className="h-auto w-full rounded-2xl border border-border"
           />
-        </div>
+        </figure>
       )}
 
       <section className="card-frame mt-8 rounded-2xl p-6">

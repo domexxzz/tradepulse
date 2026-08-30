@@ -35,7 +35,12 @@ export function SuiteSection({ suite }: { suite: GuideSuite }) {
           width={suite.chart.width}
           height={suite.chart.height}
           className="h-auto w-full rounded-xl"
-          sizes="(max-width: 1024px) 100vw, 1000px"
+          // ช่องจริงกว้าง 1126px (วัดจากเบราว์เซอร์) ไม่ใช่ 1000px ที่เคยประกาศไว้
+          // หน้านี้เขียน container-x max-w-5xl แต่ max-w-5xl ไม่มีผล — .container-x
+          // อยู่นอก @layer จึงชนะ utility ของ Tailwind ช่องเลยกว้างตาม container
+          // ประกาศต่ำกว่าความจริงเมื่อไร เบราว์เซอร์จะโหลดไฟล์เล็กมายืด แล้วกราฟเบลอ
+          sizes="(max-width: 1180px) calc(100vw - 2.5rem), 1140px"
+          quality={90}
         />
         <figcaption className="px-3 py-2 text-xs text-muted">
           ตัวอย่างหน้าชาร์ต XAUUSD เมื่อเปิด {suite.name}

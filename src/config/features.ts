@@ -1,5 +1,24 @@
 /** เนื้อหาเว็บทั้งหมด (แก้ที่นี่ที่เดียว) — อิงสเปกฟีเจอร์จริงของ QVX ไม่มีสถิติ/รีวิวปลอม */
 
+/**
+ * screenshot จริงของฟีเจอร์ พร้อมขนาดของไฟล์
+ *
+ * ที่ต้องเก็บ width/height ไว้ด้วย เพราะหน้า /features/[slug] เอาไปกำหนดสัดส่วนกรอบ
+ * ให้ตรงกับไฟล์ ของเดิมยัดทุกรูปลงกรอบ 16:9 ตายตัวแล้ว object-cover ซึ่งทำสองอย่าง
+ * พร้อมกัน — ครอปขอบทิ้ง แล้วซูมส่วนที่เหลือขึ้นเกินขนาดจริง ตัวหนังสือบนกราฟเลยเบลอ
+ * ทั้งที่ไฟล์ยังคมอยู่ (รูปในโฟลเดอร์นี้สัดส่วนไม่เท่ากันเลย ตั้งแต่ 1.54:1 ถึง 2.12:1)
+ */
+export interface FeatureImage {
+  /** path ใน public/ — ห้ามทับไฟล์ชื่อเดิมเมื่อเปลี่ยนรูป ดู README.txt ในโฟลเดอร์นั้น */
+  src: string;
+  /**
+   * ขนาดจริงของไฟล์เป็นพิกเซล ต้องตรงเป๊ะ ใส่ผิดแล้วภาพจะถูกยืด
+   * อ่านค่าจากไฟล์จริงด้วย `npm run images:sizes features` อย่ากรอกจากความจำ
+   */
+  width: number;
+  height: number;
+}
+
 export interface Feature {
   title: string;
   /** ใช้เป็น URL หน้า /features/[slug] — เปลี่ยนแล้วลิงก์เดิมจะพัง ระวังด้วย */
@@ -14,11 +33,10 @@ export interface Feature {
   howto: string;
   icon: string;
   /**
-   * path ของ screenshot จริง เช่น "/images/features/fvg-v3.webp"
-   * เว้นว่างไว้ = ซ่อนฟีเจอร์นั้นทั้งหมด (ดูตัวกรอง hasScreenshot ท้ายไฟล์)
+   * screenshot จริง — ไม่ใส่ = ซ่อนฟีเจอร์นั้นทั้งหมด (ดูตัวกรอง hasScreenshot ท้ายไฟล์)
    * วิธีทำรูปใหม่และกฎการตั้งชื่อ ดู public/images/features/README.txt
    */
-  image?: string;
+  image?: FeatureImage;
 }
 
 export const coreIntro =
@@ -30,7 +48,7 @@ const coreFeaturesAll: Feature[] = [
     slug: "fvg",
     short: "FVG",
     icon: "SeparatorHorizontal",
-    image: "/images/features/fvg-v3.webp",
+    image: { src: "/images/features/fvg-v4.webp", width: 2280, height: 1074 },
     desc: "แสดงบริเวณที่ราคาเคลื่อนที่เร็วและทิ้งช่องว่างไว้ ใช้เฝ้าดูจังหวะที่ราคาอาจกลับมาทดสอบหรือเกิดปฏิกิริยา",
     howto: "รอให้ราคากลับเข้าใกล้โซน FVG แล้วดูโครงสร้างตลาดและสัญญาณยืนยันก่อนวางแผนเข้าเทรด",
   },
@@ -39,7 +57,7 @@ const coreFeaturesAll: Feature[] = [
     slug: "order-block",
     short: "OB",
     icon: "Boxes",
-    image: "/images/features/order-block-v3.webp",
+    image: { src: "/images/features/order-block-v4.webp", width: 2280, height: 1402 },
     desc: "แสดงโซนที่เคยเกิดแรงซื้อหรือแรงขายชัดเจน ใช้เป็นบริเวณสำคัญสำหรับเฝ้าดูการตอบสนองของราคา",
     howto: "เมื่อราคากลับมาที่โซน OB ให้รอพฤติกรรมราคาหรือสัญญาณยืนยัน ไม่ควรเข้าออเดอร์ทันทีเพียงเพราะราคาชนโซน",
   },
@@ -48,7 +66,7 @@ const coreFeaturesAll: Feature[] = [
     slug: "liquidity-sweep",
     short: "LQ",
     icon: "Droplets",
-    image: "/images/features/liquidity-sweep-v3.webp",
+    image: { src: "/images/features/liquidity-sweep-v4.webp", width: 2280, height: 1232 },
     desc: "ช่วยมองเห็นจุดสภาพคล่อง และจังหวะที่ราคากวาดระดับสำคัญก่อนกลับตัว",
     howto: "เมื่อเกิด Sweep ให้ใช้เป็นข้อมูลประกอบกับโซนใกล้เคียงและโครงสร้างตลาด เพื่อประเมินว่าราคาอาจมีแรงกลับหรือไม่",
   },
@@ -57,7 +75,7 @@ const coreFeaturesAll: Feature[] = [
     slug: "demand-supply-zone",
     short: "DM-SP",
     icon: "LayoutGrid",
-    image: "/images/features/demand-supply-zone-v3.webp",
+    image: { src: "/images/features/demand-supply-zone-v4.webp", width: 2280, height: 1582 },
     desc: "แสดง Demand Zone และ Supply Zone ซึ่งเป็นบริเวณที่ราคาเคยมีแรงซื้อหรือแรงขายเด่นชัด",
     howto: "ใช้ Demand Zone เพื่อเฝ้าหาจังหวะฝั่ง Buy และใช้ Supply Zone เพื่อเฝ้าหาจังหวะฝั่ง Sell โดยรอสัญญาณยืนยันเมื่อราคากลับเข้าโซน",
   },
@@ -66,7 +84,7 @@ const coreFeaturesAll: Feature[] = [
     slug: "break-of-structure",
     short: "BOS",
     icon: "GitBranch",
-    image: "/images/features/break-of-structure-v3.webp",
+    image: { src: "/images/features/break-of-structure-v4.webp", width: 2280, height: 1422 },
     desc: "แสดงเมื่อราคาทะลุโครงสร้างสำคัญ ช่วยให้เห็นว่าราคาอาจยังมีแรงเดินต่อในทิศทางเดิม",
     howto: "ใช้ BOS เพื่อยืนยันทิศทางตลาด แล้วรอราคาย่อกลับหาโซนสำคัญก่อนมองหาจังหวะเข้าเทรด",
   },
@@ -75,7 +93,7 @@ const coreFeaturesAll: Feature[] = [
     slug: "change-of-character",
     short: "CHoCH",
     icon: "Shuffle",
-    image: "/images/features/change-of-character-v3.webp",
+    image: { src: "/images/features/change-of-character-v4.webp", width: 2280, height: 1476 },
     desc: "แสดงเมื่อโครงสร้างราคาเริ่มเปลี่ยนไปจากทิศทางเดิม เป็นสัญญาณเตือนว่าตลาดอาจกำลังเปลี่ยนแนวโน้ม",
     howto: "หลังเกิด CHoCH ให้รอราคากลับมาทดสอบโซนสำคัญและมีสัญญาณยืนยัน ก่อนพิจารณาแผนในทิศทางใหม่",
   },
@@ -84,7 +102,7 @@ const coreFeaturesAll: Feature[] = [
     slug: "buy-sell-scalping",
     short: "Scalping",
     icon: "Zap",
-    image: "/images/features/buy-sell-scalping-v3.webp",
+    image: { src: "/images/features/buy-sell-scalping-v4.webp", width: 2280, height: 1324 },
     desc: "สัญญาณ Buy / Sell สำหรับช่วยหาจังหวะเทรดระยะสั้นบนกราฟทองคำ โดยแสดงเมื่อระบบพบเงื่อนไขที่เข้าเกณฑ์",
     howto: "รอให้สัญญาณปรากฏหลังแท่งเทียนปิด แล้วตรวจสอบว่าอยู่ใกล้โซนสำคัญและสอดคล้องกับโครงสร้างตลาดก่อนเข้าเทรด",
   },
@@ -93,7 +111,7 @@ const coreFeaturesAll: Feature[] = [
     slug: "ict-buy",
     short: "ICT Buy",
     icon: "TrendingUp",
-    image: "/images/features/ict-buy-v3.webp",
+    image: { src: "/images/features/ict-buy-v4.webp", width: 2280, height: 1434 },
     desc: "สัญญาณ Buy ที่ช่วยค้นหาจังหวะเมื่อราคาแสดงแรงตอบสนองเชิงบวกจากบริเวณ Demand หรือโซนสำคัญ",
     howto: "ใช้เมื่อราคากลับมาที่ Demand Zone หรือ Bullish OB แล้วเกิด ICT Buy โดยกำหนดจุดตัดขาดทุนและเป้าหมายตามแผนที่ระบบแสดง",
   },
@@ -102,7 +120,7 @@ const coreFeaturesAll: Feature[] = [
     slug: "ict-sell",
     short: "ICT Sell",
     icon: "TrendingDown",
-    image: "/images/features/ict-sell-v3.webp",
+    image: { src: "/images/features/ict-sell-v4.webp", width: 2280, height: 1238 },
     desc: "สัญญาณ Sell ที่ช่วยค้นหาจังหวะเมื่อราคาแสดงแรงตอบสนองเชิงลบจากบริเวณ Supply หรือโซนสำคัญ",
     howto: "ใช้เมื่อราคากลับมาที่ Supply Zone หรือ Bearish OB แล้วเกิด ICT Sell โดยกำหนดจุดตัดขาดทุนและเป้าหมายตามแผนที่ระบบแสดง",
   },
@@ -117,7 +135,7 @@ const advancedToolsAll: Feature[] = [
     slug: "supertrend",
     short: "Supertrend",
     icon: "Activity",
-    image: "/images/features/supertrend-snap-v3.webp",
+    image: { src: "/images/features/supertrend-snap-v4.webp", width: 1920, height: 1200 },
     desc: "แสดงเส้นแนวโน้มบนกราฟเพื่อช่วยให้มองภาพรวมของราคาและจังหวะการเปลี่ยนทิศทางได้ชัดขึ้น",
     howto: "ใช้ดูทิศทางประกอบกับโครงสร้างตลาดและโซนสำคัญ ไม่ควรใช้เส้นแนวโน้มเพียงอย่างเดียวในการตัดสินใจเข้าเทรด",
   },
@@ -126,7 +144,7 @@ const advancedToolsAll: Feature[] = [
     slug: "ema200",
     short: "EMA200",
     icon: "LineChart",
-    image: "/images/features/ema200-snap-v3.webp",
+    image: { src: "/images/features/ema200-snap-v4.webp", width: 1920, height: 1200 },
     desc: "แสดงเส้นแนวโน้มระยะยาวบนกราฟ เพื่อช่วยประเมินว่าราคาอยู่ในบริบทขาขึ้นหรือขาลง",
     howto: "ใช้เป็นภาพรวมประกอบสัญญาณ Scalping และโครงสร้างตลาด โดยให้ความสำคัญกับแผนที่สอดคล้องกับทิศทางใหญ่",
   },
@@ -135,7 +153,6 @@ const advancedToolsAll: Feature[] = [
     slug: "htf-alignment",
     short: "HTF",
     icon: "Layers",
-    image: "",
     desc: "ใช้แนวโน้มและโซนจาก Timeframe ใหญ่เป็นข้อมูลประกอบการวิเคราะห์บน Timeframe ที่ใช้เข้าเทรด",
     howto: "ดูทิศทางของ TF ใหญ่ก่อน แล้วใช้โซนและสัญญาณบน TF เล็กเพื่อหาแผนที่สอดคล้องกัน",
   },
@@ -144,7 +161,6 @@ const advancedToolsAll: Feature[] = [
     slug: "confluence-score",
     short: "Confluence",
     icon: "Gauge",
-    image: "",
     desc: "ระบบให้คะแนนโซน 0-100 เพื่อช่วยจัดลำดับว่าโซนใดมีองค์ประกอบสนับสนุนหลายด้านมากกว่า",
     howto: "ให้ความสำคัญกับโซนคะแนนสูงร่วมกับโครงสร้างตลาดและสัญญาณยืนยัน คะแนนเป็นเพียงเครื่องมือช่วยคัดกรอง ไม่ใช่การรับประกันผลลัพธ์",
   },
@@ -153,7 +169,6 @@ const advancedToolsAll: Feature[] = [
     slug: "zone-lifecycle",
     short: "Lifecycle",
     icon: "RefreshCw",
-    image: "",
     desc: "ติดตามสถานะของโซนว่าเป็นโซนใหม่ ถูกแตะ ถูกใช้งาน หรือเสียโครงสร้างแล้ว เพื่อให้กราฟเหลือข้อมูลที่ยังน่าติดตาม",
     howto: "โฟกัสโซนที่ยังใหม่หรือเพิ่งถูกแตะ และระวังโซนที่ราคาทะลุหรือถูกใช้งานไปแล้ว",
   },
@@ -162,7 +177,6 @@ const advancedToolsAll: Feature[] = [
     slug: "ppdd-order-block",
     short: "PPDD",
     icon: "Boxes",
-    image: "",
     desc: "แสดง Order Block ที่เกิดหลังการกวาด Liquidity เพื่อช่วยเน้นบริเวณที่มีบริบทด้านสภาพคล่องร่วมด้วย",
     howto: "ใช้เป็นตัวช่วยคัด OB ที่น่าสนใจขึ้น แล้วรอให้ราคากลับมามีปฏิกิริยาและมีสัญญาณยืนยันก่อนวางแผน",
   },
@@ -171,7 +185,6 @@ const advancedToolsAll: Feature[] = [
     slug: "high-volume-bar",
     short: "HVB",
     icon: "BarChart3",
-    image: "",
     desc: "เน้นแท่งเทียนที่มีปริมาณการซื้อขายเด่นกว่าปกติ เพื่อช่วยให้มองเห็นช่วงที่ตลาดมีแรงเข้ามาชัดเจน",
     howto: "ใช้สังเกตแรงของการเคลื่อนที่ โดยดูร่วมกับโซนและโครงสร้างตลาด ไม่ควรใช้ Volume Bar เพียงอย่างเดียวเพื่อเข้าเทรด",
   },
@@ -180,7 +193,6 @@ const advancedToolsAll: Feature[] = [
     slug: "stacked-ob-fvg",
     short: "Stacked",
     icon: "Layers",
-    image: "",
     desc: "แสดงบริเวณที่ Order Block และ Fair Value Gap เกิดร่วมกัน เพื่อช่วยให้เห็นโซนที่มีองค์ประกอบซ้อนกัน",
     howto: "ใช้เป็นจุดเฝ้าดูราคาเป็นพิเศษ แล้วรอสัญญาณยืนยันเมื่อราคากลับเข้ามาใกล้โซน",
   },
@@ -189,7 +201,7 @@ const advancedToolsAll: Feature[] = [
     slug: "rejection-block",
     short: "RJB",
     icon: "Ban",
-    image: "/images/features/rejection-block-v3.webp",
+    image: { src: "/images/features/rejection-block-v4.webp", width: 1920, height: 1200 },
     desc: "แสดงบริเวณที่ราคาเกิดแรงปฏิเสธชัดเจนจากแท่งเทียน เพื่อใช้มองจุดที่แรงซื้อหรือแรงขายตอบสนองกลับ",
     howto: "ใช้ประกอบกับ Supply/Demand, Liquidity และโครงสร้างตลาด เพื่อประเมินว่าการปฏิเสธนั้นมีน้ำหนักมากพอหรือไม่",
   },
