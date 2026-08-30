@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { runMembershipMaintenance } from "@/lib/lifecycle";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 /** กวาดสมาชิกหลายร้อยรายพร้อมยิงอีเมล/Discord ต้องให้เวลาพอ */
@@ -29,7 +30,16 @@ async function run(req: Request) {
 
   try {
     const result = await runMembershipMaintenance();
-    return NextResponse.json({ ok: true, ...result });
+
+    // ล้างตัวนับ rate limit ที่หมดอายุแล้ว ไม่ให้ตารางโตไม่จำกัด
+    // window ยาวสุดคือ 1 ชม. เก่ากว่า 1 วันถือว่าตายสนิทแล้ว ลบได้ปลอดภัย
+    const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const purged = await prisma.rateLimit
+      .deleteMany({ where: { windowStart: { lt: dayAgo } } })
+      .then((r) => r.count)
+      .catch(() => 0);
+
+    return NextResponse.json({ ok: true, ...result, rateLimitPurged: purged });
   } catch (e) {
     console.error("cron/expire failed:", e);
     return NextResponse.json(

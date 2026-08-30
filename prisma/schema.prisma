@@ -270,3 +270,13 @@ model PasswordResetToken {
 
   @@index([userId])
 }
+
+/// ตัวนับสำหรับจำกัดจำนวนครั้ง (rate limit) — เก็บใน DB เพราะ serverless
+/// แต่ละ request อาจอยู่คนละ instance ตัวนับในหน่วยความจำจึงใช้ร่วมกันไม่ได้
+/// key = ประเภท+ค่าที่จำกัด เช่น "login:id:somchai" หรือ "login:ip:1.2.3.4"
+model RateLimit {
+  key         String   @id
+  count       Int      @default(0)
+  windowStart DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

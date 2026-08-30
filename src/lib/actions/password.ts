@@ -6,12 +6,20 @@ import { prisma } from "@/lib/prisma";
 import { site } from "@/config/site";
 import { sendEmail, emailEnabled } from "@/lib/email";
 import { passwordResetEmail } from "@/lib/email-templates";
+import { getClientIp, isRateLimited, recordAttempt } from "@/lib/rate-limit";
 
 /** อายุลิงก์รีเซ็ตรหัสผ่าน */
 const TOKEN_MINUTES = 60;
 
-/** ขอลิงก์ได้กี่ครั้งต่อชั่วโมง (กันคนสแปมอีเมลใส่คนอื่น) */
+/** ขอลิงก์ได้กี่ครั้งต่อชั่วโมง (กันคนสแปมอีเมลใส่คนอื่น) — ต่อบัญชี */
 const MAX_REQUESTS_PER_HOUR = 3;
+
+/**
+ * ต่อ IP ต่อชั่วโมง — เดิมจำกัดแค่ต่อบัญชี ซึ่งกันคนยิงอีเมลเดิมซ้ำได้
+ * แต่ไม่กันคนยิงอีเมลคนละใบไปเรื่อย ๆ จนโควตาส่งเมลของเราหมดและโดนมองเป็นสแปม
+ */
+const RESET_MAX_PER_IP = 10;
+const RESET_WINDOW_MS = 60 * 60 * 1000;
 
 const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
 
@@ -41,6 +49,14 @@ export async function requestPasswordReset(
   if (!emailEnabled) {
     return { error: "ระบบส่งอีเมลยังไม่เปิดใช้งาน กรุณาติดต่อทีมงานเพื่อรีเซ็ตรหัสผ่าน" };
   }
+
+  // จำกัดต่อ IP ก่อน — ตอบ ok เหมือนกรณีปกติ ไม่บอกว่าโดนจำกัด
+  // (หน้านี้ตอบ ok เสมออยู่แล้วเพื่อไม่ให้เดาได้ว่าอีเมลไหนมีบัญชี)
+  const ipKey = `reset:ip:${await getClientIp()}`;
+  if (await isRateLimited(ipKey, RESET_MAX_PER_IP, RESET_WINDOW_MS)) {
+    return { ok: true };
+  }
+  await recordAttempt(ipKey, RESET_WINDOW_MS);
 
   const user = await prisma.user.findUnique({
     where: { email: parsed.data },
