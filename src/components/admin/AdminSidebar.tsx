@@ -4,7 +4,7 @@
 // build ผ่านแต่พังตอนรันจริง ถ้าลืมบรรทัดนี้
 import {
   LayoutDashboard, Users, ClipboardCheck, Star,
-  CreditCard, Send, Receipt, Mail, Activity,
+  CreditCard, Send, Receipt, Mail, Activity, Settings,
 } from "lucide-react";
 import { PortalNav, type NavLink } from "@/components/portal/PortalNav";
 
@@ -22,6 +22,7 @@ const links: NavLink[] = [
   { href: "/admin/subscribers", label: "ผู้รับข่าวสาร", icon: Mail },
   { href: "/admin/plans", label: "แพ็คเกจ", icon: CreditCard },
   { href: "/admin/system", label: "สถานะระบบ", icon: Activity },
+  { href: "/admin/settings", label: "บัญชีแอดมิน", icon: Settings },
 ];
 
 export function AdminSidebar() {
