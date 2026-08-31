@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { grantTelegram, revokeTelegram } from "@/lib/actions/admin";
+import { grantTelegram, revokeTelegram, unlinkTelegram } from "@/lib/actions/admin";
 import { telegramGroupManaged } from "@/lib/telegram";
 import { formatThaiDate } from "@/lib/date";
 
@@ -28,7 +28,10 @@ export default async function TelegramQueuePage() {
       telegramUserId: true,
       invitedAt: true,
       createdAt: true,
-      user: { select: { name: true, email: true, telegramUsername: true } },
+      // telegramUserId ใช้ตัดสินว่าจะโชว์ปุ่มปลดผูกไหม ไม่ได้เอามาแสดง
+      user: {
+        select: { name: true, email: true, telegramUsername: true, telegramUserId: true },
+      },
     },
   });
 
@@ -105,6 +108,22 @@ export default async function TelegramQueuePage() {
                           <input type="hidden" name="grantId" value={g.id} />
                           <button className="rounded-full bg-down/15 px-3 py-1.5 text-xs font-medium text-down hover:bg-down/25">
                             นำออก
+                          </button>
+                        </form>
+                      )}
+                      {/*
+                        ปลดบัญชี Telegram ออกจากสมาชิกคนนี้ ให้เอาไปผูกกับคนอื่นได้
+                        โชว์เฉพาะแถวที่ผูกไว้จริง เพราะแถวที่ยังไม่ผูกกดไปก็ไม่เกิดอะไร
+                        ไม่ใช่การนำออกจากกลุ่ม — สมาชิกยังอยู่ในกลุ่มเหมือนเดิม
+                      */}
+                      {g.user.telegramUserId && (
+                        <form action={unlinkTelegram}>
+                          <input type="hidden" name="grantId" value={g.id} />
+                          <button
+                            title="ล้างการผูกบัญชี Telegram ของสมาชิกคนนี้ เพื่อให้บัญชี Telegram นั้นเอาไปผูกกับสมาชิกคนอื่นได้ (ไม่ได้นำออกจากกลุ่ม)"
+                            className="rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted hover:border-brand/40 hover:text-brand"
+                          >
+                            ปลดผูก Telegram
                           </button>
                         </form>
                       )}

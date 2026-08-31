@@ -10,7 +10,7 @@ import {
   expireSubscriptionById,
   syncTradingViewGrant,
 } from "@/lib/lifecycle";
-import { removeGroupMember, telegramGroupManaged } from "@/lib/telegram";
+import { removeGroupMember, sendAdminAlert, telegramGroupManaged } from "@/lib/telegram";
 import { revokeTradingViewAccess } from "@/lib/tradingview";
 import { sendEmail } from "@/lib/email";
 import { accessGrantedEmail } from "@/lib/email-templates";
@@ -144,6 +144,55 @@ export async function revokeTelegram(formData: FormData) {
     where: { id },
     data: { status: "REMOVED", removedAt: new Date(), note },
   });
+  revalidatePath("/admin/telegram");
+  revalidatePath("/admin");
+}
+
+/**
+ * ยกเลิกการผูกบัญชี Telegram ของสมาชิก — ปล่อยบัญชี Telegram นั้นให้ว่าง
+ *
+ * จำเป็นเพราะ User.telegramUserId เป็น unique และ webhook ปฏิเสธการผูกซ้ำเสมอ
+ * ถ้า Telegram ของใครไปติดกับบัญชีเว็บผิดคน (สมัครซ้ำสองบัญชี เปลี่ยนบัญชี
+ * Telegram หรือกดลิงก์ผูกผิดตัว) เขาจะติดถาวรและไม่มีใครแก้ให้ได้เลย
+ *
+ * ล้างเฉพาะสองคอลัมน์ในตาราง User — ตั้งใจไม่แตะ TelegramGrant.telegramUserId
+ * เพราะนั่นคือตัวที่ใช้เตะออกจากกลุ่มตอนหมดอายุ (ดู revokeTelegram ด้านบน)
+ * ล้างไปด้วยจะกลายเป็นคนที่ค้างอยู่ในกลุ่มโดยไม่มีใครเตะออกได้
+ *
+ * ไม่ต้องถามยืนยันก่อนกด เพราะย้อนกลับง่าย สมาชิกกดผูกใหม่จากหน้าบัญชีได้ทันที
+ * (ต่างจากปุ่ม "นำออก" ที่เตะออกจากกลุ่มจริง)
+ */
+export async function unlinkTelegram(formData: FormData) {
+  const session = await requireAdmin();
+  const id = String(formData.get("grantId") ?? "");
+  if (!id) return;
+
+  const grant = await prisma.telegramGrant.findUnique({
+    where: { id },
+    select: {
+      userId: true,
+      user: {
+        select: { name: true, email: true, telegramUserId: true, telegramUsername: true },
+      },
+    },
+  });
+  // ไม่มีอะไรให้ปลด — กดซ้ำหรือกดผิดแถวก็ไม่เกิดอะไร
+  if (!grant?.user.telegramUserId) return;
+
+  const { telegramUserId, telegramUsername } = grant.user;
+  await prisma.user.update({
+    where: { id: grant.userId },
+    data: { telegramUserId: null, telegramUsername: null },
+  });
+
+  // ปลดสิทธิ์แบบนี้ต้องตามรอยได้ว่าใครสั่ง ไม่งั้นบัญชีหลุดมือแล้วหาต้นเหตุไม่เจอ
+  await sendAdminAlert(
+    `🔓 ยกเลิกการผูกบัญชี Telegram\n` +
+      `สมาชิก: ${grant.user.name ?? grant.user.email}\n` +
+      `Telegram ที่ปลด: ${telegramUsername ? `@${telegramUsername}` : telegramUserId}\n` +
+      `แอดมินที่สั่ง: ${session.user?.email ?? session.user?.name ?? "ไม่ทราบ"}`
+  );
+
   revalidatePath("/admin/telegram");
   revalidatePath("/admin");
 }
