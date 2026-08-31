@@ -28,11 +28,18 @@ export default async function TelegramQueuePage() {
       telegramUserId: true,
       invitedAt: true,
       createdAt: true,
-      // telegramUserId ใช้ตัดสินว่าจะโชว์ปุ่มปลดผูกไหม ไม่ได้เอามาแสดง
-      user: {
-        select: { name: true, email: true, telegramUsername: true, telegramUserId: true },
-      },
+      user: { select: { name: true, email: true, telegramUsername: true } },
     },
+  });
+
+  // การผูกบัญชี Telegram อยู่บนตาราง User ไม่ใช่ตารางคิว จึงต้องดึงคนละ query
+  // ถ้าดูจากตารางคิวอย่างเดียวจะมองไม่เห็นคนที่ผูกไว้แต่ไม่มีแถวคิว แล้วปลดไม่ได้เลย
+  // (เจอของจริง 31 ส.ค. 2569 — บัญชีที่ถือ Telegram อยู่ไม่โผล่ในคิวสักแถว)
+  const linked = await prisma.user.findMany({
+    where: { telegramUserId: { not: null } },
+    orderBy: { createdAt: "desc" },
+    take: 200,
+    select: { id: true, name: true, email: true, telegramUserId: true, telegramUsername: true },
   });
 
   return (
@@ -111,22 +118,6 @@ export default async function TelegramQueuePage() {
                           </button>
                         </form>
                       )}
-                      {/*
-                        ปลดบัญชี Telegram ออกจากสมาชิกคนนี้ ให้เอาไปผูกกับคนอื่นได้
-                        โชว์เฉพาะแถวที่ผูกไว้จริง เพราะแถวที่ยังไม่ผูกกดไปก็ไม่เกิดอะไร
-                        ไม่ใช่การนำออกจากกลุ่ม — สมาชิกยังอยู่ในกลุ่มเหมือนเดิม
-                      */}
-                      {g.user.telegramUserId && (
-                        <form action={unlinkTelegram}>
-                          <input type="hidden" name="grantId" value={g.id} />
-                          <button
-                            title="ล้างการผูกบัญชี Telegram ของสมาชิกคนนี้ เพื่อให้บัญชี Telegram นั้นเอาไปผูกกับสมาชิกคนอื่นได้ (ไม่ได้นำออกจากกลุ่ม)"
-                            className="rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted hover:border-brand/40 hover:text-brand"
-                          >
-                            ปลดผูก Telegram
-                          </button>
-                        </form>
-                      )}
                     </div>
                   </td>
                 </tr>
@@ -135,6 +126,65 @@ export default async function TelegramQueuePage() {
           </table>
         </div>
       )}
+
+      {/*
+        ตารางนี้ตอบคำถามเดียว: "บัญชี Telegram นี้ตอนนี้เป็นของสมาชิกคนไหน"
+        แยกจากตารางคิวข้างบนเพราะคนละเรื่องกัน — คิวคือสถานะการเข้ากลุ่ม
+        ส่วนนี่คือการผูกตัวตน ซึ่ง webhook ใช้ตัดสินว่ายอมให้ผูกซ้ำหรือไม่
+      */}
+      <div>
+        <h2 className="font-display text-lg font-semibold">บัญชีที่ผูก Telegram ไว้</h2>
+        <p className="mt-1 text-sm text-muted">
+          หนึ่งบัญชี Telegram ผูกได้กับสมาชิกคนเดียว ถ้าสมาชิกกดเชื่อมต่อแล้วขึ้นว่า
+          &ldquo;ถูกใช้กับสมาชิกรายอื่นแล้ว&rdquo; ให้หาชื่อ Telegram ของเขาในตารางนี้แล้วกดปลดผูก
+          จากนั้นให้เขากดเชื่อมต่อใหม่ — <strong>ไม่ใช่การนำออกจากกลุ่ม</strong> สมาชิกยังอยู่ในกลุ่มเหมือนเดิม
+        </p>
+
+        {linked.length === 0 ? (
+          <div className="card-surface mt-3 rounded-xl p-6 text-sm text-muted">
+            ยังไม่มีสมาชิกที่ผูกบัญชี Telegram
+          </div>
+        ) : (
+          <div className="card-surface mt-3 overflow-x-auto rounded-2xl">
+            <table className="w-full min-w-[680px] text-sm">
+              <thead className="border-b border-border text-left text-muted">
+                <tr>
+                  <th className="px-5 py-3 font-medium">สมาชิก</th>
+                  <th className="px-5 py-3 font-medium">Telegram</th>
+                  <th className="px-5 py-3 text-right font-medium">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {linked.map((u) => (
+                  <tr key={u.id} className="border-b border-border align-top last:border-0">
+                    <td className="px-5 py-3">
+                      <div className="font-medium">{u.name ?? "—"}</div>
+                      <div className="text-xs text-muted">{u.email}</div>
+                    </td>
+                    <td className="px-5 py-3 text-xs">
+                      {u.telegramUsername && <div className="font-mono">@{u.telegramUsername}</div>}
+                      <div className="font-mono text-muted">id {u.telegramUserId}</div>
+                    </td>
+                    <td className="px-5 py-3">
+                      <div className="flex justify-end">
+                        <form action={unlinkTelegram}>
+                          <input type="hidden" name="userId" value={u.id} />
+                          <button
+                            title="ล้างการผูกบัญชี Telegram ของสมาชิกคนนี้ เพื่อให้บัญชี Telegram นั้นเอาไปผูกกับสมาชิกคนอื่นได้ (ไม่ได้นำออกจากกลุ่ม)"
+                            className="rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted hover:border-brand/40 hover:text-brand"
+                          >
+                            ปลดผูก Telegram
+                          </button>
+                        </form>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -155,6 +155,10 @@ export async function revokeTelegram(formData: FormData) {
  * ถ้า Telegram ของใครไปติดกับบัญชีเว็บผิดคน (สมัครซ้ำสองบัญชี เปลี่ยนบัญชี
  * Telegram หรือกดลิงก์ผูกผิดตัว) เขาจะติดถาวรและไม่มีใครแก้ให้ได้เลย
  *
+ * รับ userId ไม่ใช่ grantId ทั้งที่ปุ่มหนึ่งอยู่ในตารางคิว — เพราะการผูกอยู่บน
+ * ตาราง User ส่วนคิวเป็นคนละเรื่อง มีสมาชิกที่ผูก Telegram ไว้โดยไม่มีแถวคิวเลย
+ * (เจอของจริง 31 ส.ค. 2569) ถ้ายึดกับ grantId คนกลุ่มนั้นจะปลดไม่ได้ตลอดกาล
+ *
  * ล้างเฉพาะสองคอลัมน์ในตาราง User — ตั้งใจไม่แตะ TelegramGrant.telegramUserId
  * เพราะนั่นคือตัวที่ใช้เตะออกจากกลุ่มตอนหมดอายุ (ดู revokeTelegram ด้านบน)
  * ล้างไปด้วยจะกลายเป็นคนที่ค้างอยู่ในกลุ่มโดยไม่มีใครเตะออกได้
@@ -164,31 +168,26 @@ export async function revokeTelegram(formData: FormData) {
  */
 export async function unlinkTelegram(formData: FormData) {
   const session = await requireAdmin();
-  const id = String(formData.get("grantId") ?? "");
-  if (!id) return;
+  const userId = String(formData.get("userId") ?? "");
+  if (!userId) return;
 
-  const grant = await prisma.telegramGrant.findUnique({
-    where: { id },
-    select: {
-      userId: true,
-      user: {
-        select: { name: true, email: true, telegramUserId: true, telegramUsername: true },
-      },
-    },
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { name: true, email: true, telegramUserId: true, telegramUsername: true },
   });
   // ไม่มีอะไรให้ปลด — กดซ้ำหรือกดผิดแถวก็ไม่เกิดอะไร
-  if (!grant?.user.telegramUserId) return;
+  if (!user?.telegramUserId) return;
 
-  const { telegramUserId, telegramUsername } = grant.user;
+  const { telegramUserId, telegramUsername } = user;
   await prisma.user.update({
-    where: { id: grant.userId },
+    where: { id: userId },
     data: { telegramUserId: null, telegramUsername: null },
   });
 
   // ปลดสิทธิ์แบบนี้ต้องตามรอยได้ว่าใครสั่ง ไม่งั้นบัญชีหลุดมือแล้วหาต้นเหตุไม่เจอ
   await sendAdminAlert(
     `🔓 ยกเลิกการผูกบัญชี Telegram\n` +
-      `สมาชิก: ${grant.user.name ?? grant.user.email}\n` +
+      `สมาชิก: ${user.name ?? user.email}\n` +
       `Telegram ที่ปลด: ${telegramUsername ? `@${telegramUsername}` : telegramUserId}\n` +
       `แอดมินที่สั่ง: ${session.user?.email ?? session.user?.name ?? "ไม่ทราบ"}`
   );
