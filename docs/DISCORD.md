@@ -16,48 +16,72 @@
 
 1. เมนู **OAuth2 → URL Generator**
 2. Scopes ติ๊ก `bot`
-3. Bot Permissions ติ๊ก **Manage Roles**
+3. Bot Permissions ติ๊ก **Manage Roles** กับ **Manage Channels**
+   (Manage Channels ใช้ตอนสร้างห้องครั้งแรก ตั้งเสร็จแล้วถอดออกได้)
 4. เปิดลิงก์ที่ได้ แล้วเลือกเซิร์ฟเวอร์ของเรา
 
-## 3. เตรียมยศ
+## 3. สร้างห้องและยศด้วยสคริปต์
 
-เปิด **Developer Mode** ก่อน: User Settings → Advanced → Developer Mode
+เอา Server ID ก่อน: User Settings → Advanced → เปิด **Developer Mode**
+แล้วคลิกขวาที่ไอคอนเซิร์ฟเวอร์ → **Copy Server ID**
 
-สร้างยศที่ต้องการ แล้วคลิกขวาที่ยศ → **Copy Role ID**
+ใส่ใน `.env` ในเครื่อง (ไม่ต้องขึ้น git — `.env` ถูก ignore อยู่แล้ว)
 
-| ยศ | ใช้ทำอะไร | ต้องมีไหม |
-|---|---|---|
-| ยศสมาชิก | เปิดห้องเฉพาะสมาชิกทั้งหมด | ควรมี |
-| ยศรายเดือน / 3 เดือน / 6 เดือน / รายปี | แยกสิทธิ์ตามแพ็กเกจ | ไม่บังคับ ตั้งเฉพาะที่ใช้ |
+```
+DISCORD_BOT_TOKEN=<โทเคนจากข้อ 1>
+DISCORD_GUILD_ID=<Server ID>
+```
 
-> **สำคัญที่สุด:** ไปที่ Server Settings → Roles แล้ว **ลากยศของบอทให้อยู่เหนือยศที่จะแจกทั้งหมด**
-> Discord ไม่ยอมให้บอทแจกยศที่อยู่สูงกว่าตัวเอง ถ้าลืมข้อนี้จะขึ้นว่าให้ยศไม่สำเร็จ
+แล้วรัน
 
-เอา Server ID ด้วย: คลิกขวาที่ชื่อเซิร์ฟเวอร์ → **Copy Server ID**
+```bash
+npm run discord:setup            # ดูแผนก่อน ยังไม่แตะเซิร์ฟเวอร์
+npm run discord:setup -- --apply # สร้างจริง
+```
+
+สคริปต์สร้างให้ครบตามสเปก
+
+| หมวด | ห้อง | ใครเห็น | ใครโพสต์ |
+|---|---|---|---|
+| PUBLIC | 👋・start-here · 📢・qvx-updates · 🎁・qvx-promotions · 🏆・qvx-results | ทุกคน | QVX Team |
+| QVX MEMBER | 🎫・private-homework | QVX Active + QVX Team | QVX Team (สมาชิกใช้ปุ่มเปิด Ticket) |
+
+ยศ **QVX Team** (ทีมงาน) กับ **QVX Active** (สมาชิกที่ยังไม่หมดอายุ)
+
+จบแล้วมันพิมพ์ค่าที่ต้องเอาไปตั้งในข้อ 4 ออกมาให้เลย ไม่ต้องไปหา Role ID เอง
+
+**รันซ้ำได้เสมอ** — ของที่มีแล้วไม่สร้างซ้ำ แต่สิทธิ์ของทุกห้องจะถูกตั้งใหม่ให้ตรงสเปก
+ใครเผลอไปแก้สิทธิ์ในแอป Discord รันอีกรอบก็กลับมาถูก
+
+**ไม่ผูกกับบัญชีใคร** — ทุกสิทธิ์ผูกกับยศเท่านั้น ไม่มีสิทธิ์รายบุคคล ใครได้ QVX Active
+เว็บเป็นคนตัดสินจากสถานะสมาชิก โอนเจ้าของเซิร์ฟเวอร์กี่รอบก็ไม่กระทบ (Server ID ไม่เปลี่ยน)
+
+> **ห้ามข้ามข้อนี้:** Server Settings → Roles แล้ว **ลากยศของบอทให้อยู่เหนือ QVX Active**
+> Discord ไม่ยอมให้บอทแจกยศที่อยู่สูงกว่าตัวเอง สคริปต์จะเตือนถ้าลำดับผิด
+> ยศที่สคริปต์สร้างเองจะอยู่ใต้บอทอยู่แล้ว แต่ถ้ามีคนไปลากทีหลังจะพัง
 
 ## 4. ตั้งค่าบน Vercel
+
+ใช้ยศเดียวคือ QVX Active
 
 ```bash
 vercel env add DISCORD_BOT_TOKEN
 vercel env add DISCORD_GUILD_ID
-vercel env add DISCORD_ROLE_MEMBER
-```
-
-ถ้าจะแยกยศตามแพ็กเกจ เพิ่มเฉพาะตัวที่ใช้:
-
-```bash
-vercel env add DISCORD_ROLE_MONTH
-vercel env add DISCORD_ROLE_Q3
-vercel env add DISCORD_ROLE_H6
-vercel env add DISCORD_ROLE_YEAR
+vercel env add DISCORD_ROLE_MEMBER     # Role ID ของ QVX Active จากข้อ 3
 ```
 
 | ตัวแปร | ค่า |
 |---|---|
-| `DISCORD_BOT_TOKEN` | โทเคนจากข้อ 1 — **เป็นความลับ ห้ามใส่ในโค้ด** |
+| `DISCORD_BOT_TOKEN` | โทเคนจากข้อ 1 — **เป็นความลับ ห้ามใส่ในโค้ด ห้ามวางในแชต** |
 | `DISCORD_GUILD_ID` | Server ID |
-| `DISCORD_ROLE_MEMBER` | Role ID ของยศสมาชิก |
-| `DISCORD_ROLE_MONTH` ฯลฯ | Role ID แยกตามแพ็กเกจ (ไม่บังคับ) |
+| `DISCORD_ROLE_MEMBER` | Role ID ของ QVX Active |
+| `DISCORD_ROLE_MONTH` / `_Q3` / `_H6` / `_YEAR` | **ปล่อยว่าง** — ระบบข้ามตัวที่ว่างเอง ตั้งเมื่ออยากแยกยศตามแพ็กเกจ |
+
+แล้วเปลี่ยนลิงก์เชิญบนเว็บให้ชี้เซิร์ฟเวอร์ใหม่ (ตอนนี้ยังชี้ PYRO BOLT Community Group อยู่)
+
+```bash
+vercel env add NEXT_PUBLIC_DISCORD_INVITE_URL   # ลิงก์เชิญแบบ Expire After = Never
+```
 
 ตั้งค่าเสร็จให้ deploy ใหม่หนึ่งครั้ง
 
