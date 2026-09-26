@@ -1,29 +1,59 @@
-# botkeeper - ดูแลบอท TradingView บนคอมเฟิร์สให้ทำงานตลอด
+# botkeeper - ดูแลบอท TradingView ให้ทำงานตลอด (ใช้ได้ทั้งเครื่องหลักและเครื่องสำรอง)
 #
 # ทำ 3 อย่างวนลูป:
 #   1. บริดจ์ (python tv_bridge.py) ตาย -> เปิดใหม่
-#   2. cloudflared ตาย -> เปิดใหม่ (quick tunnel ได้ URL สุ่มใหม่ทุกครั้ง)
-#   3. URL เปลี่ยน -> อัป TV_BOT_URL บน Vercel + redeploy ให้อัตโนมัติ
+#   2. cloudflared ของบริดจ์ตาย -> เปิดใหม่ (quick tunnel ได้ URL สุ่มใหม่ทุกครั้ง)
+#   3. URL เปลี่ยน -> อัปค่า env บน Vercel + redeploy ให้อัตโนมัติ
 #
 # ข้อ 3 คือหัวใจ: quick tunnel ของ Cloudflare ไม่มี URL คงที่ ถ้าไม่อัปเดตเอง
 # เว็บจะเรียกบอทไม่เจอหลังรีบูตทุกครั้ง
+#
+# คอมเฟิร์ส (ตัวหลัก):  powershell -File C:\BotTV\botkeeper.ps1
+# คอมเบส   (ตัวสำรอง): powershell -File C:\BotTV\botkeeper.ps1 -EnvKey TV_BOT_URL_BACKUP `
+#                        -Cloudflared "C:\Program Files (x86)\cloudflared\cloudflared.exe" -BridgeTask TradePulseTVBridge
+#
+# ต้องมี $Dir\vercel_token.txt (Vercel token ของทีม domezzxxs-projects, ห้าม commit)
+# ยังไม่มีไฟล์ก็รันได้ - บริดจ์กับ tunnel ยังถูกดูแล แค่อัป Vercel ไม่ได้จนกว่าจะวางไฟล์
+
+param(
+  [string]$Dir         = "C:\BotTV",
+  # ค่า env บน Vercel ที่จะอัป - ตัวหลัก TV_BOT_URL · ตัวสำรอง TV_BOT_URL_BACKUP
+  [string]$EnvKey      = "TV_BOT_URL",
+  [string]$Cloudflared = "",
+  # ตั้งไว้ = เปิดบริดจ์ผ่าน scheduled task เดิมของเครื่อง แทนการสั่ง python เอง
+  [string]$BridgeTask  = "",
+  [int]$Port           = 8787
+)
 
 $ErrorActionPreference = "Continue"
-$dir       = "C:\BotTV"
+$dir       = $Dir
+if (-not $Cloudflared) { $Cloudflared = "$dir\cloudflared.exe" }
 $cfLog     = "$dir\cf.log"
 $stateFile = "$dir\last_url.txt"
 $log       = "$dir\keeper.log"
-$token     = (Get-Content "$dir\vercel_token.txt" -Raw).Trim()
 $proj      = "prj_Ei4cxqF4VNBrA7wu61N4XPghFfah"
 $team      = "team_hQP3M2RvqWdYY8W8652RbJUe"
-$envId     = "5xOgw7IAORW9Ov29"   # TV_BOT_URL (production)
 
 function Note($m) {
   "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $m" | Out-File $log -Append -Encoding utf8
 }
 
+# อ่าน token ตอนใช้ ไม่ใช่ตอนเริ่ม - วางไฟล์ทีหลังได้โดยไม่ต้องรีสตาร์ต keeper
+function Get-Token {
+  $f = "$dir\vercel_token.txt"
+  if (-not (Test-Path $f)) { return $null }
+  $t = (Get-Content $f -Raw).Trim()
+  if ($t) { return $t } else { return $null }
+}
+
 function Ensure-Bridge {
-  if (Get-NetTCPConnection -LocalPort 8787 -State Listen -EA SilentlyContinue) { return }
+  if (Get-NetTCPConnection -LocalPort $Port -State Listen -EA SilentlyContinue) { return }
+  if ($BridgeTask) {
+    Note "bridge down -> schtasks /run $BridgeTask"
+    schtasks /run /tn $BridgeTask | Out-Null
+    Start-Sleep 12
+    return
+  }
   Note "bridge down -> starting"
   # ให้ cmd เป็นคน redirect (>> ต่อท้าย) แทน -RedirectStandardOutput ของ PowerShell
   # ตัวหลังจองไฟล์แบบ exclusive ถ้า process เดิมยังถือ handle อยู่จะ throw แล้ว
@@ -34,12 +64,19 @@ function Ensure-Bridge {
   Start-Sleep 12
 }
 
+# นับเฉพาะ cloudflared ที่ชี้พอร์ตบริดจ์ - เครื่องเดียวกันอาจมี tunnel ของโปรเจกต์อื่น
+# (คอมเบสมีของพอร์ต 8800 กับเกม) ถ้านับทุกตัว tunnel ของบริดจ์ตายจะไม่มีใครเปิดใหม่
+function Get-BridgeTunnel {
+  Get-CimInstance Win32_Process -Filter "Name='cloudflared.exe'" -EA SilentlyContinue |
+    Where-Object { $_.CommandLine -match "127\.0\.0\.1:$Port\b" }
+}
+
 function Ensure-Tunnel {
-  if (Get-Process cloudflared -EA SilentlyContinue) { return }
+  if (Get-BridgeTunnel) { return }
   Note "cloudflared down -> starting"
   Remove-Item $cfLog -Force -EA SilentlyContinue
-  Start-Process "$dir\cloudflared.exe" `
-    -ArgumentList "tunnel", "--url", "http://127.0.0.1:8787" `
+  Start-Process $Cloudflared `
+    -ArgumentList "tunnel", "--url", "http://127.0.0.1:$Port" `
     -RedirectStandardError $cfLog -WindowStyle Hidden
   Start-Sleep 18
 }
@@ -53,22 +90,31 @@ function Get-TunnelUrl {
 }
 
 function Update-Vercel($url) {
+  $token = Get-Token
+  if (-not $token) { Note "no vercel_token.txt -> skip update"; return $false }
   $h = @{ Authorization = "Bearer $token"; "Content-Type" = "application/json" }
   # แก้ค่า env เดิมในที่เดิม (ไม่ลบ-สร้างใหม่ จะได้ id ไม่เปลี่ยน)
+  # หา id จากชื่อ env ทุกครั้ง ใช้สคริปต์เดียวได้ทุกเครื่อง
   $body = @{ value = $url } | ConvertTo-Json
   try {
+    $envs = (Invoke-RestMethod -Headers $h -EA Stop `
+      -Uri "https://api.vercel.com/v10/projects/$proj/env?teamId=$team").envs
+    $envId = ($envs | Where-Object { $_.key -eq $EnvKey -and $_.target -contains "production" } |
+              Select-Object -First 1).id
+    if (-not $envId) { Note "env $EnvKey (production) not found on vercel"; return $false }
     Invoke-RestMethod -Method Patch -Headers $h `
       -Uri "https://api.vercel.com/v9/projects/$proj/env/$envId`?teamId=$team" `
       -Body $body -EA Stop | Out-Null
-    Note "vercel env updated -> $url"
+    Note "vercel env $EnvKey updated -> $url"
   } catch {
     Note ("vercel env FAILED: " + $_.Exception.Message)
     return $false
   }
-  # env ใหม่มีผลต่อเมื่อ deploy ใหม่ - สั่ง redeploy จาก production ล่าสุด
+  # env ใหม่มีผลต่อเมื่อ deploy ใหม่ - สั่ง redeploy จาก production ล่าสุดที่ขึ้นสำเร็จ
+  # (ตัวล่าสุดอาจเป็นตัวที่ถูกบล็อกหรือ build พัง redeploy ตัวนั้นก็พังซ้ำ)
   try {
     $latest = Invoke-RestMethod -Headers $h -EA Stop `
-      -Uri "https://api.vercel.com/v6/deployments?projectId=$proj&teamId=$team&target=production&limit=1"
+      -Uri "https://api.vercel.com/v6/deployments?projectId=$proj&teamId=$team&target=production&state=READY&limit=1"
     $src = $latest.deployments[0]
     $dep = @{ name = "tradepulse"; deploymentId = $src.uid; target = "production" } | ConvertTo-Json
     Invoke-RestMethod -Method Post -Headers $h `
@@ -101,7 +147,7 @@ function Poke-Web {
   }
 }
 
-Note "botkeeper started"
+Note "botkeeper started (env=$EnvKey port=$Port)"
 $tick = 0
 while ($true) {
   try {
