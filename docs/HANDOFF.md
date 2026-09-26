@@ -18,7 +18,7 @@ _อัปเดต 26 ก.ย. 2569 · เขียนจากการตร�
 | main | CI ผ่านทุกคอมมิตล่าสุด | `git fetch && git log -1 origin/main` · `gh run list --workflow ci.yml -L 1` |
 | **เว็บ → บริดจ์ TradingView** | 🔴 **ติดต่อไม่ได้ทั้งตัวหลักและตัวสำรอง** ทุกรอบตั้งแต่อย่างน้อย 3 ก.ย. ถึง 26 ก.ย. = ตอนนี้บอทเพิ่มสิทธิ์อัตโนมัติไม่ได้ | ดูผลรอบล่าสุด ↓ |
 | บริดจ์หลัก — คอมเฟิร์ส | 🔴 เว็บยิงไม่ถึง (`primaryUp:false`) | ข้อความเตือนในกลุ่ม Testtool บอกโฮสต์ที่เว็บยิงไป |
-| บริดจ์สำรอง — คอมเบส | ⚠️ ยิงตรงได้ 200 (27 ก.ย.) แต่เว็บยิงไม่ถึง (`backupUp:false`) → `TV_BOT_URL_BACKUP` บน Vercel น่าจะชี้ผิดที่ | `curl https://asus.tail17bed7.ts.net/health` · `schtasks /query /tn TradePulseTVBridge /fo list /v` |
+| บริดจ์สำรอง — คอมเบส | 🟡 ย้ายจาก Tailscale Funnel ไป Cloudflare tunnel แล้ว (27 ก.ย.) ภายนอกยิงถึง 200 · **รอวาง `C:\BotTV\vercel_token.txt`** ให้ keeper อัป `TV_BOT_URL_BACKUP` เอง | `type C:\BotTV\keeper.log` · `schtasks /query /tn QVXBotKeeper` |
 | ที่นั่งโปร | 300 ว่างครบ ยังไม่มีลูกค้าจ่ายเงิน | แถบโปรบนหน้าแรก |
 
 ดูผล bridge-health รอบล่าสุด (สิ่งที่เว็บเห็นจริง ไม่ใช่ที่ยิงจากเครื่องเรา):
@@ -31,6 +31,9 @@ gh run view $id --log | grep -o '{"ok":true,"primaryUp[^}]*}'
 ก่อนแก้ไฟล์ไหน เช็ก `git status` ก่อนเสมอว่าไฟล์นั้นมีคนแก้ค้างอยู่ไหม
 
 ### 3. มีคนทำงานจากเครื่องอื่นด้วย — fetch ก่อนเริ่มงานทุกครั้ง
+
+> ⚠️ ตั้งแต่ 27 ก.ย. **คอมมิตที่ author เป็น `electiction` โดน Vercel บล็อก deploy** ("Deployment was blocked")
+> ต้องให้บัญชีในทีม `domezzxxs-projects` กด Redeploy หรือเป็นคน merge PR เอง
 
 เมื่อ 26 ก.ย. ผู้ใช้ GitHub `electiction` push งานใหม่ 4 PR จากเครื่องอื่น
 (ช่องทาง Wisdom · API สิทธิ์ · โครง Discord · เอกสาร — ดูหัวข้อ 4.5)
@@ -252,7 +255,7 @@ TradingView **ไม่มี API** สำหรับจัดการ invite-
 | สคริปต์ที่บอทจัดการ | "Test 2 SMC Unified Suite" — ⚠️ **ยังไม่ยืนยันว่าเป็นตัวจริงที่ลูกค้าต้องได้** |
 | ทางออกอินเทอร์เน็ต | Cloudflare quick tunnel (URL สุ่มใหม่ทุกรีสตาร์ต) |
 | ตัวคุม | `botkeeper` — ปลุกบริดจ์/tunnel ที่ตาย + **PATCH `TV_BOT_URL` บน Vercel ให้เองเมื่อ URL เปลี่ยน** |
-| สำรอง | คอมเบส (ASUS) · server-254 |
+| สำรอง | คอมเบส (ASUS) — Cloudflare tunnel + botkeeper อัป `TV_BOT_URL_BACKUP` · server-254 (ไม่ได้ต่อกับเว็บ) |
 
 **ส่งไฟล์เข้าเครื่องบอท** — SSH/SMB/WinRM ปิดหมด วิธีที่พิสูจน์แล้ว:
 commit ไฟล์ลง `public/` → push → รอ deploy → บนเครื่องบอท `curl.exe -o C:\BotTV\<ไฟล์> https://quantvisionx.com/<ไฟล์>`
@@ -350,7 +353,10 @@ commit ไฟล์ลง `public/` → push → รอ deploy → บนเค�
 แก้: ทำภาพใหม่ที่ไม่มีตัวเลขราคา ปล่อยให้ราคาอยู่ในหัวข้อราคาที่อัปเดตเอง
 
 **บริดจ์ทั้งสองตัวเว็บยิงไม่ถึงมาหลายสัปดาห์** (ดูตารางหัวไฟล์) — ลูกค้าที่จ่ายตอนนี้จะไม่ได้สิทธิ์อัตโนมัติ
-ต้องเปิดคอมเฟิร์สให้ botkeeper อัปเดต `TV_BOT_URL` หรือแก้ `TV_BOT_URL_BACKUP` ให้ชี้คอมเบส
+ต้นเหตุฝั่งคอมเบส: **Tailscale Funnel ใช้จากอินเทอร์เน็ตไม่ได้** (`funnel status` บอก on แต่ภายนอกโดนตัดตอน TLS
+อาการเดียวกับคอมเฟิร์ส) — Mac ที่อยู่ใน tailnet เดียวกันยิงได้เพราะวิ่งทางใน **อย่าใช้ Mac ใน tailnet ทดสอบ Funnel**
+แก้แล้ว 27 ก.ย.: คอมเบสใช้ Cloudflare quick tunnel + botkeeper (ดู "คอมเบส" หัวข้อ 7) เหลือวาง Vercel token
+ฝั่งคอมเฟิร์ส: เปิดเครื่องแล้ว login ไว้ botkeeper จะอัป `TV_BOT_URL` เอง
 
 **ภาพหลักฐานสิทธิ์ถึง DM ลูกค้าไหม ยังไม่มีบันทึกผล** — ตัว grant เองทดสอบผ่านแล้ว (หัวข้อ 5.1)
 
@@ -417,6 +423,11 @@ commit ไฟล์ลง `public/` → push → รอ deploy → บนเค�
   ถ้าต่อ tailnet ไม่ได้ (เช่นเน็ตมหาลัยบล็อก Tailscale) พิมพ์ `/wol` ในบอท Telegram ที่กล่อง x96 คอยฟัง
   (x96 poll Telegram เฉพาะตอน PC หลักดับ ซึ่งก็คือตอนที่ต้องใช้พอดี) 〔บันทึก 27 ส.ค.〕
 - กับดักการรันบริดจ์บนคอมเบส (`schtasks`, python path เต็ม, log, Last Result) อยู่ใน `docs/TRADINGVIEW.md` ครบแล้ว
+- **ทางออกเน็ตคือ Cloudflare quick tunnel ไม่ใช่ Funnel แล้ว** (27 ก.ย.) — task `QVXBotKeeper` เปิดตอน login
+  รัน `C:\BotTV\keeper-backup.ps1` → `botkeeper.ps1 -EnvKey TV_BOT_URL_BACKUP` ดูแลบริดจ์ (ผ่าน task `TradePulseTVBridge`)
+  + tunnel พอร์ต 8787 + อัป `TV_BOT_URL_BACKUP` บน Vercel เมื่อ URL เปลี่ยน · log `C:\BotTV\keeper.log`
+- **เครื่องนี้มี cloudflared ตัวอื่นรันอยู่ด้วย** (พอร์ต 8800 · เกม 4173) — keeper นับเฉพาะตัวที่ชี้ 8787 ห้ามสั่งฆ่า cloudflared ทั้งหมด
+- ต้องวาง `C:\BotTV\vercel_token.txt` (token เดียวกับบนคอมเฟิร์สใช้ได้) — ไม่มีไฟล์ keeper ยังดูแลบริดจ์/tunnel แต่อัป Vercel ไม่ได้
 
 ### โค้ด
 

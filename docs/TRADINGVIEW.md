@@ -191,7 +191,10 @@ CHROME_USER_DATA_DIR=<โฟลเดอร์โปรไฟล์ Chrome ท�
 ```
 
 เครื่องที่รันบอทต้องเปิดตลอด และถ้าไม่มี public IP ต้องมี tunnel
-คอมเบสใช้ **Tailscale Funnel** อยู่ (ไม่ใช่ cloudflared) เพราะเครื่องอยู่บน tailnet อยู่แล้ว:
+
+> ⚠️ **เลิกใช้ Funnel บนคอมเบสแล้ว (27 ก.ย.)** — `funnel status` บอก on แต่จากอินเทอร์เน็ตโดนตัดตอน TLS
+> (เว็บ `backupUp:false` ทุกรอบตั้งแต่ ≥3 ก.ย.) Mac ใน tailnet เดียวกันยิงได้เพราะวิ่งทางใน เลยดูเหมือนปกติ
+> ตอนนี้ใช้ Cloudflare quick tunnel + botkeeper แทน (หัวข้อ "botkeeper") คำสั่งข้างล่างเก็บไว้อ้างอิง
 
 ```bash
 tailscale funnel --bg 8787      # ได้ https://asus.tail17bed7.ts.net
@@ -261,7 +264,8 @@ curl https://asus.tail17bed7.ts.net/health
 
 - `callback: false` = **ยังไม่ได้ตั้ง `TRADEPULSE_CALLBACK_URL`** บอททำงานได้แต่ผลจะไม่กลับมาที่เว็บ
 - `queue` ค้างเลขเดิมนาน ๆ = มีงานติดอยู่ ไปดู `C:\tv-bridge.log`
-- ต่อไม่ติดเลย = คอมเบสปิด หรือ Funnel หลุด (`tailscale funnel status`)
+- ต่อไม่ติดเลย = คอมเบสปิด หรือ tunnel หลุด (`type C:\BotTV\keeper.log`)
+- **ทดสอบจาก Mac ที่อยู่ใน tailnet ไม่ได้ผลจริง** — ดูผลที่เว็บเห็นจาก `bridge-health` แทน (คำสั่งใน HANDOFF หัวไฟล์)
 
 > ระหว่างบอทกำลังทำงาน `/health` จะไม่ตอบชั่วคราว เพราะ Selenium เป็นโค้ด blocking
 > ค้าง event loop ไว้ทั้งงาน — ไม่ใช่อาการล่ม
@@ -459,7 +463,7 @@ Select-String -Path C:\BotTV\cf.log -Pattern "trycloudflare.com"
 
 ## botkeeper — แก้ปัญหา URL ของ quick tunnel เปลี่ยนทุกครั้ง
 
-`scripts/bot/botkeeper.ps1` (สำเนาใช้งานอยู่ที่ `C:\BotTV\botkeeper.ps1` บนคอมเฟิร์ส)
+`scripts/bot/botkeeper.ps1` (สำเนาใช้งานอยู่ที่ `C:\BotTV\botkeeper.ps1` บนคอมเฟิร์ส **และคอมเบส**)
 วนลูปทุก 60 วินาที ทำ 3 อย่าง:
 
 1. บริดจ์ตาย → เปิดใหม่
@@ -475,6 +479,29 @@ Select-String -Path C:\BotTV\cf.log -Pattern "trycloudflare.com"
 เปิดเองตอน login ผ่าน Startup shortcut `BotKeeper.lnk`
 
 **ทดสอบผ่าน:** URL เปลี่ยน → `vercel env updated` + `redeploy triggered` → health `primaryUp:true`
+
+### ใช้บนคอมเบส (ตัวสำรอง) — 27 ก.ย. 2569
+
+สคริปต์เดียวกัน ส่งพารามิเตอร์ต่างกัน (ค่าเริ่มต้น = แบบคอมเฟิร์สเดิม):
+
+| พารามิเตอร์ | คอมเบส | ทำไม |
+|---|---|---|
+| `-EnvKey TV_BOT_URL_BACKUP` | อัปค่าสำรอง ไม่ทับตัวหลัก | หา env id จากชื่อเอง ไม่ต้องฝัง id |
+| `-Cloudflared "C:\Program Files (x86)\cloudflared\cloudflared.exe"` | ใช้ตัวที่ติดตั้งไว้แล้ว | |
+| `-BridgeTask TradePulseTVBridge` | เปิดบริดจ์ผ่าน task เดิม | .bat ของ task มี python path เต็มกับ log ที่แก้กับดักไว้แล้ว |
+
+- เปิดตอน login ด้วย task `QVXBotKeeper` (Interactive only) → `C:\BotTV\keeper-backup.ps1`
+- keeper นับเฉพาะ cloudflared ที่ชี้ `127.0.0.1:8787` — เครื่องนี้มี tunnel ของโปรเจกต์อื่นรันอยู่ด้วย
+- token อ่านตอนจะใช้ วาง `vercel_token.txt` ทีหลังได้โดยไม่ต้องรีสตาร์ต keeper
+- redeploy เลือก production ตัวล่าสุดที่ **READY** (ตัวล่าสุดอาจโดนบล็อก/พัง redeploy ซ้ำก็พังซ้ำ)
+
+**ทดสอบผ่าน:** tunnel ขึ้น → ยิงจากภายนอกได้ `/health` 200 · รอวาง token เพื่อทดสอบขั้นอัป Vercel
+
+วาง token จาก Mac โดยไม่ให้ค่าโผล่บนจอหรือใน history:
+
+```bash
+read -rs "T?Vercel token: " && printf %s "$T" | ssh user@100.125.194.10 "powershell -NoProfile -Command \"[IO.File]::WriteAllText('C:\BotTV\vercel_token.txt', [Console]::In.ReadToEnd())\"" ; unset T
+```
 
 ## บั๊กที่ทำให้ "ต่ออายุ" ไม่เคยได้ผล (แก้ใน V18)
 
