@@ -37,6 +37,11 @@ model User {
   telegramUsername String?
   lineUserId          String?
   stripeCustomerId    String?   @unique
+  /** บัญชีเทรดที่ผูกกับสมาชิกคนนี้ รูปแบบ "<โบรก>:<เลขบัญชี>" เช่น "wisdom:12345678"
+      ผูกตอนแอดมินอนุมัติเท่านั้น ไม่ใช่ตอนส่งคำขอ — ถ้าผูกตอนส่ง ใครพิมพ์เลขบัญชีของคนอื่น
+      ก่อนก็จองไว้ได้ แล้วเจ้าของตัวจริงจะส่งคำขอไม่ได้
+      unique กันบัญชีเดียวถูกใช้รับสิทธิ์ฟรีให้หลายคน */
+  brokerAccountKey    String?   @unique
   createdAt           DateTime  @default(now())
 
   accounts      Account[]
@@ -48,6 +53,7 @@ model User {
   slipOrders    SlipOrder[]
   reviews       Review[]
   passwordResets PasswordResetToken[]
+  brokerApplications BrokerApplication[]
 }
 
 model Account {
@@ -279,4 +285,39 @@ model RateLimit {
   count       Int      @default(0)
   windowStart DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+/**
+ * คำขอรับสิทธิ์ผ่านโบรก — ทางที่ 2 ของการได้อินดิเคเตอร์ (ทางที่ 1 คือจ่ายเงิน)
+ *
+ * ลูกค้าเปิดพอร์ตกับโบรกผ่านลิงก์ของ QVX แล้วส่งเลขบัญชีมา แอดมินเข้าไปตรวจในระบบโบรกเอง
+ * อนุมัติแล้วเรียก activateMembership ตัวเดียวกับทางจ่ายเงิน (ยอด 0 บาท ช่องทาง wisdom)
+ * จากนั้นบอท TradingView · Telegram · Discord · การหมดอายุ ทำงานเหมือนสมาชิกจ่ายเงินทุกอย่าง
+ *
+ * เก็บทุกคำขอเป็นแถวใหม่ รวมคำขอต่ออายุ — ย้อนดูได้ว่าใครขอเมื่อไหร่ ใครอนุมัติ ปฏิเสธเพราะอะไร
+ */
+model BrokerApplication {
+  id                  String    @id @default(cuid())
+  userId              String
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  broker              String    @default("wisdom")
+  tradingAccount      String
+  /** TradingView username ณ ตอนส่งคำขอ — เก็บไว้ให้แอดมินเทียบ ตัวที่บอทใช้จริงอ่านจาก User */
+  tradingViewUsername String
+  /** ค่าอยู่ใน BROKER_APPLICATION_STATUS (src/config/status.ts) */
+  status              String    @default("PENDING")
+  /** ส่งตอนยังมีสิทธิ์อยู่ = ขอต่ออายุ */
+  isRenewal           Boolean   @default(false)
+  /** ค่าอยู่ใน BROKER_REJECTION_REASONS (src/config/brokers.ts) */
+  rejectionReason     String?
+  /** ข้อความถึงลูกค้า — บังคับเมื่อเหตุผลคือ OTHER เพราะไม่งั้นลูกค้าไม่รู้ว่าต้องแก้อะไร */
+  reviewNote          String?
+  reviewedById        String?
+  reviewedAt          DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+  @@index([broker, tradingAccount])
 }

@@ -71,22 +71,26 @@ export function receiptEmail(input: {
   orderId: string;
 }): EmailContent {
   const until = formatThaiDate(input.until);
+  // ได้สิทธิ์โดยไม่ได้จ่ายเรา (ผ่านโบรก / แถมให้) — ไม่ใช่ใบเสร็จ
+  // ถ้าใช้ข้อความเดิม ลูกค้าจะได้อีเมล "ยืนยันการชำระเงิน · ยอดชำระ ฿0" ทั้งที่ไม่ได้จ่ายอะไร
+  const paid = input.amountTHB > 0;
+  const headline = paid ? "ยืนยันการชำระเงิน" : "เปิดสิทธิ์ใช้งานแล้ว";
   return {
-    subject: `ยืนยันการชำระเงิน · ${input.planName} — ${site.name}`,
+    subject: `${headline} · ${input.planName} — ${site.name}`,
     html: shell(
       `<p style="margin:0 0 12px;">${hi(input.name)}</p>
-       <p style="margin:0 0 20px;">ยืนยันการชำระเงินเรียบร้อยแล้ว เปิดสิทธิ์ใช้งานให้คุณแล้วครับ</p>
+       <p style="margin:0 0 20px;">${paid ? "ยืนยันการชำระเงินเรียบร้อยแล้ว เปิดสิทธิ์ใช้งานให้คุณแล้วครับ" : "เปิดสิทธิ์ใช้งานให้คุณเรียบร้อยแล้วครับ"}</p>
        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid ${BORDER};border-bottom:1px solid ${BORDER};margin:8px 0;">
          ${row("แพ็กเกจ", input.planName)}
-         ${row("ยอดชำระ", formatTHB(input.amountTHB))}
+         ${paid ? row("ยอดชำระ", formatTHB(input.amountTHB)) : ""}
          ${row("ใช้งานได้ถึง", until)}
          ${row("เลขที่ออเดอร์", input.orderId.slice(-8).toUpperCase())}
        </table>
        <p style="margin:20px 0 0;">ขั้นตอนต่อไป — กรอก TradingView username ในหน้าบัญชี เพื่อให้ทีมงานเพิ่มสิทธิ์อินดิเคเตอร์ให้</p>
        ${button(`${site.url}/account/tradingview`, "กรอก TradingView username")}`,
-      `ยืนยันการชำระเงิน ${input.planName} ใช้งานได้ถึง ${until}`
+      `${headline} ${input.planName} ใช้งานได้ถึง ${until}`
     ),
-    text: `${hi(input.name)}\n\nยืนยันการชำระเงินเรียบร้อยแล้ว\nแพ็กเกจ: ${input.planName}\nยอดชำระ: ${formatTHB(input.amountTHB)}\nใช้งานได้ถึง: ${until}\n\nกรอก TradingView username ที่ ${site.url}/account/tradingview`,
+    text: `${hi(input.name)}\n\n${paid ? "ยืนยันการชำระเงินเรียบร้อยแล้ว" : "เปิดสิทธิ์ใช้งานเรียบร้อยแล้ว"}\nแพ็กเกจ: ${input.planName}${paid ? `\nยอดชำระ: ${formatTHB(input.amountTHB)}` : ""}\nใช้งานได้ถึง: ${until}\n\nกรอก TradingView username ที่ ${site.url}/account/tradingview`,
   };
 }
 

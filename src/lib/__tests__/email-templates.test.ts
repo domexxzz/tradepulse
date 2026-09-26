@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { newsletterEmail } from "@/lib/email-templates";
+import { newsletterEmail, receiptEmail } from "@/lib/email-templates";
 
 const URL = "https://example.test/unsubscribe?token=abc123";
 
@@ -32,5 +32,23 @@ describe("newsletterEmail", () => {
     const mail = newsletterEmail({ body: "บรรทัดแรก\nบรรทัดสอง", subject: "ทดสอบ", unsubscribeUrl: URL });
     expect(mail.html).toContain("<br>");
     expect(mail.html.match(/<p style="margin:0 0 14px;">/g) ?? []).toHaveLength(1);
+  });
+});
+
+describe("receiptEmail — ได้สิทธิ์โดยไม่ได้จ่ายเงิน", () => {
+  const base = { name: "ทดสอบ", planName: "รายเดือน", until: new Date("2026-10-26"), orderId: "broker_abc12345" };
+
+  it("ยอด 0 บาท (ผ่านโบรก / แถมให้) ไม่ใช่ใบเสร็จ — ห้ามเขียนว่ายืนยันการชำระเงิน", () => {
+    const m = receiptEmail({ ...base, amountTHB: 0 });
+    expect(m.subject).not.toContain("ชำระเงิน");
+    expect(m.subject).toContain("เปิดสิทธิ์ใช้งานแล้ว");
+    expect(m.html).not.toContain("ยอดชำระ");
+    expect(m.text).not.toContain("ยอดชำระ");
+  });
+
+  it("จ่ายเงินจริงยังเป็นใบเสร็จเหมือนเดิม", () => {
+    const m = receiptEmail({ ...base, amountTHB: 990 });
+    expect(m.subject).toContain("ยืนยันการชำระเงิน");
+    expect(m.html).toContain("ยอดชำระ");
   });
 });

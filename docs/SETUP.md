@@ -90,6 +90,7 @@ Vercel อยู่บนคลาวด์ ต่อ tailnet ไม่ได้
 | ยศ Discord ตามแพ็กเกจ | [DISCORD.md](./DISCORD.md) |
 | แดชบอร์ดแอดมิน | [ADMIN.md](./ADMIN.md) |
 | เปลี่ยนบัญชี TradingView / เปลี่ยนบอท Telegram | [MIGRATE.md](./MIGRATE.md) |
+| ทางที่ 2 — รับสิทธิ์ผ่านโบรก Wisdom | [WISDOM.md](./WISDOM.md) |
 | Stripe (ทางเลือกแทน QR) | [PAYMENTS.md](./PAYMENTS.md) |
 
 ## แก้เนื้อหา/แบรนด์ (แก้ที่เดียว เปลี่ยนทั้งเว็บ)
