@@ -59,7 +59,7 @@ const TEAM = bits(
 );
 
 // ── โครงตามสเปก ──────────────────────────────────────────────────────────────
-const SITE = (process.env.NEXT_PUBLIC_SITE_URL || "https://tradepulse-lime-five.vercel.app").replace(/\/$/, "");
+const SITE = (process.env.NEXT_PUBLIC_SITE_URL || "https://quantvisionx.com").replace(/\/$/, "");
 
 export const ROLES = [
   { key: "team", name: "QVX Team", color: 0xf1c40f, hoist: true },
