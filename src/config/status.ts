@@ -67,3 +67,19 @@ export type SlipVerifyStatus = (typeof SLIP_VERIFY_STATUS)[keyof typeof SLIP_VER
 
 export const USER_ROLE = { USER: "USER", ADMIN: "ADMIN" } as const;
 export type UserRole = (typeof USER_ROLE)[keyof typeof USER_ROLE];
+
+/**
+ * คำขอรับสิทธิ์ผ่านโบรก (BrokerApplication)
+ *
+ * REVIEWING เป็นสถานะชั่วคราวระหว่างอนุมัติ — จองคำขอไว้ก่อนเปิดสิทธิ์
+ * กันแอดมินกดอนุมัติซ้ำ (ดับเบิลคลิก / สองคนกดพร้อมกัน) แล้วได้สิทธิ์สองเดือน
+ * เปิดสิทธิ์พลาดจะคืนเป็น PENDING ให้กดใหม่ได้
+ */
+export const BROKER_APPLICATION_STATUS = {
+  PENDING: "PENDING",
+  REVIEWING: "REVIEWING",
+  APPROVED: "APPROVED",
+  REJECTED: "REJECTED",
+} as const;
+export type BrokerApplicationStatus =
+  (typeof BROKER_APPLICATION_STATUS)[keyof typeof BROKER_APPLICATION_STATUS];

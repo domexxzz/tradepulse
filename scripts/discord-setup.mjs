@@ -250,7 +250,7 @@ async function main() {
   }
   try {
     guild = await api("GET", `/guilds/${GUILD_ID}`);
-  } catch (e) {
+  } catch {
     die(
       "บอทยังไม่ได้อยู่ในเซิร์ฟเวอร์นี้ หรือ Server ID ผิด",
       "  เชิญบอทด้วยลิงก์จาก Developer Portal → OAuth2 → URL Generator\n" +
