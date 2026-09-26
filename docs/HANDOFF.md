@@ -9,7 +9,7 @@
 
 | อะไร | สถานะ | ตรวจยังไง |
 |---|---|---|
-| เว็บ production | 🟢 live | `curl -o /dev/null -w '%{http_code}' https://tradepulse-lime-five.vercel.app` → 200 |
+| เว็บ production | 🟢 live | `curl -o /dev/null -w '%{http_code}' https://quantvisionx.com` → 200 |
 | main | `42f101b` | CI ผ่าน (`verify: SUCCESS`) |
 | คอมเบส (ASUS) | 🟢 ออนไลน์ | `~/sentiara-ai/scripts/mac/combase.sh status` |
 | บริดจ์ TradingView | 🟢 รันอยู่ · callback ต่อแล้ว | `curl https://asus.tail17bed7.ts.net/health` |
