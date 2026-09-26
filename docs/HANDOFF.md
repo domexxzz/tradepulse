@@ -15,11 +15,18 @@ _อัปเดต 26 ก.ย. 2569 · เขียนจากการตร�
 | อะไร | สถานะ | ตรวจยังไง |
 |---|---|---|
 | เว็บ production | 🟢 live | `curl -o /dev/null -w '%{http_code}' https://quantvisionx.com` → 200 |
-| main | `42f101b` | CI ผ่าน (`verify: SUCCESS`) |
-| คอมเบส (ASUS) | 🟢 ออนไลน์ | `~/sentiara-ai/scripts/mac/combase.sh status` |
-| บริดจ์ TradingView | 🟢 รันอยู่ · callback ต่อแล้ว | `curl https://asus.tail17bed7.ts.net/health` |
-| scheduled task | `Running` (Last Result `267009`) | `schtasks /query /tn TradePulseTVBridge /fo list /v` |
+| main | CI ผ่านทุกคอมมิตล่าสุด | `git fetch && git log -1 origin/main` · `gh run list --workflow ci.yml -L 1` |
+| **เว็บ → บริดจ์ TradingView** | 🔴 **ติดต่อไม่ได้ทั้งตัวหลักและตัวสำรอง** ทุกรอบตั้งแต่อย่างน้อย 3 ก.ย. ถึง 26 ก.ย. = ตอนนี้บอทเพิ่มสิทธิ์อัตโนมัติไม่ได้ | ดูผลรอบล่าสุด ↓ |
+| บริดจ์หลัก — คอมเฟิร์ส | 🔴 เว็บยิงไม่ถึง (`primaryUp:false`) | ข้อความเตือนในกลุ่ม Testtool บอกโฮสต์ที่เว็บยิงไป |
+| บริดจ์สำรอง — คอมเบส | ⚠️ ยิงตรงได้ 200 (27 ก.ย.) แต่เว็บยิงไม่ถึง (`backupUp:false`) → `TV_BOT_URL_BACKUP` บน Vercel น่าจะชี้ผิดที่ | `curl https://asus.tail17bed7.ts.net/health` · `schtasks /query /tn TradePulseTVBridge /fo list /v` |
 | ที่นั่งโปร | 300 ว่างครบ ยังไม่มีลูกค้าจ่ายเงิน | แถบโปรบนหน้าแรก |
+
+ดูผล bridge-health รอบล่าสุด (สิ่งที่เว็บเห็นจริง ไม่ใช่ที่ยิงจากเครื่องเรา):
+
+```bash
+id=$(gh run list --workflow bridge-health.yml -L 1 --json databaseId -q '.[0].databaseId')
+gh run view $id --log | grep -o '{"ok":true,"primaryUp[^}]*}'
+```
 
 ก่อนแก้ไฟล์ไหน เช็ก `git status` ก่อนเสมอว่าไฟล์นั้นมีคนแก้ค้างอยู่ไหม
 
@@ -162,15 +169,18 @@ git status -sb          # ถ้าขึ้น behind ให้ git rebase orig
 | งาน | ใครเรียก | ทำอะไร |
 |---|---|---|
 | `/api/cron/expire` | Vercel Cron ทุกวัน **01:00 UTC** | ปิดสิทธิ์คนหมดอายุ (TradingView + เตะออก Telegram + ถอดยศ Discord + อีเมล) · เตือนคนใกล้หมด · ล้างตัวนับ rate limit เก่า |
-| `/api/cron/reconcile` | **GitHub Actions ทุก 10 นาที** | ไล่งานที่สั่งแล้วไม่สำเร็จ เช่น บริดจ์ล่มตอนลูกค้าจ่าย |
-| `/api/cron/bridge-health` | **GitHub Actions ทุก 10 นาที** | เช็กบริดจ์ TradingView ล่มไหม แจ้งแอดมินทาง Telegram |
+| `/api/cron/reconcile` | **GitHub Actions** (ตั้งทุก 10 นาที · รันจริงห่าง ~3–5 ชม.) | ไล่งานที่สั่งแล้วไม่สำเร็จ เช่น บริดจ์ล่มตอนลูกค้าจ่าย |
+| `/api/cron/bridge-health` | **GitHub Actions** (ตั้งทุก 10 นาที · รันจริงห่าง ~3–5 ชม.) | เช็กบริดจ์ TradingView ล่มไหม แจ้งแอดมินทาง Telegram |
 | `/api/cron/test-alert` | GitHub Actions กดเอง | ยิงข้อความทดสอบเข้าช่องแอดมิน |
 
 ทำไมแยก: **Vercel Hobby ให้ cron แค่วันละครั้ง** งานถี่จึงไปอยู่ที่ `.github/workflows/bridge-health.yml`
 ทุก cron กันด้วย `CRON_SECRET` — **ไม่ตั้ง secret = เส้นทางปิดตาย** (ตั้งใจ ดีกว่าเปิดโล่ง)
 
-> ⚠️ คอมเมนต์ใน `bridge-health/route.ts` เขียนว่าตัวหลักคือ "server-254"
-> แต่ตัวหลักย้ายไป **คอมเฟิร์ส** แล้ว — ตรวจว่า logic ยังเช็กถูกเครื่องไหม
+> GitHub ไม่รับประกันเวลา cron — 200 รอบล่าสุดห่างกันเฉลี่ย ~3.5 ชม. ไม่ใช่ 10 นาที
+> ลูกค้าจ่ายตอนบริดจ์ล่ม อาจรอหลายชั่วโมงกว่า reconcile จะสั่งซ้ำ
+>
+> ชื่อเครื่องในข้อความเตือนอยู่ที่ `PRIMARY_NAME` / `BACKUP_NAME` ใน `bridge-health/route.ts`
+> — ย้ายเครื่องบอทเมื่อไหร่ แก้ตรงนั้นด้วย (ข้อความบอกโฮสต์ที่เว็บยิงไปจริงด้วย)
 
 **CI** (`.github/workflows/ci.yml`) — ยก Postgres ขึ้นมาแล้วรัน `npm ci` → migrate → unit test → UAT กับฐานจริง → build → lint
 ต้องมี UAT เพราะตรรกะที่พลาดแล้วเสียเงินจริง (วันหมดอายุ ราคาโปร การล็อกราคา) ทดสอบได้แค่กับฐานข้อมูลจริง
@@ -249,7 +259,9 @@ commit ไฟล์ลง `public/` → push → รอ deploy → บนเค�
 `print()` ในสคริปต์ต้องเป็น **ASCII ล้วน** (คอนโซลเป็น cp874) และ **ลบออกจาก `public/` เมื่อเสร็จ**
 
 **ภาพหลักฐานสิทธิ์** — ฝั่งเว็บเสร็จ · ฝั่งบอทติดตั้ง patch แล้ว 31 ส.ค. 〔บันทึก〕
-แต่ **ยังไม่เคยทดสอบ grant จริงครบวง**
+**grant ผ่านบอททดสอบแล้วใช้ได้** — DomeDev ได้ `EXPIRY_OK` ทั้งบน server-254 และคอมเฟิร์ส
+(`TRADINGVIEW.md`) และเบสยืนยันว่าเคยทดสอบเปิดสิทธิ์แล้วได้จริง
+ที่ยังไม่มีบันทึกผลคือ **ภาพหลักฐานสิทธิ์ถึง DM ลูกค้าไหม** (ดูค่า `proof` ที่ callback ตอบ)
 
 ### 5.2 Telegram 〔บันทึก〕
 
@@ -337,7 +349,10 @@ commit ไฟล์ลง `public/` → push → รอ deploy → บนเค�
 แต่ภาพยังบอก ฿999** = โฆษณาราคาที่ไม่ได้ขายจริงแล้ว
 แก้: ทำภาพใหม่ที่ไม่มีตัวเลขราคา ปล่อยให้ราคาอยู่ในหัวข้อราคาที่อัปเดตเอง
 
-**ยังไม่เคยทดสอบ grant จริงครบวง** — ภาพหลักฐานสิทธิ์ถึง DM ลูกค้าจริงไหมยังไม่รู้
+**บริดจ์ทั้งสองตัวเว็บยิงไม่ถึงมาหลายสัปดาห์** (ดูตารางหัวไฟล์) — ลูกค้าที่จ่ายตอนนี้จะไม่ได้สิทธิ์อัตโนมัติ
+ต้องเปิดคอมเฟิร์สให้ botkeeper อัปเดต `TV_BOT_URL` หรือแก้ `TV_BOT_URL_BACKUP` ให้ชี้คอมเบส
+
+**ภาพหลักฐานสิทธิ์ถึง DM ลูกค้าไหม ยังไม่มีบันทึกผล** — ตัว grant เองทดสอบผ่านแล้ว (หัวข้อ 5.1)
 
 **ยืนยันว่า "Test 2 SMC Unified Suite" คือสคริปต์ตัวจริง** ที่ลูกค้าต้องได้ ก่อนเปิดขายจริงจัง
 
