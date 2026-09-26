@@ -17,7 +17,8 @@
     "admin": "node scripts/admin.mjs",
     "setup": "node scripts/setup.mjs",
     "db:status-audit": "node scripts/status-audit.mjs",
-    "images:sizes": "node scripts/image-sizes.mjs"
+    "images:sizes": "node scripts/image-sizes.mjs",
+    "discord:setup": "node scripts/discord-setup.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",
