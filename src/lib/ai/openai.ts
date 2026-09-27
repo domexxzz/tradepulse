@@ -1,5 +1,6 @@
 import { AI_DEFAULT_MODEL } from "@/config/ai";
 import { QVX_INSTRUCTIONS } from "@/lib/ai/instructions";
+import { QVX_KNOWLEDGE } from "@/lib/ai/knowledge";
 
 /**
  * เรียก OpenAI Responses API — แยกไว้ให้ชุดเทสต์สลับเป็นโมเดลปลอมได้ ไม่ต้องจ่ายค่า API จริง
@@ -61,7 +62,8 @@ export const callOpenAI: CallModel = async (input) => {
       headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
       body: JSON.stringify({
         model: process.env.OPENAI_MODEL || AI_DEFAULT_MODEL,
-        instructions: QVX_INSTRUCTIONS,
+        // คำสั่งของน็อต (ไม่แตะ) + ความรู้จากคู่มือ QVX
+        instructions: `${QVX_INSTRUCTIONS}\n\n${QVX_KNOWLEDGE}`,
         input,
         max_output_tokens: 900,
       }),
