@@ -16,9 +16,25 @@
 
 export type OAuthKeys = { clientId: string; clientSecret: string };
 
-export function oauthKeys(name: "GOOGLE" | "LINE"): OAuthKeys | null {
-  const clientId = process.env[`AUTH_${name}_ID`] || process.env[`${name}_CLIENT_ID`];
-  const clientSecret = process.env[`AUTH_${name}_SECRET`] || process.env[`${name}_CLIENT_SECRET`];
+/**
+ * ต้องเขียน `process.env.ชื่อเต็ม` ตรง ๆ เท่านั้น ห้ามประกอบชื่อจากตัวแปร
+ * (`process.env[`AUTH_${name}_ID`]`) เพราะ Next.js แทนค่า env ตอน build จากการ
+ * มองหาชื่อแบบตรงตัวในโค้ด — ชื่อที่ประกอบขึ้นตอนรันจึงอาจได้ undefined
+ * ทั้งที่ตั้งค่าไว้แล้ว ซึ่งเป็นบั๊กที่หาสาเหตุยากมาก
+ */
+const SOURCES = {
+  GOOGLE: () => [
+    process.env.AUTH_GOOGLE_ID || process.env.GOOGLE_CLIENT_ID,
+    process.env.AUTH_GOOGLE_SECRET || process.env.GOOGLE_CLIENT_SECRET,
+  ],
+  LINE: () => [
+    process.env.AUTH_LINE_ID || process.env.LINE_CLIENT_ID,
+    process.env.AUTH_LINE_SECRET || process.env.LINE_CLIENT_SECRET,
+  ],
+} as const;
+
+export function oauthKeys(name: keyof typeof SOURCES): OAuthKeys | null {
+  const [clientId, clientSecret] = SOURCES[name]();
   // ต้องครบคู่ — มีแต่ id แล้วเปิด provider จะได้ปุ่มที่กดแล้วพัง ซึ่งแย่กว่าไม่มีปุ่ม
   return clientId && clientSecret ? { clientId, clientSecret } : null;
 }
