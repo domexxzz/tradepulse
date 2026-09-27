@@ -2,8 +2,9 @@ import { prisma } from "@/lib/prisma";
 import { getUserSubscription } from "@/lib/subscription";
 import { getPromoState } from "@/lib/pricing";
 import { marketForAi, type MarketForAi, type MarketLive } from "@/lib/ai/market";
+import { formatNews, goldNews } from "@/lib/ai/news";
 import { QVX_INSTRUCTIONS } from "@/lib/ai/instructions";
-import { QVX_CORE, QVX_MARKET_GLOSSARY } from "@/lib/ai/knowledge";
+import { QVX_CORE, QVX_MARKET_GLOSSARY, QVX_NEWS_ENABLED } from "@/lib/ai/knowledge";
 import { buildCorpus } from "@/lib/ai/corpus";
 import { KnowledgeIndex, formatRetrieved } from "@/lib/ai/rag";
 import { ModelError, openStream, type AiSource, type ChatMessage, type OpenModel } from "@/lib/ai/llm";
@@ -40,6 +41,8 @@ export type Prepared = {
   /** ชื่อหัวข้อความรู้ที่ค้นเจอ — โชว์เป็น "อ้างอิง" ใต้คำตอบ */
   sources: string[];
   live: MarketLive[];
+  /** จำนวนข่าวที่แนบไปรอบนี้ — หน้าแชตเอาไปโชว์ว่าอ่านข่าวมากี่ชิ้น */
+  newsCount: number;
   /** คำถามวิเคราะห์กราฟสด — ส่งไปโมเดลที่คิดเก่งกว่าก่อน (ดู llm.ts) */
   marketQuestion: boolean;
   startedAt: number;
@@ -130,6 +133,13 @@ const MARKET_WORDS = [
   "เข้าได้", "เข้า buy", "เข้า sell", "buy ได้", "sell ได้", "เทรนด์", "trend", "แนวรับ", "แนวต้าน", "วิเคราะห์",
   "โซนไหน", "โซนตอนนี้", "ขึ้นหรือลง", "จะขึ้น", "จะลง", "ทิศทาง", "สัญญาณล่าสุด", "setup",
 ];
+/** ถามข่าว/ปัจจัยพื้นฐาน — ดึงข่าวมาแนบ (คำถามกราฟก็แนบด้วย ข่าวเป็นบริบทของราคา) */
+const NEWS_WORDS = ["ข่าว", "news", "ปัจจัย", "เหตุการณ์", "ทำไมราคา", "ทำไมทอง", "เฟด", "fed", "fomc", "เงินเฟ้อ", "inflation", "cpi", "ดอลลาร์", "dollar", "ตัวเลขเศรษฐกิจ", "nonfarm", "ประกาศ"];
+export function isNewsQuestion(text: string): boolean {
+  const t = text.toLowerCase();
+  return NEWS_WORDS.some((w) => t.includes(w));
+}
+
 export function isMarketQuestion(text: string): boolean {
   const t = text.toLowerCase();
   if (/\b(m1|m5|m15|m30|h1|h4|d1)\b/i.test(text)) return true;
@@ -144,7 +154,7 @@ export function isMarketQuestion(text: string): boolean {
  * วางท้ายคำสั่งระบบยาว ๆ โมเดลมองไม่เห็นและตอบว่า "ขอข้อมูลกราฟหน่อย" ทั้งที่มีครบ
  * วางติดคำถาม โมเดลอ่านโซนและราคาได้ถูกต้อง
  */
-function systemPrompt(retrieved: string, market: MarketForAi, attach: boolean): string {
+function systemPrompt(retrieved: string, market: MarketForAi, attach: boolean, hasNews: boolean): string {
   const status = !market.live.length
     ? `# สถานะข้อมูลตลาดรอบนี้\n${market.text}`
     : !attach
@@ -160,6 +170,7 @@ ${marketFacts(market)}
     QVX_CORE,
     retrieved ? `# ข้อมูลอ้างอิงจากคลังความรู้ QVX (ค้นมาตามคำถามนี้)\n${retrieved}` : "",
     attach && market.live.length ? QVX_MARKET_GLOSSARY : "",
+    hasNews ? QVX_NEWS_ENABLED : "",
     status,
   ]
     .filter(Boolean)
@@ -200,7 +211,8 @@ export async function prepareAsk(input: {
     return { ok: false, error: "AI_QUOTA_EXHAUSTED" };
   }
 
-  const [history, market, promo] = await Promise.all([
+  const wantsNews = isNewsQuestion(message);
+  const [history, market, promo, news] = await Promise.all([
     conversationId
       ? prisma.aiMessage.findMany({
           where: { conversationId },
@@ -211,6 +223,8 @@ export async function prepareAsk(input: {
       : Promise.resolve([]),
     marketForAi(now.getTime()),
     getPromoState(),
+    // ดึงข่าวเฉพาะคำถามที่ต้องใช้ — คำถามวิธีใช้ไม่ต้องรอเน็ตไปหา Investing
+    wantsNews ? goldNews().catch(() => []) : Promise.resolve([]),
   ]);
   const past = history
     .reverse()
@@ -221,6 +235,7 @@ export async function prepareAsk(input: {
   const lastUser = [...past].reverse().find((m) => m.role === "user")?.content ?? "";
   // ถามต่อจากคำถามกราฟ ("แล้ว H1 ล่ะ") ก็นับเป็นคำถามกราฟ
   const attach = market.live.length > 0 && (isMarketQuestion(message) || (isMarketQuestion(lastUser) && message.length < 40));
+  const newsBlock = formatNews(news, now.getTime());
   const hits = new KnowledgeIndex(buildCorpus(promo)).search(`${message} ${lastUser}`, 4);
 
   return {
@@ -231,19 +246,28 @@ export async function prepareAsk(input: {
       conversationId,
       reservationId: reservation.id,
       messages: [
-        { role: "system", content: systemPrompt(formatRetrieved(hits), market, attach) },
+        { role: "system", content: systemPrompt(formatRetrieved(hits), market, attach, Boolean(newsBlock)) },
         ...past,
         // ข้อมูลตลาดติดคำถามรอบนี้เท่านั้น — ในประวัติเก็บคำถามเปล่า ไม่ให้ราคาเก่าปนมารอบหน้า
         // สรุปข้อเท็จจริงวางไว้ใกล้คำถามที่สุด — โมเดลเล็กให้น้ำหนักข้อความท้าย ๆ มากกว่าคำสั่งระบบยาว ๆ
         {
           role: "user",
-          content: attach
-            ? `# ข้อมูลตลาด\n${market.text}\n\n# สรุปข้อเท็จจริงจากระบบ (ยึดตามนี้)\n${marketFacts(market, `${message} ${lastUser}`)}\n\n---\nคำถามของผู้ใช้: ${message}`
-            : message,
+          content:
+            attach || newsBlock
+              ? [
+                  attach ? `# ข้อมูลตลาด\n${market.text}` : "",
+                  attach ? `# สรุปข้อเท็จจริงจากระบบ (ยึดตามนี้)\n${marketFacts(market, `${message} ${lastUser}`)}` : "",
+                  newsBlock,
+                  `---\nคำถามของผู้ใช้: ${message}`,
+                ]
+                  .filter(Boolean)
+                  .join("\n\n")
+              : message,
         },
       ],
       sources: hits.map((h) => h.doc.title),
       live: market.live,
+      newsCount: newsBlock ? news.length : 0,
       marketQuestion: attach,
       startedAt: Date.now(),
     },
