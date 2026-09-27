@@ -58,8 +58,13 @@ cat ~/.ssh/id_ed25519.pub          # ถ้า "No such file" -> ssh-keygen -t e
 ```
 ได้บรรทัด `ssh-ed25519 AAAA... ชื่อ@Mac` — เอาบรรทัดนั้นไปใส่คอมเฟิร์ส (ที่เดียวกับ key อื่น)
 
+public key จริงของ MacBook เครื่องนี้ (เปิดเผยได้ ไม่ลับ) — เอาไปใส่ได้เลย:
+```
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILeHF1qYGC97nmBZHxSz/4FIGYLxqCMRrxRKLFefFuq7 macbook
+```
+
 fingerprint ของ Mac ไว้ยืนยันตอนใส่ (จาก `ssh-keygen -lf ~/.ssh/id_ed25519.pub` บน Mac):
-`SHA256:__________________ (ยังไม่ได้เติม)`
+`SHA256:sCQiXMeVp97IjvT/z1vxxEETGimxCgqYmf00rd7ZQe4` (ED25519)
 
 **เช็กว่าสำเร็จ (จาก Mac):**
 ```bash
