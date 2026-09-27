@@ -14,11 +14,25 @@
 
 ## 2. เชิญบอทเข้าเซิร์ฟเวอร์
 
-1. เมนู **OAuth2 → URL Generator**
-2. Scopes ติ๊ก `bot`
-3. Bot Permissions ติ๊ก **Manage Roles** กับ **Manage Channels**
-   (Manage Channels ใช้ตอนสร้างห้องครั้งแรก ตั้งเสร็จแล้วถอดออกได้)
-4. เปิดลิงก์ที่ได้ แล้วเลือกเซิร์ฟเวอร์ของเรา
+วิธีเร็วที่สุดคือประกอบลิงก์เอง ใส่ Application ID ของบอท (หน้า General Information):
+
+```
+https://discord.com/oauth2/authorize?client_id=<APP_ID>&scope=bot&permissions=395405552720
+```
+
+เปิดลิงก์ → เลือกเซิร์ฟเวอร์ → Authorize
+
+> ⚠️ **Manage Roles + Manage Channels อย่างเดียวไม่พอ** (เคยเข้าใจผิดจนพัง 28 ก.ย. 2569)
+> Discord ไม่ให้บอท **มอบสิทธิ์ที่ตัวเองไม่มี** — ห้องของทีมงานต้องได้ Manage Messages
+> กับ Manage Threads ถ้าบอทไม่มีสองอันนี้ สร้างห้องจะได้ `403 Missing Permissions`
+>
+> เลข `395405552720` คือชุดที่สคริปต์ต้องใช้จริงครบ 13 อย่าง: View Channel ·
+> Send Messages · Send Messages in Threads · Create Public/Private Threads ·
+> Manage Messages · Manage Threads · Embed Links · Attach Files · Add Reactions ·
+> Read Message History · Manage Channels · Manage Roles
+> — **ไม่ใช่ Administrator** ให้เท่าที่จำเป็นพอ
+
+ถ้าอยากกดเองทีละช่อง: OAuth2 → URL Generator → Scopes ติ๊ก `bot` → ติ๊กสิทธิ์ตามรายการข้างบน
 
 ## 3. สร้างห้องและยศด้วยสคริปต์
 
@@ -56,9 +70,12 @@ npm run discord:setup -- --apply # สร้างจริง
 **ไม่ผูกกับบัญชีใคร** — ทุกสิทธิ์ผูกกับยศเท่านั้น ไม่มีสิทธิ์รายบุคคล ใครได้ QVX Active
 เว็บเป็นคนตัดสินจากสถานะสมาชิก โอนเจ้าของเซิร์ฟเวอร์กี่รอบก็ไม่กระทบ (Server ID ไม่เปลี่ยน)
 
-> **ห้ามข้ามข้อนี้:** Server Settings → Roles แล้ว **ลากยศของบอทให้อยู่เหนือ QVX Active**
-> Discord ไม่ยอมให้บอทแจกยศที่อยู่สูงกว่าตัวเอง สคริปต์จะเตือนถ้าลำดับผิด
-> ยศที่สคริปต์สร้างเองจะอยู่ใต้บอทอยู่แล้ว แต่ถ้ามีคนไปลากทีหลังจะพัง
+**ลำดับยศ — สคริปต์จัดการให้เองแล้ว** ตอนเชิญบอทใหม่ ยศบอทกับยศที่สคริปต์สร้างจะได้
+`position` เท่ากันหมด (1) แล้ว Discord ตัดสินด้วยลำดับการสร้าง — ยศบอทเกิดก่อนจึงอยู่
+**ล่างสุด** สร้างห้องแล้วได้ 403 ทันที สคริปต์จึงเช็กก่อนแตะห้องและยกยศบอทขึ้นให้เอง
+
+ถ้ายกไม่ได้ (มีคนลากยศอื่นขึ้นไปเหนือบอททีหลัง) สคริปต์จะหยุดพร้อมบอกให้ไปที่
+Server Settings → Roles แล้วลากยศของบอทขึ้นเหนือ QVX Active — ทำแล้วรันใหม่ได้เลย
 
 ## 4. ตั้งค่าบน Vercel
 
