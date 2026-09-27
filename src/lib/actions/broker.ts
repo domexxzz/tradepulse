@@ -1,7 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
-import { requireAdmin } from "@/lib/admin";
+import { requireBrokerReviewer } from "@/lib/admin";
 import {
   submitBrokerApplication,
   approveBrokerApplication,
@@ -41,7 +41,7 @@ export async function approveBrokerAction(
   _prev: AdminBrokerState,
   formData: FormData
 ): Promise<AdminBrokerState> {
-  const session = await requireAdmin();
+  const session = await requireBrokerReviewer();
   const id = String(formData.get("applicationId") ?? "");
   const r = await approveBrokerApplication({ applicationId: id, adminId: session.user.id });
 
@@ -54,7 +54,7 @@ export async function rejectBrokerAction(
   _prev: AdminBrokerState,
   formData: FormData
 ): Promise<AdminBrokerState> {
-  const session = await requireAdmin();
+  const session = await requireBrokerReviewer();
   const id = String(formData.get("applicationId") ?? "");
   const r = await rejectBrokerApplication({
     applicationId: id,

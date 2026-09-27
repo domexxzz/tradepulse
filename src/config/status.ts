@@ -65,8 +65,23 @@ export const SLIP_VERIFY_STATUS = {
 } as const;
 export type SlipVerifyStatus = (typeof SLIP_VERIFY_STATUS)[keyof typeof SLIP_VERIFY_STATUS];
 
-export const USER_ROLE = { USER: "USER", ADMIN: "ADMIN" } as const;
+/**
+ * PARTNER = พาร์ตเนอร์โบรก (คนที่มีสิทธิ์เข้าหลังบ้าน Wisdom) เข้ามาตรวจคำขอรับสิทธิ์ให้เรา
+ * เห็นทุกอย่างที่ต้องใช้ตรวจ (ชื่อ อีเมล เลขบัญชี ประวัติ) แต่ไม่ใช่แอดมินเต็ม —
+ * ไม่เห็นการเงิน สลิป รีวิว หรือสมาชิกคนอื่นที่ไม่ได้ขอผ่านโบรก
+ */
+export const USER_ROLE = { USER: "USER", ADMIN: "ADMIN", PARTNER: "PARTNER" } as const;
 export type UserRole = (typeof USER_ROLE)[keyof typeof USER_ROLE];
+
+/** ชนิดเหตุการณ์จากโบรก — มาจากอีเมลแจ้งเตือนหรือพาร์ตเนอร์บันทึกเอง */
+export const BROKER_EVENT_TYPE = {
+  SIGNUP: "SIGNUP",
+  DEPOSIT: "DEPOSIT",
+  WITHDRAWAL: "WITHDRAWAL",
+  /** อ่านอีเมลแล้วแยกไม่ออกว่าเป็นอะไร — เก็บไว้ให้คนดู แล้วค่อยปรับตัวอ่าน */
+  UNKNOWN: "UNKNOWN",
+} as const;
+export type BrokerEventType = (typeof BROKER_EVENT_TYPE)[keyof typeof BROKER_EVENT_TYPE];
 
 /**
  * คำขอรับสิทธิ์ผ่านโบรก (BrokerApplication)
