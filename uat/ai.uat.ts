@@ -212,11 +212,23 @@ describe("A-4 · ข้อมูลตลาด", () => {
     expect(m.calls[0][0].content).toContain("UAT:FRESH");
   });
 
-  it("ข้อมูลเก่าเกิน 15 นาที ไม่ถูกส่ง — โมเดลต้องไม่เข้าใจว่าเป็นราคาสด", async () => {
+  it("กราฟ M30 ส่งมา 25 นาทีก่อน = ยังเป็นแท่งล่าสุด ใช้ได้", async () => {
+    await saveSnapshot(snapshot("UAT:M30-RECENT"));
+    await prisma.marketSnapshot.update({
+      where: { tickerId: "UAT:M30-RECENT" },
+      data: { receivedAt: new Date(Date.now() - 25 * 60_000) },
+    });
+    const u = await makeMember("m30");
+    const m = fakeModel();
+    await askQvxAi({ userId: u.id, message: "ทองตอนนี้", callModel: m.fn });
+    expect(m.calls[0][0].content).toContain("UAT:M30-RECENT");
+  });
+
+  it("เก่าเกินหนึ่งแท่งของกราฟ (M30 ส่งมา 40 นาทีก่อน) ไม่ถูกส่ง — โมเดลต้องไม่เข้าใจว่าเป็นราคาสด", async () => {
     await saveSnapshot(snapshot("UAT:STALE"));
     await prisma.marketSnapshot.update({
       where: { tickerId: "UAT:STALE" },
-      data: { receivedAt: new Date(Date.now() - 20 * 60_000) },
+      data: { receivedAt: new Date(Date.now() - 40 * 60_000) },
     });
     const u = await makeMember("stale");
     const m = fakeModel();
