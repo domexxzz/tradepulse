@@ -523,6 +523,81 @@ select role, url, "lastSeenAt" from "BridgeEndpoint";
 read -rs "T?Vercel token: " && printf %s "$T" | ssh user@100.125.194.10 "powershell -NoProfile -Command \"[IO.File]::WriteAllText('C:\BotTV\vercel_token.txt', [Console]::In.ReadToEnd())\"" ; unset T
 ```
 
+## บริดจ์ล่ม — ไล่เช็กทีละขั้น (บทเรียนจากเหตุ ก.ย. 2569)
+
+ข้อความเตือนในกลุ่ม Testtool บอกแค่ว่า "เว็บยิงไม่ถึง" ไม่ได้บอกว่าพังชั้นไหน
+ไล่ตามลำดับนี้บนเครื่องที่โดนเตือน ตัดสาเหตุทีละชั้น อย่าเพิ่งรีสตาร์ตทั้งเครื่อง
+
+### เข้าเครื่องไหนได้ยังไง
+
+| เครื่อง | บทบาท | เข้ายังไง |
+|---|---|---|
+| คอมเฟิร์ส | หลัก | **หน้าเครื่องหรือ RustDesk เท่านั้น** — SSH/SMB/WinRM ปิดหมด · ส่งไฟล์ทาง `public/` + `curl` (HANDOFF หัวข้อ 5.1) |
+| คอมเบส | สำรอง | SSH จากเครื่องใน tailnet ที่มีคีย์ · สั่ง PowerShell ผ่าน `-EncodedCommand` กัน quote ซ้อนพัง |
+
+```bash
+# ตัวอย่าง: อ่าน keeper.log ของคอมเบสจาก Mac / Git Bash
+PS='$ProgressPreference="SilentlyContinue"; Get-Content C:\BotTV\keeper.log -Tail 15'
+ssh user@100.125.194.10 "powershell -NoProfile -EncodedCommand $(printf %s "$PS" | iconv -f UTF-8 -t UTF-16LE | base64 | tr -d '\n')"
+```
+
+### ลำดับเช็ก (PowerShell บนเครื่องบอท)
+
+```powershell
+Get-Content C:\BotTV\keeper.log -Tail 15            # 1. keeper ยังอยู่ไหม — ต้องมี "alive" ภายใน 30 นาที
+Get-NetTCPConnection -LocalPort 8787 -State Listen  # 2. บริดจ์ฟังพอร์ตอยู่ไหม
+curl.exe http://127.0.0.1:8787/health               # 3. บริดจ์ตอบ ok ไหม
+Get-Process cloudflared                             # 4. tunnel process อยู่ไหม
+Get-Content C:\BotTV\last_url.txt                   # 5. URL ล่าสุดที่ keeper เห็น
+curl.exe <URL จากข้อ 5>/health                      # 6. URL นั้นยังใช้ได้จริงไหม
+```
+
+| ล้มที่ข้อ | ที่เจอจริง | แก้ |
+|---|---|---|
+| 1 | log เงียบหลายวัน = keeper ตาย ไม่มีใครปลุกบริดจ์/tunnel | ดู "keeper สตาร์ตซ้อน" ด้านล่าง แล้วสตาร์ตใหม่**ตัวเดียว** |
+| 2 | ไม่มีอะไร LISTEN | สตาร์ตบริดจ์เองก่อน: `Start-Process cmd.exe -ArgumentList '/c','cd /d C:\BotTV && python -u tv_bridge.py >> C:\BotTV\bot_out.log 2>> C:\BotTV\bot.log' -WindowStyle Hidden` |
+| 6 | `Could not resolve host` ทั้งที่ข้อ 4 ยังเห็น process | tunnel ซอมบี้ — ดูด้านล่าง |
+
+**ความจริงอยู่ที่ฝั่งเว็บ ไม่ใช่เครื่องเรา** — ปิดจ๊อบด้วยการดูว่าเว็บเห็นอะไร:
+`/admin/system` · ผล `bridge-health` · `select role, url, "lastSeenAt" from "BridgeEndpoint";`
+
+### กับดักจากเหตุ ก.ย. 2569
+
+**tunnel ซอมบี้ — keeper ไม่เปิดตัวใหม่ให้**
+cloudflared รันค้างได้หลายวันทั้งที่ hostname `*.trycloudflare.com` ถูก Cloudflare ถอนไปแล้ว
+(ยิงจากเครื่องบอทเองก็ `Could not resolve host`) keeper เช็กแค่ว่ามี process ไหม → มี → ไม่เปิดใหม่ → ค้างถาวร
+แก้: ฆ่า cloudflared แล้วให้ keeper เปิดใหม่ — ถ้าตัวเก่าถูกเปิดแบบ admin ไว้ shell ธรรมดาฆ่าไม่ลง (`Access is denied`)
+ต้องใช้ **PowerShell แบบ Run as Administrator**: `Get-Process cloudflared | Stop-Process -Force`
+
+> ควรแก้ที่ keeper ให้เช็ก `<url>/health` แทนการเช็กว่า process ยังอยู่ ยิงไม่ผ่านก็ฆ่าแล้วเปิดใหม่เอง
+
+**keeper สตาร์ตซ้อน แล้วตายทั้งคู่**
+log คอมเฟิร์สวันที่ 2 ก.ย. ขึ้น `botkeeper started` สองครั้งห่างกัน 12 วินาที ทำงานต่ออีกราวนาทีเดียวแล้วเงียบไปทั้งคู่
+น่าจะมีตัวเปิดตอน login มากกว่าหนึ่งทาง (Registry Run key · shortcut/`.cmd` ใน Startup folder) — เช็กแล้วให้เหลือทางเดียว
+
+```powershell
+Get-ItemProperty HKCU:\Software\Microsoft\Windows\CurrentVersion\Run | Select-Object BotKeeper
+dir "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup"
+```
+
+ก่อนสตาร์ต keeper ใหม่ ฆ่าตัวค้างก่อนเสมอ ไม่งั้นซ้อนอีก:
+
+```powershell
+Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | Where-Object { $_.CommandLine -like '*botkeeper*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+```
+
+**คอมเฟิร์สยังรัน keeper ตัวเก่า** — log ขึ้น `botkeeper started` เฉย ๆ ไม่มี `(env=… role=…)` = ไม่ได้รายงาน URL เข้าเว็บ
+อัปเป็นตัวใน `scripts/bot/botkeeper.ps1` (ค่าเริ่มต้นตรงกับคอมเฟิร์สอยู่แล้ว) แล้วลบ `C:\BotTV\vercel_token.txt` ทิ้ง
+
+**Tailscale ขึ้น offline ทั้งที่เครื่องเปิดอยู่**
+`tailscale ping` ตอบ `peer's node key has expired` = key ของเครื่องหมดอายุ หลุดจาก tailnet แต่เครื่องยังทำงาน
+ไม่กระทบบริดจ์ (เว็บต่อผ่าน Cloudflare) แต่รีโมตเข้าไม่ได้ · แก้ที่เครื่องนั้น: `tailscale up` แล้วปิด key expiry ของ node นั้นใน admin console
+
+**ทดสอบ URL `*.ts.net` จากเครื่องใน tailnet = หลอกตัวเอง**
+ไม่ใช่แค่ Mac — เครื่องใน tailnet **ทุกเครื่อง** (รวมเครื่อง dev) ให้ MagicDNS แปลงชื่อเป็น IP ภายใน ได้ 200 ทั้งที่ภายนอกเข้าไม่ได้
+เคยรายงานผิดว่า "ตัวสำรองกลับมาแล้ว" เพราะเรื่องนี้ ขณะที่เว็บยังเห็น `backupUp:false`
+URL แบบ `trycloudflare.com` ยิงจากไหนก็ได้ (DNS สาธารณะ) · แบบ `ts.net` ให้ดูฝั่งเว็บแทน
+
 ## บั๊กที่ทำให้ "ต่ออายุ" ไม่เคยได้ผล (แก้ใน V18)
 
 โค้ดตรวจผลด้วย `_seen.startswith("DATED")` เฉย ๆ — แค่ถามว่า "มีวันที่ไหม"
