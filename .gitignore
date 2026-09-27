@@ -35,6 +35,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ไฟล์ตั้งค่าที่ลงท้าย .env ด้วย เช่น backup.env, mail.env — .env* ไม่ครอบพวกนี้
+*.env
 
 # vercel
 .vercel
