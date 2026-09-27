@@ -1,14 +1,18 @@
 import type { NextAuthConfig } from "next-auth";
 import Google from "next-auth/providers/google";
 import Line from "next-auth/providers/line";
+import { oauthKeys } from "@/lib/oauth-env";
 
 /**
  * Edge-safe config (ใช้ใน middleware) — ห้ามใส่ Prisma/bcrypt ตรงนี้
- * เพิ่ม OAuth provider เฉพาะเมื่อมีคีย์ใน env
+ * เพิ่ม OAuth provider เฉพาะเมื่อมีคีย์ครบคู่ · ชื่อ env ที่รับได้ดู `@/lib/oauth-env`
  */
+const googleKeys = oauthKeys("GOOGLE");
+const lineKeys = oauthKeys("LINE");
+
 const providers: NextAuthConfig["providers"] = [];
-if (process.env.AUTH_GOOGLE_ID) providers.push(Google);
-if (process.env.AUTH_LINE_ID) providers.push(Line);
+if (googleKeys) providers.push(Google(googleKeys));
+if (lineKeys) providers.push(Line(lineKeys));
 
 export const authConfig = {
   pages: { signIn: "/login" },

@@ -14,8 +14,35 @@ import { promptpayEnabled } from "@/lib/promptpay";
 import { stripeEnabled } from "@/lib/stripe";
 import { aiEngineStatus } from "@/lib/ai/gateway";
 import { liveMarkets } from "@/lib/ai/market";
+import { enabledOAuthProviders } from "@/lib/oauth-env";
 
 export type Health = "ok" | "warn" | "off" | "down";
+
+/**
+ * ปุ่มล็อกอิน Google/LINE เปิดอยู่ไหม
+ *
+ * เพิ่มทีหลัง เพราะเคยพังเงียบอยู่นาน: env ตั้งชื่อคนละแบบกับที่โค้ดมองหา ปุ่มเลยหาย
+ * ไปทั้งคู่ และหน้านี้ไม่เคยตรวจเรื่องล็อกอินเลยจึงไม่มีใครเห็น (เจอตอน 28 ก.ย. 2569)
+ */
+function loginProvidersRow(): StatusRow {
+  const name = "ล็อกอินด้วย Google / LINE";
+  const on = enabledOAuthProviders();
+  if (on.length === 2) return { name, health: "ok", detail: "เปิดครบทั้งสองทาง — Google และ LINE" };
+  if (on.length === 1) {
+    return {
+      name,
+      health: "warn",
+      detail: `เปิดแค่ ${on[0]} — อีกทางลูกค้าใช้ไม่ได้`,
+      action: "ตั้งคีย์ของอีกเจ้าให้ครบทั้ง ID และ SECRET",
+    };
+  }
+  return {
+    name,
+    health: "off",
+    detail: "ปิดทั้งคู่ — สมัคร/เข้าสู่ระบบได้ด้วยรหัสผ่านทางเดียว",
+    action: "ตั้ง AUTH_GOOGLE_ID + AUTH_GOOGLE_SECRET และ AUTH_LINE_ID + AUTH_LINE_SECRET (คีย์ต้องครบคู่)",
+  };
+}
 
 export interface StatusRow {
   name: string;
@@ -128,6 +155,7 @@ export async function getSystemStatus(): Promise<StatusRow[]> {
         : "ยังไม่มีข้อมูลล่าสุด — AI ตอบจากความรู้อย่างเดียว",
       action: live.length ? undefined : "ตั้ง MARKET_WEBHOOK_TOKEN + alert QVX AI บน TradingView ชี้มาที่ /api/market/snapshot",
     },
+    loginProvidersRow(),
     configRow("ยศ Discord", discordBotEnabled, "ให้ยศอัตโนมัติเมื่ออนุมัติสลิป", "ยังไม่ได้ตั้งบอท", "ดู docs/DISCORD.md"),
     configRow(
       "อีเมล",
