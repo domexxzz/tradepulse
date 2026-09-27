@@ -18,7 +18,7 @@ _อัปเดต 26 ก.ย. 2569 · เขียนจากการตร�
 | main | CI ผ่านทุกคอมมิตล่าสุด | `git fetch && git log -1 origin/main` · `gh run list --workflow ci.yml -L 1` |
 | **เว็บ → บริดจ์ TradingView** | 🔴 **ติดต่อไม่ได้ทั้งตัวหลักและตัวสำรอง** ทุกรอบตั้งแต่อย่างน้อย 3 ก.ย. ถึง 26 ก.ย. = ตอนนี้บอทเพิ่มสิทธิ์อัตโนมัติไม่ได้ | ดูผลรอบล่าสุด ↓ |
 | บริดจ์หลัก — คอมเฟิร์ส | 🔴 เว็บยิงไม่ถึง (`primaryUp:false`) | ข้อความเตือนในกลุ่ม Testtool บอกโฮสต์ที่เว็บยิงไป |
-| บริดจ์สำรอง — คอมเบส | 🟡 ย้ายจาก Tailscale Funnel ไป Cloudflare tunnel แล้ว (27 ก.ย.) ภายนอกยิงถึง 200 · **รอวาง `C:\BotTV\vercel_token.txt`** ให้ keeper อัป `TV_BOT_URL_BACKUP` เอง | `type C:\BotTV\keeper.log` · `schtasks /query /tn QVXBotKeeper` |
+| บริดจ์สำรอง — คอมเบส | 🟢 Cloudflare tunnel + keeper รายงาน URL เข้าเว็บเอง (27 ก.ย.) · เว็บเห็น `backupUp:true` | `type C:\BotTV\keeper.log` · `schtasks /query /tn QVXBotKeeper` |
 | ที่นั่งโปร | 300 ว่างครบ ยังไม่มีลูกค้าจ่ายเงิน | แถบโปรบนหน้าแรก |
 
 ดูผล bridge-health รอบล่าสุด (สิ่งที่เว็บเห็นจริง ไม่ใช่ที่ยิงจากเครื่องเรา):
@@ -32,8 +32,9 @@ gh run view $id --log | grep -o '{"ok":true,"primaryUp[^}]*}'
 
 ### 3. มีคนทำงานจากเครื่องอื่นด้วย — fetch ก่อนเริ่มงานทุกครั้ง
 
-> ⚠️ ตั้งแต่ 27 ก.ย. **คอมมิตที่ author เป็น `electiction` โดน Vercel บล็อก deploy** ("Deployment was blocked")
-> ต้องให้บัญชีในทีม `domezzxxs-projects` กด Redeploy หรือเป็นคน merge PR เอง
+> ⚠️ ตั้งแต่ 27 ก.ย. **คอมมิตที่ author เป็น `electiction` โดน Vercel บล็อก deploy** ("Deployment was blocked" — Hobby ไม่ให้ร่วมงานใน repo private)
+> ปุ่ม Redeploy บนหน้าเว็บก็โดนบล็อก · ทางที่ใช้ได้: `vercel deploy --prod` จาก CLI ที่ login บัญชี domezzxx (โดมอนุญาตแล้ว)
+> ใช้ `vercel login --global-config <โฟลเดอร์ชั่วคราว>` แล้วกดอนุมัติในเบราว์เซอร์ · deploy จาก `git archive origin/main` (ไม่พา `.env` ขึ้นไป) · เสร็จแล้ว `vercel logout`
 
 เมื่อ 26 ก.ย. ผู้ใช้ GitHub `electiction` push งานใหม่ 4 PR จากเครื่องอื่น
 (ช่องทาง Wisdom · API สิทธิ์ · โครง Discord · เอกสาร — ดูหัวข้อ 4.5)
@@ -358,7 +359,7 @@ commit ไฟล์ลง `public/` → push → รอ deploy → บนเค�
 **บริดจ์ทั้งสองตัวเว็บยิงไม่ถึงมาหลายสัปดาห์** (ดูตารางหัวไฟล์) — ลูกค้าที่จ่ายตอนนี้จะไม่ได้สิทธิ์อัตโนมัติ
 ต้นเหตุฝั่งคอมเบส: **Tailscale Funnel ใช้จากอินเทอร์เน็ตไม่ได้** (`funnel status` บอก on แต่ภายนอกโดนตัดตอน TLS
 อาการเดียวกับคอมเฟิร์ส) — Mac ที่อยู่ใน tailnet เดียวกันยิงได้เพราะวิ่งทางใน **อย่าใช้ Mac ใน tailnet ทดสอบ Funnel**
-แก้แล้ว 27 ก.ย.: คอมเบสใช้ Cloudflare quick tunnel + botkeeper (ดู "คอมเบส" หัวข้อ 7) เหลือวาง Vercel token
+แก้แล้ว 27 ก.ย.: คอมเบสใช้ Cloudflare quick tunnel + botkeeper ที่รายงาน URL เข้าเว็บเอง (`/api/tradingview/register`) ไม่ต้องมี Vercel token
 ฝั่งคอมเฟิร์ส: เปิดเครื่องแล้ว login ไว้ botkeeper จะอัป `TV_BOT_URL` เอง
 
 **ภาพหลักฐานสิทธิ์ถึง DM ลูกค้าไหม ยังไม่มีบันทึกผล** — ตัว grant เองทดสอบผ่านแล้ว (หัวข้อ 5.1)
@@ -430,7 +431,7 @@ commit ไฟล์ลง `public/` → push → รอ deploy → บนเค�
   รัน `C:\BotTV\keeper-backup.ps1` → `botkeeper.ps1 -EnvKey TV_BOT_URL_BACKUP` ดูแลบริดจ์ (ผ่าน task `TradePulseTVBridge`)
   + tunnel พอร์ต 8787 + อัป `TV_BOT_URL_BACKUP` บน Vercel เมื่อ URL เปลี่ยน · log `C:\BotTV\keeper.log`
 - **เครื่องนี้มี cloudflared ตัวอื่นรันอยู่ด้วย** (พอร์ต 8800 · เกม 4173) — keeper นับเฉพาะตัวที่ชี้ 8787 ห้ามสั่งฆ่า cloudflared ทั้งหมด
-- ต้องวาง `C:\BotTV\vercel_token.txt` (token เดียวกับบนคอมเฟิร์สใช้ได้) — ไม่มีไฟล์ keeper ยังดูแลบริดจ์/tunnel แต่อัป Vercel ไม่ได้
+- keeper รายงาน URL เข้าเว็บด้วย `TV_BOT_SECRET` จาก `.env` ของบอท — **ไม่ต้องวาง Vercel token** (ดู `TRADINGVIEW.md` หัวข้อ botkeeper)
 
 ### โค้ด
 

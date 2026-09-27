@@ -417,3 +417,16 @@ model MarketSnapshot {
 
   @@index([receivedAt])
 }
+
+/// URL ของบริดจ์ TradingView ที่บอทรายงานเข้ามาเอง (POST /api/tradingview/register)
+/// Cloudflare quick tunnel ได้ URL ใหม่ทุกรีสตาร์ต — ให้บอทบอกเว็บเองแทนการฝาก Vercel token ไว้ที่เครื่องบ้าน
+/// เว็บใช้ค่านี้ก่อน env (TV_BOT_URL / TV_BOT_URL_BACKUP) เมื่อรายงานเข้ามาไม่เกิน 15 นาที
+model BridgeEndpoint {
+  /**
+   * "primary" | "backup"
+   */
+  role       String   @id
+  url        String
+  lastSeenAt DateTime
+  updatedAt  DateTime @updatedAt
+}

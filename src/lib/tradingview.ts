@@ -16,6 +16,8 @@
  * จึงตอบ queued=true กลับมาก่อน แล้วค่อยยิงผลจริงมาที่ /api/tradingview/callback
  * เราจึงถือว่า ok=true แปลว่า "ส่งคำสั่งถึงบอทแล้ว" ไม่ใช่ "ให้สิทธิ์เสร็จแล้ว"
  */
+import { prisma } from "@/lib/prisma";
+
 const BOT_URL = process.env.TV_BOT_URL?.replace(/\/$/, "");
 /** บริดจ์สำรอง (คอมเบส) — ใช้อัตโนมัติถ้าตัวหลักติดต่อไม่ได้ ถ้าไม่ตั้งก็ไม่มี fallback */
 const BOT_URL_BACKUP = process.env.TV_BOT_URL_BACKUP?.replace(/\/$/, "");
@@ -24,8 +26,51 @@ const BOT_SECRET = process.env.TV_BOT_SECRET;
 /** เปิดใช้การให้สิทธิ์อัตโนมัติแล้วหรือยัง */
 export const tvAutoGrantEnabled = Boolean(BOT_URL && BOT_SECRET);
 
+export type BridgeRole = "primary" | "backup";
+
+/** รายงานตัวเข้ามาไม่เกินนี้ถือว่ายังใช้ได้ — keeper รายงานทุก 5 นาที เผื่อพลาดได้สองรอบ */
+export const BRIDGE_FRESH_MS = 15 * 60_000;
+
+/**
+ * URL ที่บอทรายงานเข้ามาได้ต้องเป็น tunnel ที่เราใช้จริงเท่านั้น
+ * กันคนถือ secret ชี้เว็บไปยิงที่อยู่ภายใน หรือโดเมนอื่นที่ไม่ใช่เครื่องบอท
+ */
+export function normalizeBridgeUrl(raw: string): string | null {
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    return null;
+  }
+  if (u.protocol !== "https:" || u.username || u.password || u.port) return null;
+  if (!/^[a-z0-9-]+\.trycloudflare\.com$/.test(u.hostname) && !/^[a-z0-9-]+\.[a-z0-9-]+\.ts\.net$/.test(u.hostname)) {
+    return null;
+  }
+  return u.origin;
+}
+
+/**
+ * URL ที่จะยิงจริง — ที่บอทรายงานเข้ามาล่าสุด (ถ้ายังสด) ก่อน env
+ * ฐานข้อมูลอ่านไม่ได้ก็ยังใช้ env ต่อได้ ไม่ทำให้การให้สิทธิ์ล้มทั้งระบบ
+ */
+export async function bridgeUrls(now = Date.now()): Promise<Record<BridgeRole, string | undefined>> {
+  const urls: Record<BridgeRole, string | undefined> = { primary: BOT_URL, backup: BOT_URL_BACKUP };
+  try {
+    const rows = await prisma.bridgeEndpoint.findMany({
+      where: { lastSeenAt: { gte: new Date(now - BRIDGE_FRESH_MS) } },
+    });
+    for (const r of rows) if (r.role === "primary" || r.role === "backup") urls[r.role] = r.url;
+  } catch (e) {
+    console.error("bridgeUrls: read failed, using env", e);
+  }
+  return urls;
+}
+
 /** รายชื่อบริดจ์ตามลำดับที่จะลอง (หลักก่อน แล้วค่อยสำรอง) */
-const bridgeTargets = () => [BOT_URL, BOT_URL_BACKUP].filter((u): u is string => Boolean(u));
+async function bridgeTargets(): Promise<string[]> {
+  const { primary, backup } = await bridgeUrls();
+  return [primary, backup].filter((u): u is string => Boolean(u));
+}
 
 /**
  * เช็กว่าบริดจ์ตัวไหนยังมีชีวิต — ใช้โดย cron เฝ้าระวัง
@@ -47,7 +92,8 @@ export async function checkBridgeHealth(): Promise<{
       return { url, up: false };
     }
   };
-  const [primary, backup] = await Promise.all([ping(BOT_URL), ping(BOT_URL_BACKUP)]);
+  const urls = await bridgeUrls();
+  const [primary, backup] = await Promise.all([ping(urls.primary), ping(urls.backup)]);
   return { primary, backup };
 }
 
@@ -96,7 +142,7 @@ async function callBot(path: "grant" | "revoke", body: Record<string, unknown>):
 
   // ลองบริดจ์หลักก่อน ถ้าติดต่อไม่ได้เลยค่อยตกไปบริดจ์สำรอง (คอมเบส)
   // ถ้าบริดจ์ตอบมาแต่ปฏิเสธงาน ถือเป็นผลจริง ไม่ต้องลองซ้ำ (กันสั่งซ้ำ 2 เครื่อง)
-  for (const url of bridgeTargets()) {
+  for (const url of await bridgeTargets()) {
     const res = await callOne(url, path, body);
     if (res) return res;
   }

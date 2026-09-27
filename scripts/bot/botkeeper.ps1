@@ -12,8 +12,9 @@
 # คอมเบส   (ตัวสำรอง): powershell -File C:\BotTV\botkeeper.ps1 -EnvKey TV_BOT_URL_BACKUP `
 #                        -Cloudflared "C:\Program Files (x86)\cloudflared\cloudflared.exe" -BridgeTask TradePulseTVBridge
 #
-# ต้องมี $Dir\vercel_token.txt (Vercel token ของทีม domezzxxs-projects, ห้าม commit)
-# ยังไม่มีไฟล์ก็รันได้ - บริดจ์กับ tunnel ยังถูกดูแล แค่อัป Vercel ไม่ได้จนกว่าจะวางไฟล์
+# บอกเว็บว่า URL ใหม่คืออะไร 2 ทาง (ทางไหนสำเร็จก็พอ):
+#   1. POST /api/tradingview/register ด้วย TV_BOT_SECRET จาก .env ของบอท (-BotEnv) - ทางหลัก ไม่ต้องมี token
+#   2. แก้ env บน Vercel + redeploy - เฉพาะเมื่อมี $Dir\vercel_token.txt (ของเดิมบนคอมเฟิร์ส)
 
 param(
   [string]$Dir         = "C:\BotTV",
@@ -22,12 +23,18 @@ param(
   [string]$Cloudflared = "",
   # ตั้งไว้ = เปิดบริดจ์ผ่าน scheduled task เดิมของเครื่อง แทนการสั่ง python เอง
   [string]$BridgeTask  = "",
-  [int]$Port           = 8787
+  [int]$Port           = 8787,
+  # .env ของบอท — อ่าน TV_BOT_SECRET ไว้รายงาน URL เข้าเว็บ (ไม่มีไฟล์ = ข้ามการรายงาน)
+  [string]$BotEnv      = "",
+  [string]$Site        = "https://quantvisionx.com"
 )
 
 $ErrorActionPreference = "Continue"
 $dir       = $Dir
 if (-not $Cloudflared) { $Cloudflared = "$dir\cloudflared.exe" }
+if (-not $BotEnv) { $BotEnv = "$dir\.env" }
+# ตัวหลักรายงานเป็น primary ตัวสำรองเป็น backup — เว็บใช้แยกลำดับการยิง
+$role = if ($EnvKey -eq "TV_BOT_URL_BACKUP") { "backup" } else { "primary" }
 $cfLog     = "$dir\cf.log"
 $stateFile = "$dir\last_url.txt"
 $log       = "$dir\keeper.log"
@@ -147,7 +154,31 @@ function Poke-Web {
   }
 }
 
-Note "botkeeper started (env=$EnvKey port=$Port)"
+# รายงาน URL เข้าเว็บด้วย TV_BOT_SECRET ที่บอทมีอยู่แล้ว — มีผลทันที ไม่ต้องมี Vercel token ไม่ต้อง redeploy
+# (POST /api/tradingview/register) เว็บใช้ค่าที่รายงานไม่เกิน 15 นาทีก่อน env จึงต้องรายงานซ้ำทุก 5 นาที
+function Get-BotSecret {
+  if (-not (Test-Path $BotEnv)) { return $null }
+  # .env ของบอทบางเครื่องเซฟเป็น UTF-8 มี BOM - Get-Content -Encoding UTF8 ตัด BOM ให้
+  $line = Get-Content $BotEnv -Encoding UTF8 | Where-Object { $_ -match '^\s*TV_BOT_SECRET\s*=' } | Select-Object -First 1
+  if (-not $line) { return $null }
+  return ($line -replace '^\s*TV_BOT_SECRET\s*=\s*', '').Trim().Trim('"').Trim("'")
+}
+
+function Register-Web($url) {
+  $secret = Get-BotSecret
+  if (-not $secret) { return $false }
+  $body = @{ secret = $secret; role = $role; url = $url } | ConvertTo-Json -Compress
+  try {
+    Invoke-RestMethod -Method Post -TimeoutSec 30 -ContentType "application/json" `
+      -Uri "$Site/api/tradingview/register" -Body $body -EA Stop | Out-Null
+    return $true
+  } catch {
+    Note ("register $role FAILED: " + $_.Exception.Message)
+    return $false
+  }
+}
+
+Note "botkeeper started (env=$EnvKey role=$role port=$Port)"
 $tick = 0
 while ($true) {
   try {
@@ -165,9 +196,16 @@ while ($true) {
     $url = Get-TunnelUrl
     if ($url) {
       $last = if (Test-Path $stateFile) { (Get-Content $stateFile -Raw).Trim() } else { "" }
-      if ($url -ne $last) {
-        Note "tunnel url changed: $last -> $url"
-        if (Update-Vercel $url) { $url | Out-File $stateFile -Encoding ascii -NoNewline }
+      $changed = $url -ne $last
+      # รายงานเข้าเว็บตอน URL เปลี่ยน และทุก 5 นาที (ให้เว็บรู้ว่ายังมีชีวิต)
+      $registered = $false
+      if ($changed -or $tick % 5 -eq 0) { $registered = Register-Web $url }
+      if ($changed) {
+        Note "tunnel url changed: $last -> $url (registered=$registered)"
+        # มี Vercel token ด้วย = อัป env เหมือนเดิมอีกทาง (เผื่อฐานข้อมูลเว็บมีปัญหา) · ไม่มีก็ไม่เป็นไร
+        $vercelOk = $false
+        if (Get-Token) { $vercelOk = Update-Vercel $url }
+        if ($registered -or $vercelOk) { $url | Out-File $stateFile -Encoding ascii -NoNewline }
       }
     }
   } catch {
