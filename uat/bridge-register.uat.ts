@@ -13,6 +13,7 @@ process.env.TV_BOT_URL_BACKUP = "https://env-backup.trycloudflare.com";
 const prisma = new PrismaClient();
 const { POST } = await import("@/app/api/tradingview/register/route");
 const { bridgeUrls, BRIDGE_FRESH_MS } = await import("@/lib/tradingview");
+const { localGateway, AI_LOCAL_FRESH_MS } = await import("@/lib/ai/gateway");
 
 const register = (body: Record<string, unknown>) =>
   POST(new Request("http://localhost/api/tradingview/register", { method: "POST", body: JSON.stringify(body) }));
@@ -70,5 +71,24 @@ describe("R-1 · รายงาน URL", () => {
       data: { lastSeenAt: new Date(Date.now() - BRIDGE_FRESH_MS - 60_000) },
     });
     expect((await bridgeUrls()).primary).toBe("https://env-primary.trycloudflare.com");
+  });
+
+  it("AI gateway (role ai) รายงานได้ แยกจากบอท ไม่ทับ primary/backup", async () => {
+    const res = await register({ secret: "uat-bridge-secret", role: "ai", url: "https://ai-box.trycloudflare.com" });
+    expect(res.status).toBe(200);
+    expect((await localGateway())?.url).toBe("https://ai-box.trycloudflare.com");
+    expect(await bridgeUrls()).toEqual({
+      primary: "https://env-primary.trycloudflare.com",
+      backup: "https://env-backup.trycloudflare.com",
+    });
+  });
+
+  it("AI gateway เงียบเกิน 5 นาที = ถือว่าล่ม (รีบสลับไปคลาวด์ ไม่ให้ลูกค้ารอ)", async () => {
+    await register({ secret: "uat-bridge-secret", role: "ai", url: "https://ai-box.trycloudflare.com" });
+    await prisma.bridgeEndpoint.update({
+      where: { role: "ai" },
+      data: { lastSeenAt: new Date(Date.now() - AI_LOCAL_FRESH_MS - 30_000) },
+    });
+    expect(await localGateway()).toBeNull();
   });
 });

@@ -26,7 +26,9 @@ param(
   [int]$Port           = 8787,
   # .env ของบอท — อ่าน TV_BOT_SECRET ไว้รายงาน URL เข้าเว็บ (ไม่มีไฟล์ = ข้ามการรายงาน)
   [string]$BotEnv      = "",
-  [string]$Site        = "https://quantvisionx.com"
+  [string]$Site        = "https://quantvisionx.com",
+  # บังคับ role ที่รายงานเข้าเว็บ — "ai" = ใช้ keeper ตัวนี้ดูแล gateway ของ QVX AI (scripts/ai)
+  [string]$Role        = ""
 )
 
 $ErrorActionPreference = "Continue"
@@ -34,7 +36,7 @@ $dir       = $Dir
 if (-not $Cloudflared) { $Cloudflared = "$dir\cloudflared.exe" }
 if (-not $BotEnv) { $BotEnv = "$dir\.env" }
 # ตัวหลักรายงานเป็น primary ตัวสำรองเป็น backup — เว็บใช้แยกลำดับการยิง
-$role = if ($EnvKey -eq "TV_BOT_URL_BACKUP") { "backup" } else { "primary" }
+$role = if ($Role) { $Role } elseif ($EnvKey -eq "TV_BOT_URL_BACKUP") { "backup" } else { "primary" }
 $cfLog     = "$dir\cf.log"
 $stateFile = "$dir\last_url.txt"
 $log       = "$dir\keeper.log"

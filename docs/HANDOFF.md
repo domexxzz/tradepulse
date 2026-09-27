@@ -143,7 +143,7 @@ git status -sb          # ถ้าขึ้น behind ให้ git rebase orig
 | `/account/subscription` | สถานะแพ็กเกจ วันหมดอายุ ราคาที่ล็อกไว้ |
 | `/account/billing` · `/account/orders` · `/account/pay/[id]` | ชำระเงิน / ประวัติ / หน้าจ่ายรายออเดอร์ (QR + แนบสลิป) |
 | `/account/tradingview` | กรอก TradingView username → ระบบเรียกบอทให้สิทธิ์เอง |
-| `/account/ai` | **QVX AI** แชตผู้ช่วยการเทรด · ใช้ได้เมื่อสิทธิ์ยังไม่หมด · 300 คำถาม/เดือน — `docs/QVX_AI.md` |
+| `/account/ai` | **QVX AI** แชตผู้ช่วยการเทรด · AI บนคอมเบส (gemma3) + คลาวด์สำรอง · RAG คลังความรู้ QVX · ข้อมูลกราฟสด · 300 คำถาม/เดือน — `docs/QVX_AI.md` |
 | `/account/discord` | ผูกบัญชี Discord → ได้ยศตามแพ็กเกจ |
 | `/account/reviews` | เขียนรีวิว (แอดมินอนุมัติก่อนขึ้นเว็บ) |
 | `/account/support` | ช่องทางช่วยเหลือ |
@@ -477,7 +477,7 @@ commit ไฟล์ลง `public/` → push → รอ deploy → บนเค�
 | ไฟล์ | เรื่อง |
 |---|---|
 | `docs/TRADINGVIEW.md` | บอท TradingView ทั้งหมด — กับดักเยอะที่สุดในโปรเจกต์ |
-| `docs/QVX_AI.md` | QVX AI — สิทธิ์ · โควตา · env · ย้าย webhook ราคาสดจาก Supabase ของน็อต |
+| `docs/QVX_AI.md` | QVX AI — สถาปัตยกรรม (เครื่องบ้าน + สำรอง + RAG + กราฟสด) · ดูแลคอมเบส `C:\QVXAI` · env · ไล่เช็กเมื่อล่ม |
 | `docs/MIGRATE.md` | เปลี่ยนบัญชี TradingView / บอท Telegram · ค่าลับหลุดต้องเปลี่ยนอะไร |
 | `docs/SETUP.md` | ตั้งค่าเครื่อง dev + วิธีเปิด Postgres ด้วย Docker สำหรับ UAT |
 | `docs/TELEGRAM.md` | บอท/กลุ่ม/webhook/ผูกบัญชี |

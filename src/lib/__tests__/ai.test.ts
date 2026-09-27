@@ -4,9 +4,8 @@ import { describe, it, expect, vi } from "vitest";
 vi.mock("@/lib/prisma", () => ({ prisma: {} }));
 
 const { monthStartBangkok, nextMonthStartBangkok, conversationTitle } = await import("@/lib/ai/chat");
-const { extractAnswer } = await import("@/lib/ai/openai");
 const { parseSnapshot, chartTfMinutes, snapshotMaxAgeMs } = await import("@/lib/ai/market");
-const { QVX_KNOWLEDGE } = await import("@/lib/ai/knowledge");
+const { QVX_CORE, QVX_MARKET_GLOSSARY } = await import("@/lib/ai/knowledge");
 const { QVX_INSTRUCTIONS } = await import("@/lib/ai/instructions");
 
 describe("โควตารายเดือนตามเวลาไทย", () => {
@@ -22,27 +21,6 @@ describe("โควตารายเดือนตามเวลาไทย"
 
   it("ข้ามปีได้ — ธันวาคมรีเซ็ตเป็น 1 ม.ค. ปีถัดไป", () => {
     expect(nextMonthStartBangkok(new Date("2026-12-15T00:00:00Z")).toISOString()).toBe("2026-12-31T17:00:00.000Z");
-  });
-});
-
-describe("อ่านคำตอบจาก OpenAI", () => {
-  it("ใช้ output_text ถ้ามี", () => {
-    expect(extractAnswer({ output_text: "  ตอบ  " })).toBe("ตอบ");
-  });
-
-  it("ไม่มี output_text (REST ตรง) ประกอบจาก output[].content[] แทน", () => {
-    expect(
-      extractAnswer({
-        output: [
-          { content: [{ type: "reasoning", text: "ห้ามโผล่" }] },
-          { content: [{ type: "output_text", text: "ส่วนแรก " }, { type: "output_text", text: "ส่วนสอง" }] },
-        ],
-      })
-    ).toBe("ส่วนแรก ส่วนสอง");
-  });
-
-  it("ว่างเปล่า = สตริงว่าง ให้ฝั่งเรียกถือว่าล้ม", () => {
-    expect(extractAnswer({})).toBe("");
   });
 });
 
@@ -136,8 +114,9 @@ describe("ข้อมูลสดแค่ไหน — ขึ้นกับ t
 });
 
 describe("ตัวตนของ QVX AI", () => {
-  it("รู้จักฟีเจอร์ตามคู่มือ และไม่มีตัวเลขผลตอบแทน/อัตราชนะ", () => {
-    for (const w of ["Gold Core", "ICT Buy", "Order Block", "TP1", "M5, M15, M30, H1"]) expect(QVX_KNOWLEDGE).toContain(w);
+  it("แกนความรู้ครบ และไม่มีตัวเลขผลตอบแทน/อัตราชนะ", () => {
+    const QVX_KNOWLEDGE = `${QVX_CORE}\n${QVX_MARKET_GLOSSARY}`;
+    for (const w of ["Gold Core", "ICT Buy", "Order Block", "TP1", "gold_buy", "ห้ามแต่ง"]) expect(QVX_KNOWLEDGE).toContain(w);
     // โค้ดอินดิเคเตอร์มีคอมเมนต์ผล backtest (WR/PF) — ห้ามหลุดมาเป็นคำโฆษณาของ AI
     expect(QVX_KNOWLEDGE).not.toMatch(/win ?rate|อัตราชนะ|\bWR\b|\bPF\b|backtest|กำไร\s*\d/i);
   });
