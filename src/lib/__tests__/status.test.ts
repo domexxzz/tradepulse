@@ -28,7 +28,7 @@ describe("ค่าสถานะที่ผูกกับข้อมูล�
     for (const s of ACTIVE_STATUSES) expect(declared).toContain(s);
   });
 
-  it("role มีแค่สองค่า", () => {
-    expect(Object.values(USER_ROLE)).toEqual(["USER", "ADMIN"]);
+  it("role มีสามค่า — เพิ่ม PARTNER ต้องไม่หลุดเป็นแอดมินเต็ม", () => {
+    expect(Object.values(USER_ROLE)).toEqual(["USER", "ADMIN", "PARTNER"]);
   });
 });

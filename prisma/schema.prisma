@@ -60,6 +60,7 @@ model User {
   reviews            Review[]
   passwordResets     PasswordResetToken[]
   brokerApplications BrokerApplication[]
+  brokerEventsLogged BrokerEvent[]
   aiConversations    AiConversation[]
   aiUsage            AiUsage[]
 }
@@ -433,4 +434,33 @@ model BridgeEndpoint {
   url        String
   lastSeenAt DateTime
   updatedAt  DateTime @updatedAt
+}
+
+/// เหตุการณ์จากโบรก (สมัคร / ฝาก / ถอน) — ใช้เป็นหลักฐานประกอบการอนุมัติคำขอรับสิทธิ์
+/// Wisdom ไม่มี API จึงรับจากอีเมลแจ้งเตือนที่พาร์ตเนอร์ส่งต่อมา หรือพาร์ตเนอร์บันทึกเอง
+model BrokerEvent {
+  id             String   @id @default(cuid())
+  broker         String   @default("wisdom")
+  /// ค่าอยู่ใน BROKER_EVENT_TYPE (src/config/status.ts)
+  type           String
+  /// เลขบัญชีเทรด — ตัวเชื่อมกับ BrokerApplication.tradingAccount (อ่านจากอีเมลไม่เจอก็เป็น null ได้)
+  tradingAccount String?
+  accountName    String?
+  accountEmail   String?
+  amountUSD      Float?
+  /// เวลาที่เหตุการณ์เกิดตามอีเมล (ไม่ใช่เวลาที่เรารับเข้า)
+  occurredAt     DateTime
+  /// "email" | "manual"
+  source         String
+  /// Message-ID ของอีเมล — กันบันทึกซ้ำเมื่อบอทอ่านอีเมลเดิมรอบสอง
+  externalId     String?  @unique
+  /// อีเมลดิบ (ตัดความยาวแล้ว) — ไว้ให้คนดูตอนตัวอ่านแยกไม่ออก และไว้ตรวจย้อนหลัง
+  rawText        String?
+  /// พาร์ตเนอร์/แอดมินที่บันทึกเอง (source = manual)
+  loggedById     String?
+  loggedBy       User?    @relation(fields: [loggedById], references: [id], onDelete: SetNull)
+  createdAt      DateTime @default(now())
+
+  @@index([tradingAccount, occurredAt])
+  @@index([type, occurredAt])
 }
