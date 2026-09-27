@@ -1,7 +1,7 @@
 "use client";
 import { Fragment, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUp, Square, Activity, BookOpen, Cpu } from "lucide-react";
+import { ArrowUp, Square, Activity, BookOpen, Cpu, Newspaper } from "lucide-react";
 import { AI_MAX_MESSAGE_CHARS } from "@/config/ai";
 
 type Message = { id: string; role: "user" | "assistant"; content: string; sources?: string[]; streaming?: boolean; failed?: boolean };
@@ -100,6 +100,7 @@ export function AiChat({
   const [draft, setDraft] = useState("");
   const [pending, setPending] = useState(false);
   const [markets, setMarkets] = useState<Live[]>(live);
+  const [newsUsed, setNewsUsed] = useState(0);
   const [error, setError] = useState<string | null>(notFound ? "ไม่พบบทสนทนานี้ — เริ่มแชตใหม่ได้เลย" : null);
   const bottom = useRef<HTMLDivElement>(null);
   const seq = useRef(0);
@@ -169,6 +170,7 @@ export function AiChat({
           if (ev.t === "meta") {
             patchLast((a) => ({ ...a, sources: ev.sources }));
             if (Array.isArray(ev.live)) setMarkets(ev.live);
+            setNewsUsed(Number(ev.news) || 0);
           } else if (ev.t === "d") {
             gotText = true;
             patchLast((a) => ({ ...a, content: a.content + ev.v }));
@@ -227,6 +229,12 @@ export function AiChat({
           <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-2.5 py-1 text-muted">
             <Activity className="h-3.5 w-3.5" />
             ยังไม่มีข้อมูลกราฟสด — ตอบจากความรู้อย่างเดียว
+          </span>
+        )}
+        {newsUsed > 0 && (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-2.5 py-1 text-muted">
+            <Newspaper className="h-3.5 w-3.5" />
+            อ่านข่าวล่าสุด {newsUsed} ข่าว
           </span>
         )}
         <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-2.5 py-1 text-muted">

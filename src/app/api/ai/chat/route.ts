@@ -79,7 +79,7 @@ export async function POST(req: Request) {
         const opened = await openStream(prep.messages, deadline, { preferCloud: prep.marketQuestion });
         stopModel = opened.abort;
         if (cancelled) throw new ModelError("CLIENT_STOPPED");
-        send({ t: "meta", source: opened.source, sources: prep.sources, live: prep.live });
+        send({ t: "meta", source: opened.source, sources: prep.sources, live: prep.live, news: prep.newsCount });
         for await (const ev of opened.events) {
           if (cancelled) throw new ModelError("CLIENT_STOPPED");
           if (ev.type === "delta") {
