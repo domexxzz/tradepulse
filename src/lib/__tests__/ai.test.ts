@@ -138,7 +138,8 @@ describe("ข้อมูลสดแค่ไหน — ขึ้นกับ t
 describe("ตัวตนของ QVX AI", () => {
   it("รู้จักฟีเจอร์ตามคู่มือ และไม่มีตัวเลขผลตอบแทน/อัตราชนะ", () => {
     for (const w of ["Gold Core", "ICT Buy", "Order Block", "TP1", "M5, M15, M30, H1"]) expect(QVX_KNOWLEDGE).toContain(w);
-    expect(QVX_KNOWLEDGE).not.toMatch(/win ?rate|อัตราชนะ\s*\d|\d+\s*%/i);
+    // โค้ดอินดิเคเตอร์มีคอมเมนต์ผล backtest (WR/PF) — ห้ามหลุดมาเป็นคำโฆษณาของ AI
+    expect(QVX_KNOWLEDGE).not.toMatch(/win ?rate|อัตราชนะ|\bWR\b|\bPF\b|backtest|กำไร\s*\d/i);
   });
 
   it("ยกคำสั่งของน็อตมาครบ — ส่วนที่กันการแต่งราคาต้องอยู่", () => {
