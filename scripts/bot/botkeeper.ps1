@@ -193,18 +193,20 @@ while ($true) {
     # เต้นทุก 30 นาที เพื่อให้รู้ว่ายังมีชีวิต (ถ้า log เงียบยาว = ตายแล้ว)
     if ($tick % 30 -eq 0) { Note "alive" }
 
+    $last = if (Test-Path $stateFile) { (Get-Content $stateFile -Raw).Trim() } else { "" }
     $url = Get-TunnelUrl
+    # cf.log อ่านไม่ได้ชั่วคราว (ไฟล์ถูกล็อก/หมุน) ให้ใช้ URL ล่าสุดที่รู้ต่อไป
+    # กัน primary หลุดตอน URL นิ่ง — เดิม register ซ้ำพึ่ง tick%5 ซึ่งไม่ยิงเมื่อ URL ไม่เปลี่ยน
+    if (-not $url -and $last) { $url = $last }
     if ($url) {
-      $last = if (Test-Path $stateFile) { (Get-Content $stateFile -Raw).Trim() } else { "" }
       $changed = $url -ne $last
-      # รายงานเข้าเว็บตอน URL เปลี่ยน และทุก 5 นาที (ให้เว็บรู้ว่ายังมีชีวิต)
-      $registered = $false
-      if ($changed -or $tick % 5 -eq 0) { $registered = Register-Web $url }
+      # register "ทุกรอบ" ไม่ใช่เฉพาะตอนเปลี่ยน — ค่าในเว็บมีอายุ 15 นาที ต้องรายงานถี่กว่านั้น
+      # (register สำเร็จไม่โดน rate limit เพราะฝั่งเว็บนับเฉพาะครั้งที่ auth พลาด)
+      $registered = Register-Web $url
       if ($changed) {
-        Note "tunnel url changed: $last -> $url (registered=$registered)"
-        # มี Vercel token ด้วย = อัป env เหมือนเดิมอีกทาง (เผื่อฐานข้อมูลเว็บมีปัญหา) · ไม่มีก็ไม่เป็นไร
         $vercelOk = $false
         if (Get-Token) { $vercelOk = Update-Vercel $url }
+        Note "tunnel url changed: $last -> $url (registered=$registered vercel=$vercelOk)"
         if ($registered -or $vercelOk) { $url | Out-File $stateFile -Encoding ascii -NoNewline }
       }
     }
