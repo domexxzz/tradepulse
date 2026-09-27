@@ -17,7 +17,12 @@ import {
  * ไม่มีอะไรฟ้องจนกว่าลูกค้าจะเจอเอง เลยต้องล็อกไว้ด้วยเทสต์
  */
 
-const IDS = { everyone: "100000000000000001", team: "200000000000000002", active: "300000000000000003" };
+const IDS = {
+  everyone: "100000000000000001",
+  team: "200000000000000002",
+  active: "300000000000000003",
+  self: "400000000000000004",
+};
 
 type Overwrite = { id: string; type: number; allow: string; deny: string };
 const has = (mask: string, flag: bigint) => (BigInt(mask) & flag) !== BigInt(0);
@@ -87,7 +92,8 @@ describe("ห้อง QVX MEMBER — เฉพาะ QVX Active กับที
   });
 
   it("ห้องสมาชิกไม่มีสิทธิ์ของยศอื่นหลุดเข้ามา", () => {
-    expect(list.map((o) => o.id).sort()).toEqual([IDS.everyone, IDS.team, IDS.active].sort());
+    // ยศบอทต้องอยู่ด้วย ไม่งั้นบอทมองไม่เห็นห้องที่ตัวเองสร้าง — ดูหัวข้อ "บอทต้องไม่ล็อกตัวเองออก"
+    expect(list.map((o) => o.id).sort()).toEqual([IDS.everyone, IDS.team, IDS.active, IDS.self].sort());
   });
 });
 
@@ -148,5 +154,41 @@ describe("รันซ้ำแล้วไม่สร้างของซ้�
 
   it("หายศเดิมได้โดยไม่สนตัวพิมพ์เล็กใหญ่", () => {
     expect(findRole([{ id: "7", name: "qvx active" }], "QVX Active")?.id).toBe("7");
+  });
+});
+
+/**
+ * บอทเคยล็อกตัวเองออกจากห้องที่เพิ่งสร้าง (28 ก.ย. 2569)
+ *
+ * ห้องแบบ members ปิด VIEW_CHANNEL ของ @everyone ซึ่งครอบยศบอทด้วย รันรอบถัดไป
+ * จึงได้ 403 Missing Access กับหมวดของตัวเอง แก้เองไม่ได้ ต้องให้คนเข้าไปลบทิ้งในแอป
+ */
+describe("บอทต้องไม่ล็อกตัวเองออก", () => {
+  it("ทุกหมวดมี overwrite ของยศบอท และเห็นห้องได้", () => {
+    for (const group of LAYOUT) {
+      const list = overwritesFor(group.access, IDS) as Overwrite[];
+      const mine = of(list, IDS.self);
+      expect(mine, `${group.category} ไม่มี overwrite ของบอท`).toBeTruthy();
+      expect(has(mine.allow, P.VIEW_CHANNEL), `${group.category}`).toBe(true);
+      expect(has(mine.deny, P.VIEW_CHANNEL), `${group.category}`).toBe(false);
+    }
+  });
+
+  it("บอทจัดการข้อความและเธรดได้ (ใช้ตอนตั้งค่าห้อง)", () => {
+    const mine = of(overwritesFor("members", IDS) as Overwrite[], IDS.self);
+    expect(has(mine.allow, P.MANAGE_MESSAGES)).toBe(true);
+    expect(has(mine.allow, P.MANAGE_THREADS)).toBe(true);
+  });
+
+  it("ตอนดูแผน (ยังไม่รู้ id ของบอท) ไม่ใส่ overwrite ที่ id ว่าง", () => {
+    const list = overwritesFor("members", { ...IDS, self: null }) as Overwrite[];
+    expect(list.every((o) => Boolean(o.id))).toBe(true);
+    expect(list.find((o) => o.id === IDS.self)).toBeUndefined();
+  });
+
+  it("ยังไม่มีสิทธิ์รายบุคคลแม้จะเพิ่ม overwrite ของบอท", () => {
+    for (const group of LAYOUT) {
+      for (const o of overwritesFor(group.access, IDS) as Overwrite[]) expect(o.type).toBe(0);
+    }
   });
 });

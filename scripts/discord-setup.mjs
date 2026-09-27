@@ -128,11 +128,23 @@ const ow = (id, allow, deny = 0n) => ({
  * สิทธิ์ของห้องตามระดับการเข้าถึง
  * @everyone ใน Discord คือยศที่มี ID เดียวกับเซิร์ฟเวอร์
  */
-export function overwritesFor(access, { everyone, team, active }) {
+/**
+ * สิทธิ์ที่บอทต้องมีในทุกห้องที่มันดูแล
+ *
+ * ห้ามลืมใส่ ไม่งั้นบอทล็อกตัวเองออก: ห้องแบบ members ปิด VIEW_CHANNEL ของ
+ * @everyone ซึ่งครอบบอทด้วย พอรันรอบถัดไปจะได้ 403 Missing Access กับห้องที่
+ * ตัวเองเพิ่งสร้าง แก้เองไม่ได้ ต้องให้คนเข้าไปลบหมวดทิ้งในแอป (เจอจริง 28 ก.ย. 2569)
+ */
+const SELF = bits(READ, P.MANAGE_MESSAGES, P.MANAGE_THREADS);
+
+export function overwritesFor(access, { everyone, team, active, self }) {
+  // self เป็น null ตอนดูแผน (ยังไม่รู้ id) — ตัดออกไม่ให้ payload เพี้ยน
+  const mine = self ? [ow(self, SELF)] : [];
   if (access === "public") {
     return [
       ow(everyone, bits(READ, P.ADD_REACTIONS), WRITE),
       ow(team, TEAM),
+      ...mine,
     ];
   }
   if (access === "members") {
@@ -142,6 +154,7 @@ export function overwritesFor(access, { everyone, team, active }) {
       // สมาชิกเห็นห้องแต่ไม่พิมพ์รวมกัน — ใช้ปุ่มเปิด Ticket ส่วนตัวแทน
       ow(active, READ, WRITE),
       ow(team, TEAM),
+      ...mine,
     ];
   }
   throw new Error(`ไม่รู้จักระดับการเข้าถึง: ${access}`);
@@ -262,7 +275,16 @@ async function main() {
 
   // ── ยศ ──
   const roles = await api("GET", `/guilds/${GUILD_ID}/roles`);
-  const roleIds = { everyone: GUILD_ID };
+  // ยศประจำตัวบอท — Discord สร้างให้เองตอนเชิญ หาเจอจาก tags.bot_id ไม่ใช่ชื่อ
+  // (ชื่อยศเปลี่ยนตามชื่อแอปได้ แต่ bot_id ไม่เปลี่ยน)
+  const selfRole = roles.find((r) => r.tags?.bot_id === bot.id) ?? null;
+  if (!selfRole) {
+    die(
+      "หายศประจำตัวของบอทไม่เจอ",
+      "  ปกติ Discord สร้างให้เองตอนเชิญบอท — ลองเชิญบอทเข้าเซิร์ฟเวอร์ใหม่อีกครั้ง"
+    );
+  }
+  const roleIds = { everyone: GUILD_ID, self: selfRole.id };
   for (const spec of ROLES) {
     const found = findRole(roles, spec.name);
     if (found) {
@@ -283,6 +305,38 @@ async function main() {
       roleIds[spec.key] = created.id;
     } else {
       roleIds[spec.key] = `<${spec.name}>`;
+    }
+  }
+
+  // ── ลำดับยศ: ต้องเช็ก "ก่อน" แตะห้อง ──
+  //
+  // Discord ไม่ให้บอทยุ่งกับยศที่อยู่สูงกว่าหรือเท่ากับตัวเอง พอเชิญบอทใหม่ ยศของบอท
+  // กับยศที่สคริปต์สร้างจะได้ position เท่ากันหมด (1) แล้ว Discord ตัดสินด้วยลำดับ
+  // การสร้าง — ยศบอทเกิดก่อนจึงอยู่ล่างสุด สร้างห้องแล้วได้ 403 ทันที
+  // เดิมโค้ดเช็กตอนจบ เลยพังก่อนจะได้เตือน
+  if (apply) {
+    const fixOrder = async () => {
+      const cur = await api("GET", `/guilds/${GUILD_ID}/roles`);
+      const mine = cur.find((r) => r.id === selfRole.id)?.position ?? 0;
+      const managed = ROLES.map((s) => cur.find((r) => r.id === roleIds[s.key])?.position ?? 0);
+      const highest = Math.max(0, ...managed);
+      if (mine > highest) return true;
+      // ยกยศบอทขึ้นเหนือทุกยศที่เราดูแล — ทำได้เฉพาะตอน position เสมอกัน
+      try {
+        await api("PATCH", `/guilds/${GUILD_ID}/roles`, [{ id: selfRole.id, position: highest + 1 }]);
+      } catch {
+        return false;
+      }
+      const after = await api("GET", `/guilds/${GUILD_ID}/roles`);
+      return (after.find((r) => r.id === selfRole.id)?.position ?? 0) > highest;
+    };
+    if (await fixOrder()) {
+      console.log(`\n  ✓ ยศ ${selfRole.name} อยู่เหนือยศที่ระบบดูแลแล้ว`);
+    } else {
+      die(
+        "ยศของบอทอยู่ต่ำกว่า QVX Active — สร้างห้องต่อไม่ได้ และเว็บจะแจกยศไม่ได้",
+        `  Server Settings → Roles → ลากยศ "${selfRole.name}" ขึ้นไปไว้เหนือ QVX Active แล้วรันใหม่`
+      );
     }
   }
 
