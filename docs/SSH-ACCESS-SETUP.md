@@ -42,6 +42,30 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAT2ZveIalnGv/aMy5wpUyBWjosiPWPOzSB3o03ofWGh
 
 fingerprint (ใช้ยืนยันว่าใส่ถูกตัว): `SHA256:C5svglLAw7yvjjhTHZ16oLKw46fIQEaQDndORqT8nRI`
 
+## จะให้เครื่องไหนเป็นตัว SSH เข้า
+
+**เครื่องไหนเป็นตัว SSH ออกไป ต้องเอา public key ของเครื่องนั้นไปใส่ที่คอมเฟิร์ส**
+(ปลายทางเหมือนกันหมด ต่างแค่ key) · ใส่หลาย key พร้อมกันได้ แค่ต้องคนละบรรทัด
+
+- **session รันบน DomeCB** → ใช้ key ของ DomeCB ด้านบน
+- **session รันบน MacBook** → ใช้ key ของ Mac (หาแบบด้านล่าง)
+
+MacBook อยู่ Tailscale วงเดียวกันแล้ว (`macbookpro`, บัญชี phadungdath) — ยิงถึงคอมเฟิร์สได้
+
+**เอา public key ของ Mac** — บน MacBook เปิด Terminal:
+```bash
+cat ~/.ssh/id_ed25519.pub          # ถ้า "No such file" -> ssh-keygen -t ed25519 (Enter รัว ๆ) แล้ว cat ใหม่
+```
+ได้บรรทัด `ssh-ed25519 AAAA... ชื่อ@Mac` — เอาบรรทัดนั้นไปใส่คอมเฟิร์ส (ที่เดียวกับ key อื่น)
+
+fingerprint ของ Mac ไว้ยืนยันตอนใส่ (จาก `ssh-keygen -lf ~/.ssh/id_ed25519.pub` บน Mac):
+`SHA256:__________________ (ยังไม่ได้เติม)`
+
+**เช็กว่าสำเร็จ (จาก Mac):**
+```bash
+ssh -i ~/.ssh/id_ed25519 oneye@100.107.33.82 "hostname"   # ต้องได้ชื่อเครื่อง ไม่ใช่ Permission denied
+```
+
 ## ต้องทำอะไร (ที่หน้าคอมเฟิร์ส · PowerShell แบบ admin)
 
 1. **ซ่อมไฟล์** `C:\ProgramData\ssh\administrators_authorized_keys` ให้แต่ละ key อยู่คนละบรรทัด
