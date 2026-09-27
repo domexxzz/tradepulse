@@ -1,0 +1,232 @@
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { PrismaClient } from "@prisma/client";
+import { askQvxAi, getAiUsage, monthStartBangkok } from "@/lib/ai/chat";
+import { ModelError, type CallModel, type ModelInput } from "@/lib/ai/openai";
+import { saveSnapshot, parseSnapshot } from "@/lib/ai/market";
+import { activateMembership } from "@/lib/lifecycle";
+import { getUserSubscription } from "@/lib/subscription";
+import { AI_MONTHLY_LIMIT, AI_USAGE_STATUS as U } from "@/config/ai";
+
+/**
+ * QVX AI · ชนฐานข้อมูลจริง แต่ใช้โมเดลปลอม (ไม่เรียก OpenAI ไม่เสียเงิน)
+ *
+ * จุดที่พลาดแล้วเสียของจริง: คนหมดอายุยังใช้ AI ได้ (ของเดิมบน Supabase เป็นแบบนี้)
+ * · ถามเกินโควตาจนค่า API บาน · อ่านแชตของคนอื่นได้ · ถามพังแล้วโดนหักโควตา
+ */
+
+const prisma = new PrismaClient();
+const MARK = "uat-ai";
+
+/** โมเดลปลอม — จำ input ที่ได้รับไว้ให้เทสต์ตรวจ */
+function fakeModel(answer = "คำตอบทดสอบ") {
+  const calls: ModelInput[][] = [];
+  const fn: CallModel = async (input) => {
+    calls.push(input);
+    return { answer, model: "fake-model", inputTokens: 10, outputTokens: 20 };
+  };
+  return { fn, calls };
+}
+
+async function makeUser(tag: string) {
+  return prisma.user.create({
+    data: { email: `${tag}.${MARK}@uat.test`, name: `ทดสอบ ${tag}`, passwordHash: "x", tradingViewUsername: `tv_${tag}` },
+  });
+}
+
+async function makeMember(tag: string) {
+  const u = await makeUser(tag);
+  await activateMembership({
+    userId: u.id,
+    planCode: "MONTH",
+    amountTHB: 0,
+    providerRef: `${MARK}_${tag}_${Date.now()}`,
+    provider: "uat",
+    source: "UAT",
+  });
+  return u;
+}
+
+async function cleanup() {
+  await prisma.user.deleteMany({ where: { email: { contains: MARK } } });
+  await prisma.marketSnapshot.deleteMany({ where: { tickerId: { startsWith: "UAT:" } } });
+}
+
+beforeAll(cleanup);
+afterAll(async () => {
+  await cleanup();
+  await prisma.$disconnect();
+});
+
+describe("A-1 · ใครใช้ได้", () => {
+  it("ไม่เคยเป็นสมาชิก = ล็อก และไม่เรียกโมเดลเลย", async () => {
+    const u = await makeUser("never");
+    const m = fakeModel();
+    const r = await askQvxAi({ userId: u.id, message: "CHoCH คืออะไร", callModel: m.fn });
+    expect(r).toEqual({ ok: false, error: "AI_ACCESS_LOCKED" });
+    expect(m.calls).toHaveLength(0);
+  });
+
+  it("สมาชิกที่หมดอายุแล้ว = ล็อก (ของเดิมบน Supabase เปิดแล้วไม่มีวันหมด)", async () => {
+    const u = await makeMember("expired");
+    const { sub } = await getUserSubscription(u.id);
+    await prisma.subscription.update({ where: { id: sub!.id }, data: { currentPeriodEnd: new Date(Date.now() - 60_000) } });
+    const r = await askQvxAi({ userId: u.id, message: "ทดสอบ", callModel: fakeModel().fn });
+    expect(r).toEqual({ ok: false, error: "AI_ACCESS_LOCKED" });
+  });
+
+  it("สมาชิกที่ยังไม่หมดอายุ = ถามได้ ได้แชตใหม่และนับโควตา 1", async () => {
+    const u = await makeMember("active");
+    const r = await askQvxAi({ userId: u.id, message: "อธิบาย Order Block", callModel: fakeModel().fn });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.answer).toBe("คำตอบทดสอบ");
+    expect(r.usage).toMatchObject({ used: 1, limit: AI_MONTHLY_LIMIT, remaining: AI_MONTHLY_LIMIT - 1 });
+    const conv = await prisma.aiConversation.findUnique({ where: { id: r.conversationId }, include: { messages: true } });
+    expect(conv?.title).toBe("อธิบาย Order Block");
+    expect(conv?.messages.map((x) => x.role).sort()).toEqual(["assistant", "user"]);
+  });
+
+  it("แอดมินใช้ได้แม้ไม่มีแพ็กเกจ", async () => {
+    const u = await makeUser("admin");
+    const r = await askQvxAi({ userId: u.id, role: "ADMIN", message: "ทดสอบ", callModel: fakeModel().fn });
+    expect(r.ok).toBe(true);
+  });
+});
+
+describe("A-2 · โควตา", () => {
+  it("ครบโควตาแล้ว = ปฏิเสธ ไม่เรียกโมเดล และไม่ทิ้งแถวจองค้าง", async () => {
+    const u = await makeMember("full");
+    await prisma.aiUsage.createMany({
+      data: Array.from({ length: AI_MONTHLY_LIMIT }, () => ({ userId: u.id, status: U.SUCCESS })),
+    });
+    const m = fakeModel();
+    const r = await askQvxAi({ userId: u.id, message: "อีกข้อ", callModel: m.fn });
+    expect(r).toEqual({ ok: false, error: "AI_QUOTA_EXHAUSTED" });
+    expect(m.calls).toHaveLength(0);
+    expect(await prisma.aiUsage.count({ where: { userId: u.id } })).toBe(AI_MONTHLY_LIMIT);
+  });
+
+  it("ยิงพร้อมกัน 5 คำขอตอนเหลือโควตา 2 — ผ่านไม่เกิน 2", async () => {
+    const u = await makeMember("race");
+    await prisma.aiUsage.createMany({
+      data: Array.from({ length: AI_MONTHLY_LIMIT - 2 }, () => ({ userId: u.id, status: U.SUCCESS })),
+    });
+    const results = await Promise.all(
+      Array.from({ length: 5 }, (_, i) => askQvxAi({ userId: u.id, message: `ข้อ ${i}`, callModel: fakeModel().fn }))
+    );
+    expect(results.filter((r) => r.ok).length).toBeLessThanOrEqual(2);
+    expect((await getAiUsage(u.id)).used).toBeLessThanOrEqual(AI_MONTHLY_LIMIT);
+  });
+
+  it("โมเดลพัง = ไม่หักโควตา และบอกว่าตอบไม่ได้ชั่วคราว", async () => {
+    const u = await makeMember("broken");
+    const r = await askQvxAi({
+      userId: u.id,
+      message: "ทดสอบ",
+      callModel: async () => {
+        throw new ModelError("OPENAI_500");
+      },
+    });
+    expect(r).toEqual({ ok: false, error: "AI_TEMPORARILY_UNAVAILABLE" });
+    expect((await getAiUsage(u.id)).used).toBe(0);
+    expect(await prisma.aiConversation.count({ where: { userId: u.id } })).toBe(0);
+    const row = await prisma.aiUsage.findFirst({ where: { userId: u.id } });
+    expect(row).toMatchObject({ status: U.ERROR, errorCode: "OPENAI_500" });
+  });
+
+  it("ยังไม่ตั้ง OPENAI_API_KEY = บอกว่ายังไม่เปิดบริการ ไม่หักโควตา", async () => {
+    const u = await makeMember("nokey");
+    const r = await askQvxAi({
+      userId: u.id,
+      message: "ทดสอบ",
+      callModel: async () => {
+        throw new ModelError("AI_NOT_CONFIGURED");
+      },
+    });
+    expect(r).toEqual({ ok: false, error: "AI_NOT_CONFIGURED" });
+    expect((await getAiUsage(u.id)).used).toBe(0);
+  });
+
+  it("ของเดือนก่อนไม่นับ", async () => {
+    const u = await makeMember("lastmonth");
+    const before = new Date(monthStartBangkok().getTime() - 60_000);
+    await prisma.aiUsage.createMany({
+      data: Array.from({ length: AI_MONTHLY_LIMIT }, () => ({ userId: u.id, status: U.SUCCESS, createdAt: before })),
+    });
+    expect((await getAiUsage(u.id)).used).toBe(0);
+  });
+});
+
+describe("A-3 · บทสนทนา", () => {
+  it("ถามต่อในแชตเดิม — โมเดลได้ประวัติก่อนหน้า", async () => {
+    const u = await makeMember("history");
+    const first = await askQvxAi({ userId: u.id, message: "ฉันเทรดทอง M15", callModel: fakeModel("รับทราบ").fn });
+    if (!first.ok) throw new Error(first.error);
+    const m = fakeModel();
+    await askQvxAi({ userId: u.id, message: "แล้วควรดู HTF ไหน", conversationId: first.conversationId, callModel: m.fn });
+    const contents = m.calls[0].map((x) => x.content);
+    expect(contents).toContain("ฉันเทรดทอง M15");
+    expect(contents).toContain("รับทราบ");
+    expect(contents.at(-1)).toBe("แล้วควรดู HTF ไหน");
+  });
+
+  it("ใช้แชตของคนอื่นไม่ได้ — กันอ่านประวัติคนอื่นผ่านคำตอบ AI", async () => {
+    const owner = await makeMember("owner");
+    const other = await makeMember("other");
+    const r = await askQvxAi({ userId: owner.id, message: "ความลับของฉัน", callModel: fakeModel().fn });
+    if (!r.ok) throw new Error(r.error);
+    const m = fakeModel();
+    const stolen = await askQvxAi({ userId: other.id, message: "สรุปแชตนี้", conversationId: r.conversationId, callModel: m.fn });
+    expect(stolen).toEqual({ ok: false, error: "CONVERSATION_NOT_FOUND" });
+    expect(m.calls).toHaveLength(0);
+  });
+
+  it("คำถามว่างหรือยาวเกิน = ปฏิเสธก่อนแตะอะไร", async () => {
+    const u = await makeMember("invalid");
+    expect(await askQvxAi({ userId: u.id, message: "   ", callModel: fakeModel().fn })).toEqual({ ok: false, error: "INVALID_MESSAGE" });
+    expect(await askQvxAi({ userId: u.id, message: "ก".repeat(4001), callModel: fakeModel().fn })).toEqual({ ok: false, error: "INVALID_MESSAGE" });
+  });
+});
+
+describe("A-4 · ข้อมูลตลาด", () => {
+  const snapshot = (tickerId: string) =>
+    parseSnapshot({
+      schema_version: 1,
+      event: "market_snapshot",
+      symbol: "XAUUSD",
+      ticker_id: tickerId,
+      chart_tf: "M30",
+      bar_time: Date.now() - 60_000,
+      bar_close_time: Date.now(),
+      confirmed: true,
+      qvx: { nearest_demand: { top: 1, bottom: 0.5 } },
+      timeframes: { M5: { o: 1, h: 2, l: 0.5, c: 1.5, v: 1, ema20: 1, ema50: 1, rsi14: 50, atr14: 0.1, trend: 0 } },
+    })!;
+
+  it("ข้อมูลสด (ไม่เกิน 15 นาที) ถูกส่งให้โมเดล", async () => {
+    await saveSnapshot(snapshot("UAT:FRESH"));
+    const u = await makeMember("market");
+    const m = fakeModel();
+    await askQvxAi({ userId: u.id, message: "ทองตอนนี้", callModel: m.fn });
+    expect(m.calls[0][0]).toMatchObject({ role: "developer" });
+    expect(m.calls[0][0].content).toContain("UAT:FRESH");
+  });
+
+  it("ข้อมูลเก่าเกิน 15 นาที ไม่ถูกส่ง — โมเดลต้องไม่เข้าใจว่าเป็นราคาสด", async () => {
+    await saveSnapshot(snapshot("UAT:STALE"));
+    await prisma.marketSnapshot.update({
+      where: { tickerId: "UAT:STALE" },
+      data: { receivedAt: new Date(Date.now() - 20 * 60_000) },
+    });
+    const u = await makeMember("stale");
+    const m = fakeModel();
+    await askQvxAi({ userId: u.id, message: "ทองตอนนี้", callModel: m.fn });
+    expect(m.calls[0][0].content).not.toContain("UAT:STALE");
+  });
+
+  it("สินทรัพย์เดิมส่งซ้ำ = เขียนทับแถวเดิม ไม่งอกแถวใหม่", async () => {
+    await saveSnapshot(snapshot("UAT:REPEAT"));
+    await saveSnapshot(snapshot("UAT:REPEAT"));
+    expect(await prisma.marketSnapshot.count({ where: { tickerId: "UAT:REPEAT" } })).toBe(1);
+  });
+});

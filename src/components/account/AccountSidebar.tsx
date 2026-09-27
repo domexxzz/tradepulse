@@ -4,7 +4,7 @@
 // build ผ่านแต่พังตอนรันจริง ถ้าลืมบรรทัดนี้
 import {
   LayoutDashboard, CreditCard, LineChart, ReceiptText,
-  ScrollText, MessageCircle, Star, Hash, ShieldCheck, Landmark } from "lucide-react";
+  ScrollText, MessageCircle, Star, Hash, ShieldCheck, Landmark, Bot } from "lucide-react";
 import { PortalNav, type NavLink } from "@/components/portal/PortalNav";
 
 const links: NavLink[] = [
@@ -12,6 +12,7 @@ const links: NavLink[] = [
   { href: "/account/subscription", label: "แพ็คเกจของฉัน", icon: CreditCard },
   { href: "/account/wisdom", label: "รับสิทธิ์ผ่าน Wisdom", icon: Landmark },
   { href: "/account/tradingview", label: "TradingView", icon: LineChart },
+  { href: "/account/ai", label: "QVX AI", icon: Bot },
   { href: "/account/discord", label: "Discord", icon: Hash },
   { href: "/account/orders", label: "ประวัติออเดอร์", icon: ScrollText },
   { href: "/account/billing", label: "ประวัติการชำระ", icon: ReceiptText },

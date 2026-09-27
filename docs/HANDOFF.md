@@ -140,6 +140,7 @@ git status -sb          # ถ้าขึ้น behind ให้ git rebase orig
 | `/account/subscription` | สถานะแพ็กเกจ วันหมดอายุ ราคาที่ล็อกไว้ |
 | `/account/billing` · `/account/orders` · `/account/pay/[id]` | ชำระเงิน / ประวัติ / หน้าจ่ายรายออเดอร์ (QR + แนบสลิป) |
 | `/account/tradingview` | กรอก TradingView username → ระบบเรียกบอทให้สิทธิ์เอง |
+| `/account/ai` | **QVX AI** แชตผู้ช่วยการเทรด · ใช้ได้เมื่อสิทธิ์ยังไม่หมด · 300 คำถาม/เดือน — `docs/QVX_AI.md` |
 | `/account/discord` | ผูกบัญชี Discord → ได้ยศตามแพ็กเกจ |
 | `/account/reviews` | เขียนรีวิว (แอดมินอนุมัติก่อนขึ้นเว็บ) |
 | `/account/support` | ช่องทางช่วยเหลือ |
@@ -219,6 +220,7 @@ Vercel preview บอกได้แค่ว่า build ผ่านไหม 
 
 **`POST /api/entitlement`** (PR #7) — ให้ระบบ **QVX AI** ของพาร์ตเนอร์มาถามว่าใครมีสิทธิ์อยู่
 เพราะระบบนั้นไม่มีงานตามเวลาปิดสิทธิ์เอง ถ้าไม่ถามที่นี่ สิทธิ์ฝั่งนั้นจะไม่มีวันหมด
+> 27 ก.ย.: QVX AI ย้ายมาอยู่ในเว็บนี้แล้ว (`/account/ai` · `docs/QVX_AI.md`) endpoint นี้เก็บไว้เผื่อระบบพาร์ตเนอร์อื่น
 
 - secret รับผ่าน `Authorization: Bearer` เท่านั้น · env ใหม่ **`PARTNER_API_SECRET`** ไม่ตั้ง = ปิดตาย (503)
 - อีเมลที่ไม่มีในระบบตอบเหมือนคนหมดอายุทุกประการ กันไล่เช็กว่าใครเป็นลูกค้า
@@ -292,6 +294,7 @@ commit ไฟล์ลง `public/` → push → รอ deploy → บนเค�
 | **Resend** | อีเมล (REST ตรง ไม่เพิ่ม dependency) · ผู้ส่ง `QVX <no-reply@quantvisionx.com>` | `docs/EMAIL.md` |
 | **Discord** | ให้ยศตามแพ็กเกจ · webhook ต้องใช้ `discord.com` ไม่ใช่ `discordapp.com` (โดน Cloudflare 1010) | `docs/DISCORD.md` |
 | **EasySlip** | ตรวจสลิปอัตโนมัติ (ไม่บังคับ) + ตรวจผู้รับเงิน/ความสดของสลิป | `docs/SLIP.md` |
+| **OpenAI** | สมองของ QVX AI (`OPENAI_API_KEY` บัญชี QVX) · ราคาสดรับจาก TradingView ทาง `/api/market/snapshot` | `docs/QVX_AI.md` |
 | **Stripe** | ทางเลือกชำระเงิน — ค่าเริ่มต้นคือ QR (`NEXT_PUBLIC_PAYMENT_MODE` ไม่ตั้ง = `"qr"`) | `docs/PAYMENTS.md` |
 
 ---
@@ -471,6 +474,7 @@ commit ไฟล์ลง `public/` → push → รอ deploy → บนเค�
 | ไฟล์ | เรื่อง |
 |---|---|
 | `docs/TRADINGVIEW.md` | บอท TradingView ทั้งหมด — กับดักเยอะที่สุดในโปรเจกต์ |
+| `docs/QVX_AI.md` | QVX AI — สิทธิ์ · โควตา · env · ย้าย webhook ราคาสดจาก Supabase ของน็อต |
 | `docs/MIGRATE.md` | เปลี่ยนบัญชี TradingView / บอท Telegram · ค่าลับหลุดต้องเปลี่ยนอะไร |
 | `docs/SETUP.md` | ตั้งค่าเครื่อง dev + วิธีเปิด Postgres ด้วย Docker สำหรับ UAT |
 | `docs/TELEGRAM.md` | บอท/กลุ่ม/webhook/ผูกบัญชี |
