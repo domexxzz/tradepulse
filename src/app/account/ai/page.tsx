@@ -2,7 +2,8 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { canUseAi, getAiUsage } from "@/lib/ai/chat";
-import { aiConfigured } from "@/lib/ai/openai";
+import { aiEngineStatus } from "@/lib/ai/gateway";
+import { liveMarkets } from "@/lib/ai/market";
 import { AiChat } from "@/components/account/AiChat";
 import { Lock, MessageSquarePlus } from "lucide-react";
 
@@ -51,7 +52,7 @@ export default async function AccountAiPage({
     );
   }
 
-  const [usage, conversations, current] = await Promise.all([
+  const [usage, conversations, current, engine, live] = await Promise.all([
     getAiUsage(userId),
     prisma.aiConversation.findMany({
       where: { userId },
@@ -64,10 +65,12 @@ export default async function AccountAiPage({
           where: { id: c, userId },
           select: {
             id: true,
-            messages: { orderBy: { createdAt: "asc" }, select: { id: true, role: true, content: true } },
+            messages: { orderBy: { createdAt: "asc" }, select: { id: true, role: true, content: true, sources: true } },
           },
         })
       : null,
+    aiEngineStatus(),
+    liveMarkets(),
   ]);
 
   return (
@@ -108,9 +111,12 @@ export default async function AccountAiPage({
             id: m.id,
             role: m.role === "assistant" ? "assistant" : "user",
             content: m.content,
+            sources: m.sources,
           }))}
           initialUsage={usage}
-          available={aiConfigured()}
+          available={engine.available}
+          engine={{ local: engine.local.up, cloud: engine.cloud.configured }}
+          live={live}
           notFound={Boolean(c) && !current}
         />
       </div>

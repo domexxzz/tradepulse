@@ -12,6 +12,8 @@ import { emailEnabled } from "@/lib/email";
 import { slipVerifyEnabled, slipAutoApprove } from "@/lib/slip-verify";
 import { promptpayEnabled } from "@/lib/promptpay";
 import { stripeEnabled } from "@/lib/stripe";
+import { aiEngineStatus } from "@/lib/ai/gateway";
+import { liveMarkets } from "@/lib/ai/market";
 
 export type Health = "ok" | "warn" | "off" | "down";
 
@@ -96,11 +98,36 @@ function configRow(name: string, on: boolean, onText: string, offText: string, a
 
 /** ตรวจทุกระบบพร้อมกัน — ตัวที่ต้องยิงเน็ตมี timeout คุมอยู่แล้ว */
 export async function getSystemStatus(): Promise<StatusRow[]> {
-  const [bridge, telegram] = await Promise.all([checkTradingViewBridge(), checkTelegram()]);
+  const [bridge, telegram, ai, live] = await Promise.all([
+    checkTradingViewBridge(),
+    checkTelegram(),
+    aiEngineStatus(),
+    liveMarkets(),
+  ]);
 
   return [
     bridge,
     telegram,
+    {
+      name: "QVX AI",
+      health: ai.local.up && ai.cloud.configured ? "ok" : ai.available ? "warn" : "down",
+      detail: ai.local.up
+        ? ai.cloud.configured
+          ? "เครื่องบ้าน (gemma3) ตอบอยู่ · มีคลาวด์สำรอง"
+          : "เครื่องบ้าน (gemma3) ตอบอยู่ · ⚠️ ไม่มีตัวสำรอง ถ้าคอมเบสดับ AI จะดับ"
+        : ai.cloud.configured
+          ? "⚠️ เครื่องบ้านไม่ตอบ — ใช้คลาวด์สำรองอยู่ (เสียค่า API)"
+          : "❌ ตอบไม่ได้ — เครื่องบ้านไม่ตอบและไม่มีคลาวด์สำรอง",
+      action: ai.local.up ? (ai.cloud.configured ? undefined : "ตั้ง OPENAI_API_KEY (Grok/OpenAI) ไว้เป็นตัวสำรอง") : "เช็กคอมเบส: task QVXAIGateway + QVXAIKeeper (docs/QVX_AI.md)",
+    },
+    {
+      name: "ข้อมูลกราฟสดให้ AI",
+      health: live.length ? "ok" : "warn",
+      detail: live.length
+        ? `รับอยู่: ${live.map((m) => `${m.symbol} ${m.chartTf}`).join(", ")}`
+        : "ยังไม่มีข้อมูลล่าสุด — AI ตอบจากความรู้อย่างเดียว",
+      action: live.length ? undefined : "ตั้ง MARKET_WEBHOOK_TOKEN + alert QVX AI บน TradingView ชี้มาที่ /api/market/snapshot",
+    },
     configRow("ยศ Discord", discordBotEnabled, "ให้ยศอัตโนมัติเมื่ออนุมัติสลิป", "ยังไม่ได้ตั้งบอท", "ดู docs/DISCORD.md"),
     configRow(
       "อีเมล",

@@ -17,7 +17,8 @@ export const dynamic = "force-dynamic";
 
 const schema = z.object({
   secret: z.string().max(256),
-  role: z.enum(["primary", "backup"]),
+  // "ai" = gateway ของ QVX AI บนเครื่องบ้าน (src/lib/ai/gateway.ts) ใช้ตารางและ secret เดียวกับบอท
+  role: z.enum(["primary", "backup", "ai"]),
   url: z.string().max(200),
 });
 

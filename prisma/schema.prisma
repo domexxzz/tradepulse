@@ -372,6 +372,10 @@ model AiMessage {
   role           String
   content        String
   model          String?
+  /**
+   * หัวข้อความรู้ (RAG) ที่คำตอบนี้อ้างอิง — โชว์เป็นชิปใต้คำตอบ รวมถึงตอนเปิดประวัติแชต
+   */
+  sources        String[]       @default([])
   createdAt      DateTime       @default(now())
 
   @@index([conversationId, createdAt])
