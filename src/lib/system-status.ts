@@ -5,7 +5,7 @@
  * และบางตัวหายไปเงียบ ๆ ได้ เช่นเครื่องที่รันบอทถูกปิดตอนกลางคืน
  * ถ้าไม่มีหน้าให้ดู แอดมินจะรู้ตัวอีกทีตอนลูกค้าทัก
  */
-import { tvAutoGrantEnabled } from "@/lib/tradingview";
+import { bridgeUrls, tvAutoGrantEnabled } from "@/lib/tradingview";
 import { telegramEnabled, telegramGroupManaged } from "@/lib/telegram";
 import { discordBotEnabled } from "@/lib/discord";
 import { emailEnabled } from "@/lib/email";
@@ -35,7 +35,8 @@ async function checkTradingViewBridge(): Promise<StatusRow> {
     };
   }
 
-  const url = `${process.env.TV_BOT_URL?.replace(/\/$/, "")}/health`;
+  // ดูตัวที่เว็บจะยิงจริง (ตัวที่บอทรายงานเข้ามาก่อน env)
+  const url = `${(await bridgeUrls()).primary}/health`;
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(6000), cache: "no-store" });
     const data = (await res.json().catch(() => null)) as

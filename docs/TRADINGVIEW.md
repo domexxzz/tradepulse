@@ -480,6 +480,26 @@ Select-String -Path C:\BotTV\cf.log -Pattern "trycloudflare.com"
 
 **ทดสอบผ่าน:** URL เปลี่ยน → `vercel env updated` + `redeploy triggered` → health `primaryUp:true`
 
+### บอทรายงาน URL เข้าเว็บเอง — ไม่ต้องมี Vercel token (27 ก.ย. 2569)
+
+keeper เรียก `POST https://quantvisionx.com/api/tradingview/register` ด้วย `{secret, role, url}`
+ตอน URL เปลี่ยนและทุก 5 นาที · `secret` = `TV_BOT_SECRET` อ่านจาก `.env` ของบอท (`-BotEnv`)
+· `role` = `primary` (ค่าเริ่มต้น) หรือ `backup` (เมื่อ `-EnvKey TV_BOT_URL_BACKUP`)
+
+เว็บเก็บไว้ในตาราง `BridgeEndpoint` แล้ว **ใช้ค่านี้ก่อน env ทันที ไม่ต้อง redeploy**
+ถ้าไม่ได้รายงานเกิน 15 นาที (เครื่องดับ) เว็บกลับไปใช้ `TV_BOT_URL` / `TV_BOT_URL_BACKUP` ตามเดิม
+
+- ยอมรับเฉพาะ `https://*.trycloudflare.com` และ `https://*.*.ts.net` — ถือ secret ก็ชี้เว็บไปที่อื่นไม่ได้
+- secret ผิด 10 ครั้ง/10 นาที/IP โดนเบรก
+- **ไม่ต้องวาง Vercel token บนเครื่องบอทอีกแล้ว** token นั้นคุมบัญชี Vercel ได้ทั้งหมด ไม่ควรอยู่บนคอมที่บ้าน
+  (ถ้ามี `vercel_token.txt` อยู่แล้ว keeper ยังอัป env ให้ด้วยเป็นทางสำรอง — คอมเฟิร์สเดิม)
+
+ดูว่าเว็บใช้ URL ไหนอยู่ (ฐาน production):
+
+```sql
+select role, url, "lastSeenAt" from "BridgeEndpoint";
+```
+
 ### ใช้บนคอมเบส (ตัวสำรอง) — 27 ก.ย. 2569
 
 สคริปต์เดียวกัน ส่งพารามิเตอร์ต่างกัน (ค่าเริ่มต้น = แบบคอมเฟิร์สเดิม):
@@ -492,12 +512,12 @@ Select-String -Path C:\BotTV\cf.log -Pattern "trycloudflare.com"
 
 - เปิดตอน login ด้วย task `QVXBotKeeper` (Interactive only) → `C:\BotTV\keeper-backup.ps1`
 - keeper นับเฉพาะ cloudflared ที่ชี้ `127.0.0.1:8787` — เครื่องนี้มี tunnel ของโปรเจกต์อื่นรันอยู่ด้วย
-- token อ่านตอนจะใช้ วาง `vercel_token.txt` ทีหลังได้โดยไม่ต้องรีสตาร์ต keeper
+- `-BotEnv "C:\Users\User\OneDrive\Desktop\Bot Tradingview\.env"` ให้ keeper อ่าน `TV_BOT_SECRET` ไปรายงานเข้าเว็บ
 - redeploy เลือก production ตัวล่าสุดที่ **READY** (ตัวล่าสุดอาจโดนบล็อก/พัง redeploy ซ้ำก็พังซ้ำ)
 
-**ทดสอบผ่าน:** tunnel ขึ้น → ยิงจากภายนอกได้ `/health` 200 · รอวาง token เพื่อทดสอบขั้นอัป Vercel
+**ทดสอบผ่าน:** tunnel ขึ้น → ยิงจากภายนอกได้ `/health` 200 → เว็บเห็น `backupUp:true`
 
-วาง token จาก Mac โดยไม่ให้ค่าโผล่บนจอหรือใน history:
+(ไม่จำเป็นแล้ว) ถ้าอยากให้ keeper อัป env บน Vercel ด้วย — วาง token จาก Mac โดยไม่ให้ค่าโผล่บนจอ:
 
 ```bash
 read -rs "T?Vercel token: " && printf %s "$T" | ssh user@100.125.194.10 "powershell -NoProfile -Command \"[IO.File]::WriteAllText('C:\BotTV\vercel_token.txt', [Console]::In.ReadToEnd())\"" ; unset T
