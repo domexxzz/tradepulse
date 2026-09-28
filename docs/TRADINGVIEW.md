@@ -756,3 +756,25 @@ python botpatch.py
 ของเครื่องบอทให้คนนอกเห็น — **ลบได้ทันทีที่ patch ติดตั้งเสร็จ**
 
 `botpatch2.py` กับ `botpatch2.ps1` ของรอบก่อนถูกลบไปแล้ว
+
+## ⚠️ ห้ามเปิด botkeeper ผ่าน SSH
+
+Windows ฆ่า process ลูกทิ้งเมื่อ SSH session หลุด — เปิด keeper ผ่าน SSH แล้วมันจะตายภายในไม่กี่นาที
+โดยไม่มีอะไรฟ้อง **เคยทำให้บริดจ์หยุดรายงานตัว 14 ชั่วโมง** (27 ก.ย. 22:08 — 28 ก.ย. 12:28)
+บริดจ์ยังตอบอยู่ก็จริง แต่ไม่มีใครบอกเว็บว่า URL คืออะไร ถ้า tunnel เปลี่ยน URL เมื่อไหร่คือดับเงียบ
+
+เปิดผ่าน Task Scheduler แทน:
+
+```bash
+ssh oneye@100.107.33.82 'powershell -NoProfile -Command "Start-ScheduledTask -TaskName QVXKeeperWatchdog"'
+```
+
+ตัวเฝ้า `QVXKeeperWatchdog` เช็คทุก 10 นาที ถ้า keeper ไม่อยู่จะเปิดให้เอง
+(`scripts/bot/keeper-watchdog.ps1` · log ที่ `C:\BotTV\watchdog.log`)
+
+เช็กว่ายังทำงาน:
+
+```bash
+ssh oneye@100.107.33.82 'powershell -NoProfile -Command "Get-ScheduledTaskInfo -TaskName QVXKeeperWatchdog | Select-Object LastRunTime,LastTaskResult,NextRunTime | Format-List; Get-Content C:\BotTV\watchdog.log -Tail 5"'
+```
+
