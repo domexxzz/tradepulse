@@ -43,7 +43,21 @@ const api = async (path, init = {}) => {
     headers: { authorization: `Bearer ${token}`, ...init.headers },
   });
   const body = await res.text();
-  if (!res.ok) throw new Error(`${init.method || "GET"} ${path} → ${res.status}\n${body}`);
+  if (!res.ok) {
+    // 401/403 เกือบทุกครั้งแปลว่า token ถูกเพิกถอนหรือหมดอายุ ไม่ใช่โค้ดมีปัญหา
+    // ถ้าไม่ดักตรงนี้ จะได้ JSON ดิบยาว ๆ ที่อ่านแล้วนึกว่า deploy พัง
+    if (res.status === 401 || res.status === 403) {
+      throw new Error(
+        `token ใช้ไม่ได้แล้ว (HTTP ${res.status}) — โดนเพิกถอนหรือหมดอายุ\n\n` +
+          `ออก token ใหม่ที่ https://vercel.com/account/tokens (scope: tradepulse)\n` +
+          `แล้วรันในโฟลเดอร์โปรเจกต์:\n` +
+          `  pbpaste > .vercel-token && chmod 600 .vercel-token && gh secret set VERCEL_TOKEN < .vercel-token\n\n` +
+          `เว็บที่รันอยู่ไม่ได้รับผลกระทบ — deployment เดิมยังเสิร์ฟตามปกติ\n` +
+          `คำตอบจาก Vercel: ${body.slice(0, 300)}`,
+      );
+    }
+    throw new Error(`${init.method || "GET"} ${path} → ${res.status}\n${body}`);
+  }
   return body ? JSON.parse(body) : null;
 };
 
