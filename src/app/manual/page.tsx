@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BookOpen, ArrowRight } from "lucide-react";
+import { BookOpen, ArrowRight, FileText } from "lucide-react";
 import { site } from "@/config/site";
 import { MANUAL_CHAPTERS } from "@/config/manual";
 import { JsonLd } from "@/components/seo/JsonLd";
@@ -74,7 +74,23 @@ export default function ManualIndexPage() {
         ))}
       </ol>
 
-      <div className="card-surface mt-10 rounded-2xl p-5 text-sm leading-relaxed text-muted">
+      {/* คู่มือเล่มที่สอง — คนละเรื่องกับ 10 บทข้างบน จึงแยกการ์ดให้เห็นชัด ไม่ปนในสารบัญ */}
+      <Link
+        href="/manual/open-account"
+        className="card-surface group mt-10 flex items-start gap-4 rounded-2xl border-up/25 p-5 transition hover:border-up/50"
+      >
+        <FileText className="mt-0.5 h-6 w-6 shrink-0 text-up" />
+        <span className="min-w-0 flex-1">
+          <span className="block text-xs text-muted">คู่มืออีกเล่ม · ภาพทุกขั้นตอน</span>
+          <span className="mt-0.5 block font-display text-lg font-bold">เปิดบัญชี ฝาก–ถอนเงิน กับโบรก Wisdom</span>
+          <span className="mt-1 block text-sm leading-relaxed text-muted">
+            ตั้งแต่สมัครสมาชิก ยืนยันตัวตน KYC เปิดบัญชีจริง MT5 ฝากเงินผ่าน 24Pay จนถึงการถอนเงิน
+          </span>
+        </span>
+        <ArrowRight className="mt-1 h-5 w-5 shrink-0 text-muted transition group-hover:translate-x-0.5 group-hover:text-up" />
+      </Link>
+
+      <div className="card-surface mt-6 rounded-2xl p-5 text-sm leading-relaxed text-muted">
         <p className="font-medium text-foreground">อยากได้รายละเอียดเพิ่ม</p>
         <p className="mt-2">
           <Link href="/features" className="text-up hover:underline">
