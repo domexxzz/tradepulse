@@ -11,7 +11,10 @@
  *   วิธีแก้ถาวรคือเพิ่ม electiction เข้าโปรเจกต์บน Vercel (หรือย้ายโปรเจกต์
  *   มาบัญชีเบส) แล้วเลิกใช้ไฟล์นี้ได้เลย ระหว่างที่ยังไม่ได้ทำ ใช้อันนี้ไปก่อน
  *
- * วิธีใช้
+ * ปกติไม่ต้องรันเอง — job `deploy` ใน .github/workflows/ci.yml เรียกให้อัตโนมัติ
+ * ทุกครั้งที่ merge เข้า main (ใช้ repo secret VERCEL_TOKEN)
+ *
+ * รันเองเมื่อ Actions ล่มหรืออยากดันด่วน
  *   1. เก็บ token ไว้ในไฟล์ (อย่าพิมพ์ token ลงบรรทัดคำสั่ง เดี๋ยวติดใน history)
  *        pbpaste > .vercel-token     # copy token มาจาก Vercel ก่อน
  *        chmod 600 .vercel-token
