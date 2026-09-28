@@ -33,6 +33,11 @@ export function Footer() {
             ))}
             <li><Link href="/features" className="hover:text-foreground">ฟีเจอร์ทั้งหมด (รายตัว)</Link></li>
             <li><Link href="/guide" className="hover:text-foreground">คู่มือตั้งค่าและวิธีใช้</Link></li>
+            <li>
+              <Link href="/manual" className="hover:text-foreground">
+                คู่มือเรียนรู้ทีละขั้น
+              </Link>
+            </li>
           </ul>
         </nav>
 
