@@ -40,6 +40,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # โฟลเดอร์โปรเจกต์อยู่บน Desktop ที่ iCloud sync อยู่ มันสร้างไฟล์ก๊อปชื่อลงท้าย
+      # " 2" ขึ้นมาเองหลังเขียนไฟล์ชุดใหญ่ ซึ่งเคยหลุดเข้าไปใน .next/types/ แล้วทำให้
+      # tsc แดงด้วย "Duplicate identifier" มาแล้ว ถ้าหลุดเข้ารีโปจะพังแบบหาสาเหตุยาก
+      #
+      # ไม่ใส่ pattern นี้ใน .gitignore เพราะจะกลบไฟล์จริงที่บังเอิญชื่อลงท้ายด้วยเลข
+      # ตอนเขียนด่านนี้ไม่มีไฟล์ที่ติดตามอยู่ชื่อมีช่องว่างเลยสักไฟล์ จึงไม่มี false positive
+      - name: กันไฟล์ก๊อปจาก iCloud หลุดเข้ารีโป
+        run: |
+          dupes=$(git ls-files | grep -E ' [0-9]+(\.[^/]+)?$' || true)
+          if [ -n "$dupes" ]; then
+            echo "เจอไฟล์ก๊อปที่ถูก commit เข้ามา:"
+            echo "$dupes" | sed 's/^/  /'
+            echo ""
+            echo "ไฟล์พวกนี้มาจาก iCloud ไม่ใช่งานจริง — ลบแล้ว commit ใหม่"
+            exit 1
+          fi
+          echo "ไม่มีไฟล์ก๊อป"
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
