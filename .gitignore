@@ -73,3 +73,6 @@ __pycache__/
 # ไฟล์ต้นฉบับของสื่อ (ภาพ snapshot, คลิปก่อนบีบ) — ใหญ่และไม่ได้ใช้บนหน้าเว็บโดยตรง
 # เก็บไว้นอก public/ เพื่อไม่ให้ถูกเสิร์ฟออกเว็บ ดูรายละเอียดที่ media-src/README.txt
 media-src/
+
+# token สำหรับ scripts/deploy-vercel.mjs — ห้าม commit
+.vercel-token
