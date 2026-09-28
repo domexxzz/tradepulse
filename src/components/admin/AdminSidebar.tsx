@@ -4,7 +4,8 @@
 // build ผ่านแต่พังตอนรันจริง ถ้าลืมบรรทัดนี้
 import {
   LayoutDashboard, Users, ClipboardCheck, Star,
-  CreditCard, Send, Receipt, Mail, Activity, Settings, Landmark } from "lucide-react";
+  CreditCard, Send, Receipt, Mail, Activity, Settings, Landmark,
+  Sparkles, ExternalLink } from "lucide-react";
 import { PortalNav, type NavLink } from "@/components/portal/PortalNav";
 
 /**
@@ -21,8 +22,11 @@ const links: NavLink[] = [
   { href: "/admin/reviews", label: "รีวิว", icon: Star },
   { href: "/admin/subscribers", label: "ผู้รับข่าวสาร", icon: Mail },
   { href: "/admin/plans", label: "แพ็คเกจ", icon: CreditCard },
+  { href: "/admin/ai", label: "ถาม AI (แอดมิน)", icon: Sparkles },
   { href: "/admin/system", label: "สถานะระบบ", icon: Activity },
   { href: "/admin/settings", label: "บัญชีแอดมิน", icon: Settings },
+  // ข้ามไปโซนสมาชิก — แอดมินต้องเข้าไปดูมุมลูกค้าบ่อย แต่เมนูสองโซนแยกกันคนละชุด
+  { href: "/account/ai", label: "QVX AI (มุมสมาชิก)", icon: ExternalLink },
 ];
 
 export function AdminSidebar() {
