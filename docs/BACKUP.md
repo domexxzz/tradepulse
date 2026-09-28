@@ -90,11 +90,33 @@ $PGB/pg_restore -d "<connection string ของฐานข้อมูลเ�
 ถ้าวันหนึ่งอยากลดความเสี่ยง เปลี่ยน `DATABASE_URL` ใน `backup.env` ให้ชี้ `qvx_backup` ได้ทันที
 ไม่ต้องแก้สคริปต์
 
-## ยังไม่ได้ทำ
+## ทดสอบกู้คืนซ้ำเมื่อไหร่ก็ได้
 
-- **แจ้งเตือน Telegram** — สคริปต์พร้อมแล้ว แต่ `TELEGRAM_CHAT_ID` ยังว่าง
-  บอทคือ `@BMTradingViewIndicator_Bot` (โทเคนอยู่ใน `C:\BotTV\.env`) หา chat id อัตโนมัติไม่ได้
-  เพราะบอทใช้ webhook อยู่ — ต้องเอา `TELEGRAM_ADMIN_CHAT_ID` จาก Vercel มาเติมเอง
-  **จนกว่าจะเติม การสำรองล้มเหลวจะเงียบ** ต้องเข้าไปดู `STATUS.txt` เอง
+`scripts/backup/verify-restore.ps1` (วางไว้ที่ `C:\QVXBackup\verify-restore.ps1`)
+ยกฐานข้อมูลชั่วคราวบนเครื่องนั้น กู้ไฟล์ล่าสุดลงไปจริง นับแถว แล้วลบทิ้ง
+ไม่ต้องขนข้อมูลลูกค้าออกจากเครื่อง และไม่แตะ production
+
+```bash
+ssh oneye@100.107.33.82 'powershell -NoProfile -ExecutionPolicy Bypass -File C:\QVXBackup\verify-restore.ps1'
+```
+
+**ตอนนี้รันไม่ได้** — PostgreSQL บนคอมเฟิร์สลงไว้แบบ client-only มีแต่ `pg_dump`/`pg_restore`
+ไม่มีไฟล์เซิร์ฟเวอร์ (`share\postgres.bki`) สคริปต์จะตรวจเจอแล้วบอกเองว่าต้องทำอะไร
+ลง PostgreSQL 18 แบบเต็มเมื่อไหร่ก็รันได้ทันที
+
+## ⚠️ แจ้งเตือนสำรองข้อมูลส่งไม่ถึง (ยังไม่แก้)
+
+`TELEGRAM_CHAT_ID` ใน `backup.env` **มีค่าแล้ว แต่ใช้ไม่ได้** — Telegram ตอบ
+`Bad Request: chat not found` เมื่อเรียก `getChat` ด้วย token ของ `@BMTradingViewIndicator_Bot`
+
+สาเหตุ: chat id ที่ตั้งไว้เป็นห้องที่**บอทตัวนี้ไม่ได้เป็นสมาชิก** (น่าจะเป็นห้องของ
+`@TD_SMC_bot` ซึ่งเป็นคนละบอท) ตรวจซ้ำได้ด้วย `getChat` — ไม่ต้องส่งข้อความจริง
+
+**ผลคือถ้าสำรองข้อมูลล้มเหลว จะไม่มีใครรู้** ต้องเข้าไปดู `C:\QVXBackup\STATUS.txt` เอง
+
+วิธีแก้ เลือกทางใดทางหนึ่ง:
+1. ทัก `@BMTradingViewIndicator_Bot` ใน Telegram สักข้อความ แล้วอ่าน chat id จาก
+   `getUpdates` มาใส่ `backup.env` (ตอนนี้บอทไม่ได้ตั้ง webhook ไว้ `getUpdates` จึงใช้ได้)
+2. เชิญบอทตัวนี้เข้าห้องแอดมินที่ใช้อยู่ แล้วค่อยเอา chat id เดิมมาใช้
 - **สำเนานอกบ้าน** — ตอนนี้ทั้งสองชุดอยู่ในเครื่องเดียวกัน ไฟไหม้/ขโมย/น้ำท่วมคือหายทั้งคู่
   ขั้นต่อไปควรส่งขึ้นที่เก็บนอกบ้านสักที่ (Google Drive / S3 / เครื่องอื่น)
