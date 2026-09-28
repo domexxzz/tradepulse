@@ -7,7 +7,7 @@ import { JsonLd } from "@/components/seo/JsonLd";
 
 const title = "คู่มือเรียนรู้ QVX ทีละขั้น";
 const description =
-  "เรียนรู้การใช้ QVX แบบเรียงลำดับ ตั้งแต่พื้นฐาน SMC และ ICT ลำดับการวิเคราะห์ 5 ขั้น การอ่านโซนและสัญญาณบนกราฟ ไปจนถึงการรับสัญญาณผ่าน Telegram";
+  "เรียนรู้การใช้ QVX แบบเรียงลำดับ ตั้งแต่พื้นฐาน SMC และ ICT ลำดับการวิเคราะห์ 5 ขั้น การอ่านโซนและสัญญาณบนกราฟ ไปจนถึงการรับสัญญาณผ่าน Telegram พร้อมภาพหน้าชาร์ตและหน้าตั้งค่าจริงทุกบท";
 
 export const metadata: Metadata = {
   title,
@@ -50,7 +50,7 @@ export default function ManualIndexPage() {
       <p className="mt-4 max-w-3xl leading-relaxed text-muted">{description}</p>
 
       <p className="mt-2 text-sm text-muted">
-        อ่านจบหน้าแล้วกดไปหน้าถัดไปได้เลย · {MANUAL_CHAPTERS.length} บท
+        อ่านจบหน้าแล้วกดไปหน้าถัดไปได้เลย · {MANUAL_CHAPTERS.length} บท · มีภาพประกอบทุกบท
       </p>
 
       <ol className="mt-10 space-y-3">

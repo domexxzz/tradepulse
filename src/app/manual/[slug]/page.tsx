@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { AlertTriangle, ArrowLeft, ArrowRight, ExternalLink } from "lucide-react";
 import { site } from "@/config/site";
@@ -34,6 +35,18 @@ const toneClass: Record<NonNullable<ManualTerm["tone"]>, string> = {
   warn: "text-amber-400",
   info: "text-foreground",
 };
+
+/**
+ * ความกว้างที่จะวางภาพ = ครึ่งหนึ่งของไฟล์ แต่ไม่เกินความกว้างคอลัมน์
+ *
+ * ภาพในบทนี้มาจากสองที่ ขนาดต่างกันมาก — screenshot กราฟ 2280px กับภาพแผงตั้งค่า
+ * ที่ crop จากคู่มือ PDF ได้แค่ 700–1400px กฎนี้ทำให้ทั้งสองแบบคมที่จอ 2x เท่ากัน
+ * โดยไม่ต้องจำว่าภาพไหนเป็นประเภทไหน และแผงตั้งค่าแนวตั้งจะไม่ถูกยืดจนเต็มหน้า
+ *
+ * 1140 = ความกว้างจริงของ .container-x (1180 - padding 2×1.25rem) ไม่ใช่ 768 ตาม
+ * max-w-3xl ที่เขียนไว้ — .container-x อยู่นอก @layer จึงชนะ utility ของ Tailwind
+ */
+const placedWidth = (fileWidth: number) => Math.min(Math.round(fileWidth / 2), 1140);
 
 export default async function ManualChapterPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -127,6 +140,20 @@ export default async function ManualChapterPage({ params }: { params: Promise<{ 
                   <span className="font-semibold text-amber-400">ข้อควรระวัง</span> — {b.caution}
                 </span>
               </p>
+            )}
+
+            {b.image && (
+              <figure style={{ maxWidth: placedWidth(b.image.width) }}>
+                <Image
+                  src={b.image.src}
+                  alt={b.image.caption}
+                  width={b.image.width}
+                  height={b.image.height}
+                  sizes={`(min-width: ${placedWidth(b.image.width) + 40}px) ${placedWidth(b.image.width)}px, 100vw`}
+                  className="h-auto w-full rounded-2xl border border-border"
+                />
+                <figcaption className="mt-2.5 text-sm text-muted">{b.image.caption}</figcaption>
+              </figure>
             )}
           </section>
         ))}
