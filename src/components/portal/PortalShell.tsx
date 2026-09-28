@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ProfileBadge, type PortalProfile } from "@/components/portal/ProfileBadge";
 import { site } from "@/config/site";
 import { cn } from "@/lib/utils";
@@ -27,9 +28,17 @@ export function PortalShell({
       <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="container-x flex h-16 items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-2.5" aria-label={`${site.name} หน้าแรก`}>
-            <span className="grid h-8 w-8 place-items-center rounded-[.6rem] bg-brand font-display text-sm font-bold text-brand-ink">
-              {site.name.charAt(0)}
-            </span>
+            {/* โลโก้ตัวเดียวกับ Navbar ฝั่งหน้าเว็บ — แถบสูง 64px เท่ากัน จึงใช้ 44px เท่ากัน
+                ห้ามใส่พื้นหลังหรือกรอบทับ ตัวโลโก้มีกรอบหกเหลี่ยมและพื้นโปร่งอยู่แล้ว
+                alt ว่างเพราะมีข้อความ "QVX" อยู่ข้าง ๆ แล้ว ใส่ซ้ำ screen reader จะอ่านสองรอบ */}
+            <Image
+              src="/images/brand/qvx-logo-hex-v1.png"
+              alt=""
+              width={44}
+              height={44}
+              priority
+              className="h-11 w-11"
+            />
             <span className="font-display text-[1.05rem] font-semibold tracking-tight">{site.name}</span>
             {badge && (
               <span className="pill-brand rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wider">

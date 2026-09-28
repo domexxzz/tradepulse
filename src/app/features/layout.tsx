@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowLeft } from "lucide-react";
 import { site } from "@/config/site";
 import { Footer } from "@/components/common/Footer";
@@ -10,9 +11,15 @@ export default function FeaturesLayout({ children }: { children: React.ReactNode
       <header className="border-b border-border bg-surface">
         <div className="container-x flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center gap-2" aria-label={`${site.name} หน้าแรก`}>
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand font-display text-sm font-bold text-brand-ink">
-              {site.name.charAt(0)}
-            </span>
+            {/* แถบสูง 64px เท่า Navbar ของหน้าเว็บ จึงใช้โลโก้ 44px เท่ากัน */}
+            <Image
+              src="/images/brand/qvx-logo-hex-v1.png"
+              alt=""
+              width={44}
+              height={44}
+              priority
+              className="h-11 w-11"
+            />
             <span className="font-display text-lg font-bold tracking-tight">{site.name}</span>
           </Link>
           <Link

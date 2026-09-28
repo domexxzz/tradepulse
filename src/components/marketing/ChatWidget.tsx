@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { MessageCircle, X, Send } from "lucide-react";
 import { site, hasLineContact, hasDiscord, discordInviteUrl } from "@/config/site";
 import { DiscordIcon } from "@/components/common/DiscordIcon";
@@ -54,9 +55,16 @@ export function ChatWidget() {
       {open && (
         <div className="fixed bottom-24 right-4 z-50 flex w-[360px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl md:bottom-20">
           <div className="flex items-center gap-3 border-b border-border bg-surface-2 px-4 py-3">
-            <span className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-brand-strong to-brand-deep font-display text-sm font-bold text-brand-ink">
-              {site.name.charAt(0)}
-            </span>
+            {/* โลโก้จริง ไม่ใช่ตัวอักษรย่อ — คนทักแชทเห็นอันนี้เป็นหน้าตาของแบรนด์
+                ไม่ครอบวงกลมหรือพื้นไล่สี เพราะโลโก้มีกรอบหกเหลี่ยมพื้นโปร่งของตัวเองอยู่แล้ว
+                36px พอดีกับหัวแชท ไม่ต้องใหญ่เท่าแถบบนของเว็บ */}
+            <Image
+              src="/images/brand/qvx-logo-hex-v1.png"
+              alt=""
+              width={36}
+              height={36}
+              className="h-9 w-9 shrink-0"
+            />
             <div className="leading-tight">
               <div className="text-sm font-semibold">{site.name} Assistant</div>
               <div className="text-[11px] text-muted">บอทช่วยตอบ (ไม่ใช่คนจริง) · ตอบ 24 ชม.</div>

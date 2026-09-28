@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { site } from "@/config/site";
 
 export function AuthShell({
@@ -14,9 +15,16 @@ export function AuthShell({
     <main className="hero-backdrop grid min-h-screen place-items-center px-4 py-16">
       <div className="w-full max-w-md">
         <Link href="/" className="mb-8 flex items-center justify-center gap-2">
-          <span className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-to-br from-brand-strong to-brand-deep font-display text-base font-bold text-black">
-            {site.name.charAt(0)}
-          </span>
+          {/* หน้าเข้าสู่ระบบคือจุดแรกที่ลูกค้าเห็นหลังกดลิงก์จากอีเมลหรือ LINE
+              ต้องเป็นโลโก้จริงเหมือนหน้าเว็บ ไม่ใช่ตัวอักษรย่อ */}
+          <Image
+            src="/images/brand/qvx-logo-hex-v1.png"
+            alt=""
+            width={44}
+            height={44}
+            priority
+            className="h-11 w-11"
+          />
           <span className="font-display text-xl font-bold">{site.name}</span>
         </Link>
         <div className="card-surface rounded-2xl p-8">
