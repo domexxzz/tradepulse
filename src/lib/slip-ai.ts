@@ -136,14 +136,17 @@ export async function readSlipWithAi(input: {
       const text = json.choices?.[0]?.message?.content ?? "";
       const data = parseJson(text);
       if (!data) {
+        // ตอบกลับมาได้แต่ผิดรูป = โมเดลตัวนี้ทำงานนี้ไม่เป็น (เช่นอ่านภาพไม่ได้)
+        // ลองซ้ำกับตัวเดิมก็ได้ผลเดิม ข้ามไปตัวถัดไปเลยดีกว่าเสียเวลารอ
         lastReason = `${p.source} ตอบไม่เป็น JSON`;
-        continue;
+        break;
       }
 
       const amount = num(data.amount);
       if (amount === undefined) {
+        // อ่านภาพนี้ไม่ออกจริง ๆ (เบลอ/ครอปจนเลขหาย) ลองซ้ำก็ได้ผลเดิม
         lastReason = `${p.source} อ่านยอดเงินไม่ได้`;
-        continue;
+        break;
       }
 
       return {
