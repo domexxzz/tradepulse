@@ -33,11 +33,68 @@ import { execFileSync } from "node:child_process";
 const API = "https://api.vercel.com";
 const TOKEN_FILE = process.env.VERCEL_TOKEN_FILE || ".vercel-token";
 
-const token = (process.env.VERCEL_TOKEN || (await readFile(TOKEN_FILE, "utf8").catch(() => ""))).trim();
+const token = (
+  process.env.VERCEL_TOKEN ||
+  (await readFile(TOKEN_FILE, "utf8").catch(() => ""))
+).trim();
 if (!token) {
-  console.error(`ไม่เจอ token — ทำตามนี้ก่อน\n  pbpaste > ${TOKEN_FILE}\n  chmod 600 ${TOKEN_FILE}`);
+  console.error(
+    `ไม่เจอ token — ทำตามนี้ก่อน\n  pbpaste > ${TOKEN_FILE}\n  chmod 600 ${TOKEN_FILE}`,
+  );
   process.exit(1);
 }
+
+/**
+ * แปลงคำตอบที่ไม่ผ่านให้เป็นข้อความที่อ่านรู้เรื่อง — คืน null เมื่ออธิบายไม่ได้
+ *
+ * แยกออกมาจาก api() เพราะการสร้าง deployment ใช้ { raw: true } เพื่ออ่านรายชื่อไฟล์ที่ขาด
+ * เลยไม่ผ่านด่านนี้ และเคยพ่น JSON ดิบของโควตาเต็มออกมาแทนคำอธิบาย
+ */
+/** บรรทัด "ปลดล็อกเมื่อไหร่" ของโควตา — เว้นไว้เมื่อ Vercel ไม่ได้บอกเวลามา */
+const unlockLine = (json) => {
+  const reset = json?.error?.limit?.reset;
+  if (!reset) return "";
+  return `ปลดล็อก ${new Date(reset).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })} (เวลาไทย)\n`;
+};
+
+const explain = (status, json, body = "") => {
+  // 401/403 เกือบทุกครั้งแปลว่า token ถูกเพิกถอนหรือหมดอายุ ไม่ใช่โค้ดมีปัญหา
+  // ถ้าไม่ดักตรงนี้ จะได้ JSON ดิบยาว ๆ ที่อ่านแล้วนึกว่า deploy พัง
+  if (status === 401 || status === 403) {
+    return (
+      `token ใช้ไม่ได้แล้ว (HTTP ${status}) — โดนเพิกถอนหรือหมดอายุ\n\n` +
+      `ออก token ใหม่ที่ https://vercel.com/account/tokens (scope: tradepulse)\n` +
+      `แล้วรันในโฟลเดอร์โปรเจกต์:\n` +
+      `  pbpaste > .vercel-token && chmod 600 .vercel-token && gh secret set VERCEL_TOKEN < .vercel-token\n\n` +
+      `เว็บที่รันอยู่ไม่ได้รับผลกระทบ — deployment เดิมยังเสิร์ฟตามปกติ\n` +
+      `คำตอบจาก Vercel: ${body.slice(0, 300)}`
+    );
+  }
+
+  // แพ็กเกจฟรีจำกัด deployment 100 ครั้ง / 24 ชม. — คนละโควตากับจำนวนไฟล์
+  // เจอจริง 30 ก.ย. 69 หลัง deploy ถี่มากทั้งคืน เว็บที่รันอยู่ไม่กระทบ
+  if (status === 402) {
+    return (
+      `Vercel จำกัดจำนวน deployment (HTTP 402) — แพ็กเกจฟรี 100 ครั้ง / 24 ชม. เต็มแล้ว\n` +
+      unlockLine(json) +
+      `\nเว็บที่รันอยู่ไม่ได้รับผลกระทบ — deployment เดิมยังเสิร์ฟตามปกติ\n` +
+      `โค้ดขึ้น GitHub แล้ว แค่ยังไม่ได้ deploy ต้องรันซ้ำหลังปลดล็อก`
+    );
+  }
+
+  // โควตาอัปโหลดของแพ็กเกจฟรีคือ 5000 ไฟล์ / 24 ชม. — บอกเวลาที่ปลดล็อกไปเลย
+  // ไม่ต้องให้ไปเปิดเอกสารหาเอง และย้ำว่าเว็บที่รันอยู่ไม่กระทบ
+  if (status === 429) {
+    return (
+      `Vercel จำกัดจำนวนอัปโหลด (HTTP 429) — โควตาแพ็กเกจฟรี 5000 ไฟล์ / 24 ชม. เต็มแล้ว\n` +
+      unlockLine(json) +
+      `\nเว็บที่รันอยู่ไม่ได้รับผลกระทบ — deployment เดิมยังเสิร์ฟตามปกติ\n` +
+      `แค่ commit ล่าสุดยังไม่ขึ้น ต้องรัน deploy ซ้ำหลังปลดล็อก`
+    );
+  }
+
+  return null;
+};
 
 /**
  * เรียก API — โยน error ที่อ่านรู้เรื่องเมื่อไม่ผ่าน
@@ -54,45 +111,8 @@ const api = async (path, init = {}) => {
   const json = body ? JSON.parse(body) : null;
   if (raw) return { ok: res.ok, status: res.status, json, body };
   if (!res.ok) {
-    // 401/403 เกือบทุกครั้งแปลว่า token ถูกเพิกถอนหรือหมดอายุ ไม่ใช่โค้ดมีปัญหา
-    // ถ้าไม่ดักตรงนี้ จะได้ JSON ดิบยาว ๆ ที่อ่านแล้วนึกว่า deploy พัง
-    if (res.status === 401 || res.status === 403) {
-      throw new Error(
-        `token ใช้ไม่ได้แล้ว (HTTP ${res.status}) — โดนเพิกถอนหรือหมดอายุ\n\n` +
-          `ออก token ใหม่ที่ https://vercel.com/account/tokens (scope: tradepulse)\n` +
-          `แล้วรันในโฟลเดอร์โปรเจกต์:\n` +
-          `  pbpaste > .vercel-token && chmod 600 .vercel-token && gh secret set VERCEL_TOKEN < .vercel-token\n\n` +
-          `เว็บที่รันอยู่ไม่ได้รับผลกระทบ — deployment เดิมยังเสิร์ฟตามปกติ\n` +
-          `คำตอบจาก Vercel: ${body.slice(0, 300)}`,
-      );
-    }
-    // แพ็กเกจฟรีจำกัด deployment 100 ครั้ง / 24 ชม. — คนละโควตากับจำนวนไฟล์
-    // เจอจริง 30 ก.ย. 69 หลัง deploy ถี่มากทั้งคืน เว็บที่รันอยู่ไม่กระทบ
-    if (res.status === 402) {
-      const reset = json?.error?.limit?.reset;
-      throw new Error(
-        `Vercel จำกัดจำนวน deployment (HTTP 402) — แพ็กเกจฟรี 100 ครั้ง / 24 ชม. เต็มแล้ว\n` +
-          (reset
-            ? `ปลดล็อก ${new Date(reset).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })} (เวลาไทย)\n`
-            : "") +
-          `\nเว็บที่รันอยู่ไม่ได้รับผลกระทบ — deployment เดิมยังเสิร์ฟตามปกติ\n` +
-          `โค้ดขึ้น GitHub แล้ว แค่ยังไม่ได้ deploy ต้องรันซ้ำหลังปลดล็อก`,
-      );
-    }
-
-    // โควตาอัปโหลดของแพ็กเกจฟรีคือ 5000 ไฟล์ / 24 ชม. — บอกเวลาที่ปลดล็อกไปเลย
-    // ไม่ต้องให้ไปเปิดเอกสารหาเอง และย้ำว่าเว็บที่รันอยู่ไม่กระทบ
-    if (res.status === 429) {
-      const reset = json?.error?.limit?.reset;
-      throw new Error(
-        `Vercel จำกัดจำนวนอัปโหลด (HTTP 429) — โควตาแพ็กเกจฟรี 5000 ไฟล์ / 24 ชม. เต็มแล้ว\n` +
-          (reset
-            ? `ปลดล็อก ${new Date(reset).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })} (เวลาไทย)\n`
-            : "") +
-          `\nเว็บที่รันอยู่ไม่ได้รับผลกระทบ — deployment เดิมยังเสิร์ฟตามปกติ\n` +
-          `แค่ commit ล่าสุดยังไม่ขึ้น ต้องรัน deploy ซ้ำหลังปลดล็อก`,
-      );
-    }
+    const why = explain(res.status, json, body);
+    if (why) throw new Error(why);
     throw new Error(`${rest.method || "GET"} ${path} → ${res.status}\n${body}`);
   }
   return json;
@@ -103,7 +123,9 @@ const projectName = process.env.VERCEL_PROJECT || "tradepulse";
 const project = await api(`/v9/projects/${projectName}`);
 console.log(`โปรเจกต์ ${project.name} (${project.id})`);
 
-const paths = execFileSync("git", ["ls-files"], { encoding: "utf8" }).split("\n").filter(Boolean);
+const paths = execFileSync("git", ["ls-files"], { encoding: "utf8" })
+  .split("\n")
+  .filter(Boolean);
 
 // อ่านไฟล์ + คิด sha ไว้ก่อน ยังไม่อัปอะไร
 const files = [];
@@ -153,7 +175,12 @@ const byName = new Map(files.map((f) => [f.sha, f.file]));
 let res = await createDeployment();
 for (let round = 1; !res.ok && round <= 3; round++) {
   const missing = missingShas(res);
-  if (missing.length === 0) throw new Error(`POST /v13/deployments → ${res.status}\n${res.body}`);
+  if (missing.length === 0) {
+    throw new Error(
+      explain(res.status, res.json) ??
+        `POST /v13/deployments → ${res.status}\n${res.body}`,
+    );
+  }
 
   console.log(
     `Vercel มีไฟล์เดิมอยู่แล้ว ${files.length - missing.length} ไฟล์ — อัปเฉพาะที่เปลี่ยน ${missing.length} ไฟล์`,
@@ -174,7 +201,8 @@ for (let round = 1; !res.ok && round <= 3; round++) {
   }
   res = await createDeployment();
 }
-if (!res.ok) throw new Error(`POST /v13/deployments → ${res.status}\n${res.body}`);
+if (!res.ok)
+  throw new Error(`POST /v13/deployments → ${res.status}\n${res.body}`);
 
 const deployment = res.json;
 
@@ -190,7 +218,9 @@ while (state === "QUEUED" || state === "BUILDING" || state === "INITIALIZING") {
 console.log();
 
 if (state !== "READY") {
-  console.error(`build ไม่ผ่าน (${state}) — ดู log ที่ https://${deployment.url}`);
+  console.error(
+    `build ไม่ผ่าน (${state}) — ดู log ที่ https://${deployment.url}`,
+  );
   process.exit(1);
 }
 console.log("ขึ้น production เรียบร้อย");
