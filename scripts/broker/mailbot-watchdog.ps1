@@ -1,4 +1,4 @@
-# เฝ้าบอทอ่านเมล (mailbot.py) บนคอมเฟิร์ส — งานตั้งเวลา QVXMailbot เรียกทุก 10 นาที
+﻿# เฝ้าบอทอ่านเมล (mailbot.py) บนคอมเฟิร์ส — งานตั้งเวลา QVXMailbot เรียกทุก 10 นาที
 #
 # ทำไมไม่เปิดบอทตรง ๆ: process ที่เปิดผ่าน SSH ตายตอน session หลุด (เคยทำบริดจ์ดับ 14 ชม.)
 # ต้องให้ Task Scheduler เป็นคนเปิด — สั่งผ่าน SSH ได้ด้วย Start-ScheduledTask -TaskName QVXMailbot
