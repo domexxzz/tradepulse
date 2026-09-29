@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { PrismaClient } from "@prisma/client";
 import { activateMembership, runMembershipMaintenance } from "@/lib/lifecycle";
 import { markTelegramInviteNotified, sendTelegramInviteEmail } from "@/lib/telegram-invite";
+import { salesPaused } from "@/config/site";
 import { getUserSubscription, isSubscriptionActive } from "@/lib/subscription";
 import { addMonths, daysUntil } from "@/lib/date";
 import { parseSlipDataUrl } from "@/lib/slip";
@@ -329,5 +330,66 @@ describe("T-1 · ลิงก์กลุ่ม Telegram ต้องถึง�
   it("รอบกวาดรายงานจำนวนที่ส่งลิงก์ให้ด้วย", async () => {
     const result = await runMembershipMaintenance();
     expect(typeof result.invited).toBe("number");
+  });
+});
+
+/**
+ * ตอนหยุดรับชำระเงิน คนที่ "โอนมาแล้ว" ต้องยังส่งสลิปได้
+ *
+ * ถ้าทางนี้ขาด เงินจะเข้าบัญชีเราโดยที่ระบบไม่รู้ว่าเป็นของใคร แอดมินก็ช่วยไม่ได้
+ * เพราะสร้างออเดอร์แทนลูกค้าไม่ได้ (เกิดขึ้นจริง 29 ก.ย. 69)
+ * เทสนี้ยิงที่ตรรกะฐานข้อมูลตรง ๆ — server action เรียกจากเทสไม่ได้เพราะต้องมี session
+ */
+describe("S-1 · หยุดรับเงินแล้วคนที่โอนมาแล้วต้องยังส่งสลิปได้", () => {
+  it("ยืนยันว่าตอนนี้ยังหยุดรับชำระเงินอยู่ (เทสข้างล่างถึงจะมีความหมาย)", () => {
+    expect(salesPaused).toBe(true);
+  });
+
+  it("ออเดอร์ที่ลูกค้าแจ้งว่าโอนมาแล้ว ต้องขึ้นในคิวตรวจสลิปของแอดมิน", async () => {
+    const user = await makeUser("paid-nofslip");
+
+    // เลียนแบบสิ่งที่ startSlipForTransfer ทำ
+    const order = await prisma.slipOrder.create({
+      data: {
+        userId: user.id,
+        planCode: "MONTH",
+        amountTHB: 999,
+        status: "PENDING",
+        note: "ลูกค้าแจ้งว่าโอนมาแล้วระหว่างหยุดรับชำระเงิน",
+      },
+    });
+    expect(order.status).toBe("PENDING");
+
+    // แนบสลิปแล้วต้องกลายเป็น SUBMITTED ซึ่งคือคิวที่แอดมินเปิดดูเป็นแท็บแรก
+    await prisma.slipOrder.update({
+      where: { id: order.id },
+      data: { status: "SUBMITTED", slipHash: `uat-${order.id}` },
+    });
+
+    const inQueue = await prisma.slipOrder.findMany({
+      where: { status: "SUBMITTED", userId: user.id },
+      select: { id: true, amountTHB: true, note: true },
+    });
+    expect(inQueue).toHaveLength(1);
+    expect(inQueue[0].amountTHB).toBe(999);
+    // โน้ตต้องติดไปด้วย แอดมินจะได้รู้ว่าใบนี้มาจากทางไหน ไม่ใช่คนกดซื้อปกติ
+    expect(inQueue[0].note).toContain("หยุดรับชำระเงิน");
+  });
+
+  it("กดซ้ำต้องใช้ใบเดิม ไม่สร้างใบค้างเป็นสิบ", async () => {
+    const user = await makeUser("paid-twice");
+    const make = () =>
+      prisma.slipOrder.findFirst({
+        where: { userId: user.id, planCode: "MONTH", status: "PENDING" },
+        orderBy: { createdAt: "desc" },
+        select: { id: true },
+      });
+
+    const first = await prisma.slipOrder.create({
+      data: { userId: user.id, planCode: "MONTH", amountTHB: 999, status: "PENDING" },
+      select: { id: true },
+    });
+    const reused = await make();
+    expect(reused?.id).toBe(first.id);
   });
 });

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Clock, MessageCircle } from "lucide-react";
+import { Clock, MessageCircle, ArrowRight } from "lucide-react";
 import { site, hasLineContact, hasDiscord, discordInviteUrl } from "@/config/site";
 import { DiscordIcon } from "@/components/common/DiscordIcon";
 
@@ -47,6 +47,23 @@ export function SalesPausedNotice({
           </>
         )}
       </p>
+
+      {/*
+        ทางออกของคนที่โอนเงินมาแล้วแต่ยังไม่ได้ส่งสลิป — ต้องมาก่อนช่องทางติดต่อ
+        เพราะเขาแก้เองได้ใน 30 วินาที ไม่ต้องรอแอดมินตอบ
+        ถ้าไม่มีลิงก์นี้ เขาจะหาที่แนบสลิปไม่เจอเลย (ปุ่มสมัครถูกปิดไปหมดแล้ว)
+        แล้วกลายเป็นงานที่ทีมงานต้องตอบทีละคนโดยที่ช่วยอะไรไม่ได้จริง
+      */}
+      <Link
+        href="/account/pay/transferred"
+        className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-brand/40 bg-brand/5 px-4 py-3 text-sm transition-colors hover:bg-brand/10"
+      >
+        <span>
+          <span className="font-medium text-foreground">โอนเงินมาแล้วแต่ยังไม่ได้แนบสลิป?</span>
+          <span className="mt-0.5 block text-xs text-muted">แนบที่นี่ ทีมงานจะตรวจสอบและเปิดสิทธิ์ให้</span>
+        </span>
+        <ArrowRight className="h-4 w-4 shrink-0 text-brand" />
+      </Link>
 
       <div className="mt-4 flex flex-wrap gap-2">
         {hasLineContact && (

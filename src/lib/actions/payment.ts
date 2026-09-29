@@ -54,6 +54,53 @@ export async function createQrOrder(formData: FormData) {
   redirect(`/account/pay/${orderId}`);
 }
 
+/**
+ * เปิดหน้าแนบสลิปให้คนที่ "โอนเงินมาแล้ว" ตอนที่ระบบหยุดรับชำระเงิน
+ *
+ * ทำไมต้องมีแยกจาก createQrOrder: ตอนหยุดรับเงิน createQrOrder เด้งกลับหน้าราคาเสมอ
+ * คนที่โอนเงินมาก่อนหน้านั้นจึงสร้างออเดอร์ไม่ได้ และเมื่อไม่มีออเดอร์ก็ไม่มีหน้าให้
+ * แนบสลิป วนกลับไปหน้าที่เขียนว่า "เปิดเร็ว ๆ นี้" ทุกครั้ง — เงินเข้าบัญชีเราแล้ว
+ * แต่ระบบมองไม่เห็นว่าใครโอน (เกิดขึ้นจริง 29 ก.ย. 69 ลูกค้าโอน 08:38 แล้วหาที่แนบ
+ * ไม่เจอจนต้องทักแอดมิน ซึ่งก็ไม่มีทางแก้ให้ได้)
+ *
+ * ตัวนี้ไม่ได้เปิดขายใหม่ — ไม่มีการแสดง QR ไม่มีการรับเงิน มีแต่การ "รับหลักฐาน"
+ * ว่าเงินที่เข้ามาแล้วเป็นของใคร ซึ่งจำเป็นทั้งตอนเปิดสิทธิ์และตอนตามคืนเงิน
+ * แอดมินยังเป็นคนกดอนุมัติเองทุกใบเหมือนเดิม
+ */
+export async function startSlipForTransfer(formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+
+  const planCode = String(formData.get("planCode") ?? "");
+  const userPlans = await plansForUser(session.user.id);
+  const plan = userPlans.find((p) => p.id === planCode);
+  if (!plan) redirect("/account/pay/transferred?error=plan");
+
+  // ใบที่ยังไม่ได้แนบสลิปใช้ต่อได้ ไม่ต้องสร้างใหม่ทุกครั้งที่กด
+  const pending = await prisma.slipOrder.findFirst({
+    where: { userId: session.user.id, planCode: plan.id, status: "PENDING" },
+    orderBy: { createdAt: "desc" },
+    select: { id: true },
+  });
+
+  const orderId =
+    pending?.id ??
+    (
+      await prisma.slipOrder.create({
+        data: {
+          userId: session.user.id,
+          planCode: plan.id,
+          amountTHB: plan.priceTHB,
+          status: "PENDING",
+          note: "ลูกค้าแจ้งว่าโอนมาแล้วระหว่างหยุดรับชำระเงิน",
+        },
+        select: { id: true },
+      })
+    ).id;
+
+  redirect(`/account/pay/${orderId}`);
+}
+
 export type SlipState = { ok?: boolean; error?: string; note?: string };
 
 /**

@@ -10,7 +10,7 @@ import { formatThaiDate } from "@/lib/date";
 import { PageHeader } from "@/components/portal/PortalShell";
 import {
   CheckCircle2, Circle, AlertCircle, LineChart, PartyPopper,
-  Send, CalendarClock, ArrowRight,
+  Send, CalendarClock, ArrowRight, Receipt,
 } from "lucide-react";
 
 /**
@@ -103,6 +103,31 @@ export default async function AccountOverview({
             : "สมัครแพ็กเกจเพื่อเริ่มใช้อินดิเคเตอร์และเข้ากลุ่มสัญญาณ"
         }
       />
+
+      {/*
+        คนที่โอนเงินมาแล้วแต่ระบบยังไม่เห็น — นี่คือหน้าแรกที่เขาเจอหลังล็อกอิน
+        ตอนหยุดรับชำระเงิน ปุ่มสมัครถูกปิดหมด เขาจึงหาที่แนบสลิปไม่เจอเลย
+        แล้วต้องไปทักแอดมิน ซึ่งแอดมินก็สร้างออเดอร์ให้ไม่ได้เหมือนกัน
+        (เกิดขึ้นจริง 29 ก.ย. 69) ป้ายนี้ต้องมาก่อนการ์ดสถานะ เพราะถ้าอยู่ล่างกว่านั้น
+        เขาจะอ่านว่า "ยังไม่มีแพ็กเกจ" แล้วคิดว่าเงินหาย
+      */}
+      {!isActive && salesPaused && (
+        <Link
+          href="/account/pay/transferred"
+          className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-brand/40 bg-brand/5 p-4 transition-colors hover:bg-brand/10"
+        >
+          <div className="flex items-start gap-3 text-sm">
+            <Receipt className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
+            <div>
+              <div className="font-medium text-brand">โอนเงินมาแล้วแต่ยังไม่ได้แนบสลิป?</div>
+              <p className="mt-0.5 text-muted">
+                แนบที่นี่เพื่อให้ทีมงานตรวจสอบและเปิดสิทธิ์ให้ — เงินของคุณยังอยู่ครบ
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="h-4 w-4 shrink-0 text-brand" />
+        </Link>
+      )}
 
       {/* สถานะแพ็กเกจ */}
       <div className="card-surface rounded-xl p-6">
