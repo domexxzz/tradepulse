@@ -14,6 +14,17 @@ const REPLY_TO = process.env.EMAIL_REPLY_TO;
 
 export const emailEnabled = Boolean(API_KEY && FROM);
 
+/**
+ * ตั้งค่าครบหรือยัง — คืนแค่ "มี/ไม่มี" ไม่คืนค่าจริง
+ *
+ * มีไว้เพราะ emailEnabled เป็น false ได้จากสองสาเหตุที่แก้คนละแบบ
+ * และของเดิมเวลาส่งไม่ออกจะเงียบสนิท แยกไม่ออกว่าตั้งค่าไม่ครบ
+ * หรือผู้ให้บริการปฏิเสธ — ต่างกันมากเวลาต้องไปแก้
+ */
+export function emailConfigStatus(): { hasKey: boolean; hasFrom: boolean } {
+  return { hasKey: Boolean(API_KEY), hasFrom: Boolean(FROM) };
+}
+
 export interface SendEmailInput {
   to: string;
   subject: string;

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { runMembershipMaintenance } from "@/lib/lifecycle";
 import { prisma } from "@/lib/prisma";
 import { checkStaleJobs } from "@/lib/heartbeat";
+import { emailConfigStatus } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 /** กวาดสมาชิกหลายร้อยรายพร้อมยิงอีเมล/Discord ต้องให้เวลาพอ */
@@ -48,7 +49,9 @@ async function run(req: Request) {
       return [];
     });
 
-    return NextResponse.json({ ok: true, ...result, rateLimitPurged: purged, staleJobs });
+    // ตั้งค่าอีเมลครบหรือยัง — ส่งกลับมาด้วยเพราะอีเมลส่งไม่ออกเงียบ ๆ เป็นปัญหา
+    // ที่มองไม่เห็นจากข้างนอกเลย ต้องมีที่ให้ตรวจได้โดยไม่ต้องไล่อ่าน log
+    return NextResponse.json({ ok: true, ...result, rateLimitPurged: purged, staleJobs, email: emailConfigStatus() });
   } catch (e) {
     console.error("cron/expire failed:", e);
     return NextResponse.json(
