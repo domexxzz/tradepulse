@@ -19,9 +19,11 @@ interface JoinRequest {
 }
 
 interface IncomingMessage {
-  chat: { id: number; type: string };
+  chat: { id: number; type: string; title?: string };
   from?: { id: number; username?: string; first_name?: string };
   text?: string;
+  /** กลุ่มที่เปิดโหมดหัวข้อจะมีค่านี้ — ต้องใช้ถ้าจะให้แจ้งเตือนลงหัวข้อใดหัวข้อหนึ่ง */
+  message_thread_id?: number;
 }
 
 /**
@@ -56,7 +58,30 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "invalid json" }, { status: 400 });
   }
 
-  if (update.message) return handleStart(update.message);
+  if (update.message) {
+    const m = update.message;
+    const text = (m.text ?? "").trim();
+
+    // /chatid — ตอบรหัสห้องกลับไปในห้องนั้น
+    //
+    // มีไว้เพราะเวลาย้ายห้องแจ้งเตือนหลังบ้าน ต้องรู้ chat id ของห้องใหม่
+    // ซึ่งหาไม่ได้จากฝั่งเรา: บอทตั้ง webhook ไว้ getUpdates จึงใช้ไม่ได้
+    // ก่อนหน้านี้ต้องไปพึ่งบอทของคนอื่น (@userinfobot) ซึ่งไม่ควรต้องทำ
+    //
+    // รหัสห้องไม่ใช่ความลับ (สั่งอะไรไม่ได้ถ้าไม่มี token) จึงไม่ต้องกันสิทธิ์
+    if (/^\/chatid(@[\w_]+)?$/i.test(text)) {
+      await sendMessageToUser(
+        m.chat.id,
+        `chat id ของห้องนี้\n${m.chat.id}\n\n` +
+          `ชื่อห้อง: ${m.chat.title ?? "(แชทส่วนตัว)"}\n` +
+          `ชนิด: ${m.chat.type}` +
+          (m.message_thread_id ? `\ntopic id: ${m.message_thread_id}` : "")
+      ).catch(() => {});
+      return ok("ตอบ chatid");
+    }
+
+    return handleStart(m);
+  }
 
   const request = update.chat_join_request;
   if (!request) return ok("ไม่ใช่เหตุการณ์ที่สนใจ");
