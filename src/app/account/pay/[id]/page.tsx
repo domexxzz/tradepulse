@@ -5,6 +5,8 @@ import { formatTHB } from "@/lib/utils";
 import { promptpayQrDataUrl, promptpayName, promptpayEnabled } from "@/lib/promptpay";
 import { SlipUploadForm } from "@/components/account/SlipUploadForm";
 import { CheckCircle2, Clock } from "lucide-react";
+import { salesPaused } from "@/config/site";
+import { SalesPausedNotice } from "@/components/common/SalesPausedNotice";
 
 export default async function PayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -40,6 +42,25 @@ export default async function PayPage({ params }: { params: Promise<{ id: string
           <div className="mt-5 rounded-xl border border-down/30 bg-down/10 p-4 text-sm text-down">
             สลิปไม่ผ่านการตรวจสอบ กรุณาติดต่อทีมงานผ่านหน้าช่วยเหลือ
           </div>
+        ) : salesPaused ? (
+          /* มาก่อนสาขา !promptpayEnabled ตั้งใจ — ข้อความ "ตั้ง PROMPTPAY_ID ใน env"
+             เป็นข้อความสำหรับนักพัฒนา ลูกค้าที่โอนเงินมาแล้วไม่ควรเห็น
+             สิ่งที่เขาต้องเห็นคือเงินยังอยู่และติดต่อใครได้ */
+          <>
+            <div className="mt-5">
+              <SalesPausedNotice variant="paid" />
+            </div>
+            <div className="mt-6 border-t border-border pt-6">
+              <h2 className="font-semibold">แนบสลิปการโอน</h2>
+              <p className="mt-1 text-sm leading-relaxed text-muted">
+                ถ้าคุณโอนเงินมาแล้ว แนบสลิปไว้ที่นี่เพื่อให้ทีมงานบันทึกรายการของคุณ
+                จำเป็นสำหรับการตรวจสอบและคืนเงิน
+              </p>
+              <div className="mt-4">
+                <SlipUploadForm orderId={order.id} />
+              </div>
+            </div>
+          </>
         ) : !promptpayEnabled ? (
           <div className="mt-5 rounded-xl border border-down/30 bg-down/10 p-4 text-sm text-down">
             ยังไม่ได้ตั้งค่า PromptPay (ตั้ง PROMPTPAY_ID ใน env)
