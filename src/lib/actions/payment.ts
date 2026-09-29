@@ -13,6 +13,7 @@ import { verifySlip, slipAutoApprove, slipVerifyEnabled } from "@/lib/slip-verif
 import { readSlipQr } from "@/lib/slip-qr";
 import { formatTHB } from "@/lib/utils";
 import { sendAdminAlert } from "@/lib/telegram";
+import { approveOrderById } from "@/lib/approve-order";
 
 /** สร้างออเดอร์ QR แล้วพาไปหน้าชำระเงิน */
 export async function createQrOrder(formData: FormData) {
@@ -272,29 +273,6 @@ export async function submitSlip(_prev: SlipState, formData: FormData): Promise<
         ? "ได้รับสลิปแล้ว แต่ระบบอ่านยอดไม่ตรงกับออเดอร์ ทีมงานจะตรวจสอบให้อีกครั้ง"
         : undefined,
   };
-}
-
-/**
- * เปิดสิทธิ์จากออเดอร์ที่ชำระแล้ว (ใช้ทั้งตอนแอดมินกดและตอนตรวจสลิปอัตโนมัติ)
- * เขียนสถานะ APPROVED ก่อนเปิดสิทธิ์ไม่ได้ เพราะถ้าเปิดสิทธิ์ล้มจะได้ออเดอร์ที่ปิดไปแล้วแต่ไม่ได้ของ
- */
-async function approveOrderById(orderId: string, source: string): Promise<void> {
-  const order = await prisma.slipOrder.findUnique({ where: { id: orderId } });
-  if (!order || order.status === "APPROVED") return;
-
-  await activateMembership({
-    userId: order.userId,
-    planCode: order.planCode,
-    amountTHB: order.amountTHB,
-    providerRef: `slip_${order.id}`,
-    provider: "web",
-    source,
-  });
-
-  await prisma.slipOrder.update({
-    where: { id: order.id },
-    data: { status: "APPROVED", reviewedAt: new Date() },
-  });
 }
 
 /** แอดมินอนุมัติ -> เปิด/ต่ออายุแพ็กเกจ + เปิดสิทธิ์ทุกช่องทาง */
