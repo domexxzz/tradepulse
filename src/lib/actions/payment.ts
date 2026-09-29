@@ -173,6 +173,8 @@ export async function submitSlip(_prev: SlipState, formData: FormData): Promise<
     mime: parsed.slip.mime,
     expectAmountTHB: order.amountTHB,
     orderCreatedAt: order.createdAt,
+    // ทางที่ใช้ AI ต้องใช้ payload ตรวจ checksum ว่าสลิปไม่ถูกแก้
+    qrPayload: qr.payload,
   });
 
   // เลขอ้างอิงซ้ำ = สลิปเดิมถ่ายรูปใหม่มาส่ง

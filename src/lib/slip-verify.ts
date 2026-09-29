@@ -139,6 +139,8 @@ export async function verifySlip(input: {
   expectAmountTHB: number;
   /** เวลาสร้างออเดอร์ ใช้กันสลิปเก่าที่ขุดมาใช้ */
   orderCreatedAt: Date;
+  /** ค่าดิบจาก QR — ทางที่ใช้ AI ต้องใช้ตรวจ checksum ว่าสลิปไม่ถูกแก้ */
+  qrPayload?: string;
 }): Promise<SlipVerifyResult> {
   if (!slipVerifyEnabled) return { status: "SKIPPED", note: "ยังไม่ได้เปิดระบบตรวจสลิปอัตโนมัติ" };
 
