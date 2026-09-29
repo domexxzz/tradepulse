@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { PrismaClient } from "@prisma/client";
 import { activateMembership, runMembershipMaintenance } from "@/lib/lifecycle";
+import { markTelegramInviteNotified, sendTelegramInviteEmail } from "@/lib/telegram-invite";
 import { getUserSubscription, isSubscriptionActive } from "@/lib/subscription";
 import { addMonths, daysUntil } from "@/lib/date";
 import { parseSlipDataUrl } from "@/lib/slip";
@@ -250,5 +251,83 @@ describe("P-1 · ที่นั่งโปรสุดท้ายต้อง
     });
     expect(row?.lockedMonthlyTHB).toBeNull();
     expect(await monthlyPriceFor(over.id)).toBe(MONTHLY_REGULAR);
+  });
+});
+
+describe("T-1 · ลิงก์กลุ่ม Telegram ต้องถึงมือเอง ไม่ต้องรอแอดมินกด", () => {
+  /**
+   * ชุดทดสอบนี้ไม่ได้ตั้งค่าผู้ให้บริการอีเมล sendEmail จึงตอบ { ok: false, skipped: true }
+   * ทางที่ "ส่งออกจริง" จึงไม่ถูกวิ่งที่นี่ — ที่เทสได้คือกฎรอบ ๆ ซึ่งเป็นตัวที่พลาดแล้วเจ็บ
+   * (ยิงซ้ำหาลูกค้าทุกวัน / ประทับว่าส่งแล้วทั้งที่ส่งไม่ออกจนไม่มีใครได้ลิงก์)
+   */
+  it("ส่งอีเมลไม่ออก ต้องไม่ประทับว่าส่งแล้ว — พรุ่งนี้ต้องได้ลองใหม่", async () => {
+    const user = await makeUser("tg-retry");
+    await activateMembership({
+      userId: user.id, planCode: "MONTH", amountTHB: 990,
+      providerRef: `uat_tg1_${user.id}`, provider: "web",
+    });
+    await prisma.telegramGrant.updateMany({
+      where: { userId: user.id },
+      data: { inviteLink: "https://t.me/+uat-fake-link" },
+    });
+
+    const sent = await sendTelegramInviteEmail(user.id);
+    expect(sent).toBe(false);
+
+    const tg = await prisma.telegramGrant.findFirst({ where: { userId: user.id } });
+    expect(tg?.notifiedAt).toBeNull();
+  });
+
+  it("ยังไม่มีลิงก์เชิญ ต้องไม่ส่งอีเมลเปล่า", async () => {
+    const user = await makeUser("tg-nolink");
+    await activateMembership({
+      userId: user.id, planCode: "MONTH", amountTHB: 990,
+      providerRef: `uat_tg2_${user.id}`, provider: "web",
+    });
+
+    expect(await sendTelegramInviteEmail(user.id)).toBe(false);
+  });
+
+  it("ประทับแล้วรอบกวาดต้องไม่แตะซ้ำ — กันยิงอีเมลซ้ำทุกวัน", async () => {
+    const user = await makeUser("tg-once");
+    await activateMembership({
+      userId: user.id, planCode: "MONTH", amountTHB: 990,
+      providerRef: `uat_tg3_${user.id}`, provider: "web",
+    });
+    await prisma.telegramGrant.updateMany({
+      where: { userId: user.id },
+      data: { inviteLink: "https://t.me/+uat-fake-link" },
+    });
+
+    await markTelegramInviteNotified(user.id);
+    const stamped = await prisma.telegramGrant.findFirst({ where: { userId: user.id } });
+    expect(stamped?.notifiedAt).not.toBeNull();
+
+    await runMembershipMaintenance();
+
+    const after = await prisma.telegramGrant.findFirst({ where: { userId: user.id } });
+    expect(after?.notifiedAt?.getTime()).toBe(stamped?.notifiedAt?.getTime());
+  });
+
+  it("เข้ากลุ่มไปแล้ว (ADDED) รอบกวาดต้องไม่ส่งอะไรอีก", async () => {
+    const user = await makeUser("tg-added");
+    await activateMembership({
+      userId: user.id, planCode: "MONTH", amountTHB: 990,
+      providerRef: `uat_tg4_${user.id}`, provider: "web",
+    });
+    await prisma.telegramGrant.updateMany({
+      where: { userId: user.id },
+      data: { status: "ADDED", addedAt: new Date(), inviteLink: "https://t.me/+uat-fake-link" },
+    });
+
+    await runMembershipMaintenance();
+
+    const after = await prisma.telegramGrant.findFirst({ where: { userId: user.id } });
+    expect(after?.notifiedAt).toBeNull();
+  });
+
+  it("รอบกวาดรายงานจำนวนที่ส่งลิงก์ให้ด้วย", async () => {
+    const result = await runMembershipMaintenance();
+    expect(typeof result.invited).toBe("number");
   });
 });

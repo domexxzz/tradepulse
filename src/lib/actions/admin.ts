@@ -12,9 +12,7 @@ import {
 import { removeGroupMember, sendAdminAlert, telegramGroupManaged } from "@/lib/telegram";
 import { revokeTradingViewAccess } from "@/lib/tradingview";
 import { notifyAccessGranted } from "@/lib/access-notify";
-import { sendEmail } from "@/lib/email";
-import { telegramInviteEmail } from "@/lib/email-templates";
-import { getUserSubscription } from "@/lib/subscription";
+import { sendTelegramInviteEmail } from "@/lib/telegram-invite";
 
 export async function grantAccess(formData: FormData) {
   await requireAdmin();
@@ -106,24 +104,7 @@ export async function resendTelegramInvite(formData: FormData) {
   const userId = String(formData.get("userId") ?? "");
   if (!userId) return;
 
-  const [user, grant] = await Promise.all([
-    prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true } }),
-    prisma.telegramGrant.findFirst({
-      where: { userId, status: { in: ["PENDING", "ADDED"] } },
-      orderBy: { createdAt: "desc" },
-      select: { inviteLink: true },
-    }),
-  ]);
-  if (!user?.email || !grant?.inviteLink) return;
-
-  const { sub, isActive } = await getUserSubscription(userId);
-  const mail = telegramInviteEmail({
-    name: user.name,
-    inviteUrl: grant.inviteLink,
-    until: isActive ? sub?.currentPeriodEnd ?? null : null,
-  });
-  await sendEmail({ to: user.email, ...mail });
-
+  await sendTelegramInviteEmail(userId);
   revalidatePath("/admin/telegram");
 }
 

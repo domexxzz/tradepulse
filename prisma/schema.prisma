@@ -239,6 +239,11 @@ model TelegramGrant {
    */
   telegramUserId String?
   invitedAt      DateTime?
+  /**
+   * ส่งลิงก์ให้สมาชิกทางอีเมลไปแล้วเมื่อไหร่
+   * รอบกวาดรายวันใช้ช่องนี้ตัดสินว่าใครยังไม่ได้ลิงก์ ถ้าไม่มีจะยิงอีเมลซ้ำทุกวัน
+   */
+  notifiedAt     DateTime?
   addedAt        DateTime?
   removedAt      DateTime?
   createdAt      DateTime  @default(now())

@@ -23,6 +23,7 @@ import {
 } from "@/lib/telegram";
 import { formatTHB } from "@/lib/utils";
 import { salesPaused } from "@/config/site";
+import { sendTelegramInviteEmail } from "@/lib/telegram-invite";
 
 /**
  * เตือนล่วงหน้าที่หลักกี่วันก่อนหมดอายุ — เรียงจากไกลไปใกล้
@@ -418,6 +419,8 @@ async function remindExpiring(sub: Subscription): Promise<boolean> {
 export interface MaintenanceResult {
   expired: number;
   reminded: number;
+  /** ส่งลิงก์กลุ่ม Telegram ให้คนที่ตกหล่นไปกี่ราย */
+  invited: number;
   checkedAt: string;
 }
 
@@ -467,15 +470,59 @@ export async function runMembershipMaintenance(): Promise<MaintenanceResult> {
     }
   }
 
-  if (due.length > 0 || reminded > 0) {
+  const invited = await inviteMissedMembers();
+
+  if (due.length > 0 || reminded > 0 || invited > 0) {
     await sendAdminAlert(
       `🕐 งานประจำวันสมาชิก
 ปิดสิทธิ์ (หมดอายุ): ${due.length} ราย
-เตือนใกล้หมดอายุ: ${reminded} ราย${due.length > 0 ? "\nตรวจคิวถอนสิทธิ์ที่ /admin/access-queue และ /admin/telegram" : ""}`
+เตือนใกล้หมดอายุ: ${reminded} ราย
+ส่งลิงก์กลุ่มที่ตกหล่น: ${invited} ราย${due.length > 0 ? "\nตรวจคิวถอนสิทธิ์ที่ /admin/access-queue และ /admin/telegram" : ""}`
     );
   }
 
-  return { expired: due.length, reminded, checkedAt: now.toISOString() };
+  return { expired: due.length, reminded, invited, checkedAt: now.toISOString() };
+}
+
+/**
+ * ส่งลิงก์กลุ่ม Telegram ให้สมาชิกที่จ่ายเงินและได้รับอนุมัติแล้ว แต่ลิงก์ไม่ถึงมือ
+ *
+ * ทำไมต้องมี: จ่ายเงิน + แอดมินอนุมัติ = ได้สิทธิ์แล้ว ลิงก์ควรถึงมือเองไม่ต้องรอใครกด
+ * แต่การส่งตอนอนุมัติพลาดได้หลายทาง — SMTP ล่มชั่วคราว, บอทสร้างลิงก์ไม่ทัน,
+ * หรือได้สิทธิ์มาก่อนที่ระบบจะมีอีเมลฉบับนี้ (สมาชิกชุดแรกเข้าข่ายข้อนี้ทั้งหมด)
+ * ก่อนหน้านี้ต้องให้แอดมินไปกดปุ่มส่งเองทีละคน ซึ่งไม่มีใครรู้ว่าต้องไปกด
+ *
+ * รอบนี้จึงไล่หาคนที่สิทธิ์ยังใช้งานได้แต่ notifiedAt ยังว่าง แล้วส่งให้
+ * นับแค่ status PENDING — ที่เป็น ADDED คือเข้ากลุ่มไปแล้ว ไม่ต้องส่งอะไรอีก
+ */
+async function inviteMissedMembers(): Promise<number> {
+  const active = await prisma.subscription.findMany({
+    where: { status: { in: ACTIVE_STATUSES }, currentPeriodEnd: { gte: new Date() } },
+    select: { userId: true },
+    take: 500,
+  });
+  if (active.length === 0) return 0;
+
+  const pending = await prisma.telegramGrant.findMany({
+    where: {
+      userId: { in: active.map((s) => s.userId) },
+      status: "PENDING",
+      notifiedAt: null,
+    },
+    select: { userId: true },
+  });
+
+  let sent = 0;
+  for (const { userId } of pending) {
+    try {
+      // ยังไม่มีลิงก์ก็สร้างให้ก่อน (เช่นตอนอนุมัติ บอทสร้างไม่ทัน)
+      await ensureTelegramInvite(userId);
+      if (await sendTelegramInviteEmail(userId)) sent += 1;
+    } catch (e) {
+      console.error("invite backfill failed for", userId, e);
+    }
+  }
+  return sent;
 }
 
 /** ใช้ตอนแอดมินสั่งปิดสิทธิ์เอง (ไม่รอ cron) */

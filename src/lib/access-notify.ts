@@ -3,6 +3,7 @@ import { sendEmail } from "@/lib/email";
 import { accessGrantedEmail } from "@/lib/email-templates";
 import { ensureTelegramInvite } from "@/lib/lifecycle";
 import { getUserSubscription } from "@/lib/subscription";
+import { markTelegramInviteNotified } from "@/lib/telegram-invite";
 
 /**
  * แจ้งลูกค้าว่าเพิ่มอินดิเคเตอร์ให้แล้ว พร้อมลิงก์เชิญกลุ่ม Telegram
@@ -42,5 +43,8 @@ export async function notifyAccessGranted(userId: string, tvUsername: string | n
     until: isActive ? sub?.currentPeriodEnd ?? null : null,
     telegramInviteUrl: tg?.inviteLink ?? null,
   });
-  await sendEmail({ to: user.email, ...mail });
+  const res = await sendEmail({ to: user.email, ...mail });
+
+  // อีเมลฉบับนี้แนบลิงก์กลุ่มไปด้วยแล้ว — ประทับไว้ไม่ให้รอบกวาดรายวันส่งซ้ำอีกฉบับ
+  if (res.ok && tg?.inviteLink) await markTelegramInviteNotified(userId);
 }
