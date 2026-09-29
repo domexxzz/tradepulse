@@ -252,7 +252,7 @@ export function checkEvidence(
   }
 
   const norm = (s: string | null) => (s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
-  const nameMatch = compareNames(ev.accountName, opts.customerName);
+  const nameMatch = compareNames(ev.accountName, opts.customerName, opts.customerEmail);
   const emailMatch =
     ev.accountEmail && opts.customerEmail ? norm(ev.accountEmail) === norm(opts.customerEmail) : null;
 
@@ -293,11 +293,39 @@ const nameWords = (s: string) => s.trim().toLowerCase().split(/\s+/).filter(Bool
 /**
  * ชื่อในโบรกกับชื่อใน QVX เป็นคนเดียวกันไหม
  * - ไม่สนลำดับคำ: Wisdom เรียง "นามสกุล ชื่อ" แต่ลูกค้ามักกรอก "ชื่อ นามสกุล"
+ * - ลูกค้ากรอกไม่ครบ (เช่นใส่แค่ชื่อต้น) ยังนับว่าตรงได้ ถ้าอีเมลยืนยันคำที่ขาด
  * - ภาษาเดียวกันแต่ไม่ตรง = false (อาจเป็นคนเอาเลขบัญชีคนอื่นมาแจ้ง)
  * - คนละภาษา (โบรกอังกฤษ ลูกค้ากรอกไทย) = null เทียบอัตโนมัติไม่ได้ ให้คนดูเอง ไม่ขึ้นว่าไม่ผ่าน
  */
-export function compareNames(broker: string | null, customer: string | null): boolean | null {
+export function compareNames(
+  broker: string | null,
+  customer: string | null,
+  customerEmail?: string | null
+): boolean | null {
   if (!broker || !customer) return null;
   if (nameWords(broker) === nameWords(customer)) return true;
+
+  /**
+   * ลูกค้ากรอกชื่อไม่ครบ — เจอบ่อยมาก คนส่วนใหญ่ใส่แค่ชื่อต้นตอนสมัคร
+   * แต่โบรกมีชื่อเต็มเสมอ ("Apinya" กับ "Tuangsubsin Apinya" คือคนเดียวกัน)
+   *
+   * ยอมรับเฉพาะเมื่อ "ทุกคำที่ลูกค้ากรอกอยู่ในชื่อที่โบรกแจ้ง" และต้องมีตัวยืนยันอีกชั้น
+   * เพราะชื่อต้นคำเดียวซ้ำกันได้ง่าย ("สมชาย" มีเป็นพัน) ถ้ารับแค่นั้นคนที่รู้
+   * เลขบัญชีของสมชายคนอื่นจะยึดสิทธิ์ไปได้
+   *
+   * ตัวยืนยันคือ: กรอกมาตั้งแต่ 2 คำขึ้นไป หรือคำที่เหลือของโบรกปรากฏในอีเมลลูกค้า
+   * (apinya.tuangsubsin@gmail.com มีคำว่า tuangsubsin อยู่จริง)
+   */
+  const bWords = nameWords(broker).split(" ").filter(Boolean);
+  const cWords = nameWords(customer).split(" ").filter(Boolean);
+  const subset = cWords.length > 0 && cWords.every((w) => bWords.includes(w));
+
+  if (subset) {
+    if (cWords.length >= 2) return true;
+    const local = (customerEmail ?? "").split("@")[0].toLowerCase();
+    const missing = bWords.filter((w) => !cWords.includes(w));
+    if (local && missing.length > 0 && missing.every((w) => local.includes(w))) return true;
+  }
+
   return hasThai(broker) === hasThai(customer) ? false : null;
 }

@@ -284,3 +284,37 @@ describe("เทียบหลักฐานกับเงื่อนไข"
     expect(r.ok).toBe(false);
   });
 });
+
+/**
+ * ลูกค้ากรอกชื่อไม่ครบเป็นเรื่องปกติมาก คนส่วนใหญ่ใส่แค่ชื่อต้นตอนสมัคร
+ * ถ้าไม่รองรับ คำขอที่หลักฐานครบทุกอย่างจะค้างรอคนกดเพราะเรื่องชื่ออย่างเดียว
+ * (เจอจริง 30 ก.ย. 69 — Apinya vs Tuangsubsin Apinya)
+ *
+ * แต่ชื่อต้นคำเดียวซ้ำกันได้ง่าย จึงต้องมีตัวยืนยันอีกชั้นเสมอ
+ */
+describe("เทียบชื่อเมื่อลูกค้ากรอกไม่ครบ", () => {
+  it("กรอกแค่ชื่อต้น แต่อีเมลมีนามสกุล = คนเดียวกัน", () => {
+    expect(compareNames("Tuangsubsin Apinya", "Apinya", "apinya.tuangsubsin@gmail.com")).toBe(true);
+  });
+
+  it("กรอกแค่ชื่อต้น และอีเมลไม่ยืนยัน = ตัดสินเองไม่ได้ ห้ามผ่าน", () => {
+    // somchai123@gmail.com ไม่มีคำว่า jaidee จึงยืนยันไม่ได้ว่าเป็นคนเดียวกัน
+    expect(compareNames("Jaidee Somchai", "Somchai", "somchai123@gmail.com")).toBe(false);
+  });
+
+  it("ไม่มีอีเมลให้เทียบ ก็ต้องไม่ผ่าน", () => {
+    expect(compareNames("Tuangsubsin Apinya", "Apinya", null)).toBe(false);
+  });
+
+  it("กรอกครบสองคำแต่สลับลำดับ = ผ่านโดยไม่ต้องพึ่งอีเมล", () => {
+    expect(compareNames("Tuangsubsin Apinya", "Apinya Tuangsubsin")).toBe(true);
+  });
+
+  it("ชื่อที่ลูกค้ากรอกมีคำที่โบรกไม่มี = ไม่ใช่คนเดียวกัน", () => {
+    expect(compareNames("Tuangsubsin Apinya", "Apinya Somchai", "apinya.tuangsubsin@gmail.com")).toBe(false);
+  });
+
+  it("คนละภาษายังคงให้คนตัดสิน ไม่ขึ้นว่าไม่ผ่าน", () => {
+    expect(compareNames("Tuangsubsin Apinya", "อาภินยา", "apinya@gmail.com")).toBeNull();
+  });
+});
