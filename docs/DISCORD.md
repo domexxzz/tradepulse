@@ -94,7 +94,9 @@ vercel env add DISCORD_ROLE_MEMBER     # Role ID ของ QVX Active จาก�
 | `DISCORD_ROLE_MEMBER` | Role ID ของ QVX Active |
 | `DISCORD_ROLE_MONTH` / `_Q3` / `_H6` / `_YEAR` | **ปล่อยว่าง** — ระบบข้ามตัวที่ว่างเอง ตั้งเมื่ออยากแยกยศตามแพ็กเกจ |
 
-แล้วเปลี่ยนลิงก์เชิญบนเว็บให้ชี้เซิร์ฟเวอร์ใหม่ (ตอนนี้ยังชี้ PYRO BOLT Community Group อยู่)
+ลิงก์เชิญบนเว็บชี้เซิร์ฟเวอร์ **QuantVisionX** แล้ว (ตรวจ 29 ก.ย. 69) ถ้าจะเปลี่ยน
+ต้องแก้ทั้ง env และค่าโดยปริยายใน `src/config/site.ts` — ค่าโดยปริยายที่ชี้ผิดที่
+จะไม่มีใครเห็นบน production จนกว่า env จะหาย แล้วตอนนั้นลูกค้าจะถูกพาไปผิดเซิร์ฟเวอร์เงียบ ๆ
 
 ```bash
 vercel env add NEXT_PUBLIC_DISCORD_INVITE_URL   # ลิงก์เชิญแบบ Expire After = Never

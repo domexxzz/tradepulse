@@ -124,10 +124,15 @@ export const telegramCommunityUrl = process.env.NEXT_PUBLIC_TELEGRAM_COMMUNITY_U
  * ลิงก์เชิญเซิร์ฟเวอร์ Discord — ชุมชนเปิด ใครก็เข้าได้
  * ห้องเฉพาะสมาชิกในเซิร์ฟเวอร์ล็อกไว้ ปลดตามแพ็กเกจที่สมัคร (ทีมงานให้ role เอง)
  * ⚠️ ใช้ลิงก์เชิญแบบไม่หมดอายุเท่านั้น (Discord: Edit Invite Link -> Expire After = Never)
- * ลิงก์ปัจจุบันตรวจแล้ว expires_at = null และลงที่ช่อง "ห้องรับยศ"
+ * ตรวจแล้ว 29 ก.ย. 69: expires_at = null ลงที่ช่อง "start-here" ของเซิร์ฟเวอร์ QuantVisionX
+ *
+ * ⚠️ ค่าโดยปริยายเดิมคือ discord.gg/kA8cRPMQwb ซึ่งเป็นเซิร์ฟเวอร์ "PYRO BOLT Community
+ * Group" ของคนอื่น (441 คน) ไม่ใช่ของเรา บน production ไม่เคยเห็นเพราะ env ทับไว้
+ * แต่ถ้า env หลุดหายเมื่อไหร่ เว็บจะพาลูกค้าที่จ่ายเงินไปเซิร์ฟเวอร์คนอื่นแบบเงียบ ๆ
+ * ค่าโดยปริยายจึงต้องเป็นของเราเอง ไม่ใช่ของที่ก๊อปมาตอนทำเดโม
  */
 export const discordInviteUrl =
-  process.env.NEXT_PUBLIC_DISCORD_INVITE_URL || "https://discord.gg/kA8cRPMQwb";
+  process.env.NEXT_PUBLIC_DISCORD_INVITE_URL || "https://discord.gg/VrBJk9JqHn";
 
 /** มีลิงก์ Discord ให้แสดงหรือยัง */
 export const hasDiscord = Boolean(discordInviteUrl);
