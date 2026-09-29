@@ -82,13 +82,18 @@ export async function submitBrokerApplication(input: {
   });
   if (!user) return { ok: false, error: "ไม่พบบัญชีผู้ใช้" };
 
-  const tvUsername = (input.tradingViewUsername ?? "").trim() || user.tradingViewUsername;
+  const typed = (input.tradingViewUsername ?? "").trim();
+  // ตรวจเฉพาะค่าที่เพิ่งพิมพ์เข้ามา ไม่ตรวจค่าที่เก็บไว้ในบัญชีอยู่แล้ว
+  // ของเก่าผ่านการตรวจตอนกรอกครั้งแรกไปแล้ว หรือแอดมินตั้งให้เองโดยตั้งใจ
+  // ถ้ามาตรวจซ้ำตรงนี้ สมาชิกเดิมที่ชื่อไม่ตรงกฎจะขอต่ออายุไม่ได้
+  // ทั้งที่ระบบใช้ชื่อนั้นเพิ่มสิทธิ์ให้เขาได้ตามปกติ
+  if (typed && !TRADINGVIEW_USERNAME_RE.test(typed)) {
+    return { ok: false, error: "TradingView username ใช้ได้เฉพาะ a-z, 0-9 และ _ (3–40 ตัว)" };
+  }
+  const tvUsername = typed || user.tradingViewUsername;
   if (!tvUsername) {
     // ยังต้องมีตั้งแต่ตอนส่ง — อนุมัติแล้วบอทต้องรู้ทันทีว่าจะเพิ่มสิทธิ์ให้ใคร
     return { ok: false, error: "กรอก TradingView username ด้วย" };
-  }
-  if (!TRADINGVIEW_USERNAME_RE.test(tvUsername)) {
-    return { ok: false, error: "TradingView username ใช้ได้เฉพาะ a-z, 0-9 และ _ (3–40 ตัว)" };
   }
 
   const brokerEmail = (input.brokerEmail ?? "").trim() || null;
