@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { formatThaiDate } from "@/lib/date";
 import { BROKER_EVENT_TYPE as T, type BrokerEventType } from "@/config/status";
 import { DEFAULT_BROKER, TRADING_ACCOUNT_RE } from "@/config/brokers";
 
@@ -229,7 +230,7 @@ export function checkEvidence(
     {
       label: "สมัครใต้ลิงก์ QVX",
       ok: ev.signupAt ? true : null,
-      detail: ev.signupAt ? `พบการสมัคร ${ev.signupAt.toLocaleDateString("th-TH")}` : "ยังไม่ได้รับอีเมลแจ้งการสมัคร",
+      detail: ev.signupAt ? `พบการสมัคร ${formatThaiDate(ev.signupAt)}` : "ยังไม่ได้รับอีเมลแจ้งการสมัคร",
     },
     {
       label: `ยอดคงเหลือ ≥ $${opts.minDepositUSD}`,

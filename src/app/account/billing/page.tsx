@@ -1,3 +1,4 @@
+import { formatThaiDate } from "@/lib/date";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { formatTHB } from "@/lib/utils";
@@ -27,7 +28,7 @@ export default async function BillingPage() {
             <tbody>
               {payments.map((p) => (
                 <tr key={p.id} className="border-b border-border last:border-0">
-                  <td className="px-5 py-3">{new Date(p.createdAt).toLocaleDateString("th-TH")}</td>
+                  <td className="px-5 py-3">{formatThaiDate(p.createdAt)}</td>
                   <td className="px-5 py-3">{formatTHB(p.amountTHB)}</td>
                   <td className="px-5 py-3">{p.status}</td>
                 </tr>

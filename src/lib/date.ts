@@ -22,11 +22,34 @@ export function daysUntil(date: Date, now: Date = new Date()): number {
   return Math.ceil((date.getTime() - now.getTime()) / DAY_MS);
 }
 
+/**
+ * เวลาไทยเสมอ ไม่ว่าจะเรนเดอร์ที่ไหน
+ *
+ * เซิร์ฟเวอร์ที่รันเว็บอยู่โซน UTC ถ้าไม่ระบุโซน วันที่จะเพี้ยนไป 7 ชั่วโมง
+ * และ "ข้ามวัน" ได้เลยสำหรับอะไรที่เกิดหลังเที่ยงคืนถึงตีเจ็ดตามเวลาไทย
+ * (เจอจริง 30 ก.ย. 69 — สลิปที่ลูกค้าส่งตอน 00:13 โชว์เป็น 29/9 17:13
+ * ทำให้แอดมินคิดว่าเป็นสลิปเก่าค้างมาทั้งวัน)
+ */
+const BANGKOK = "Asia/Bangkok";
+
 /** วันที่แบบไทยอ่านง่าย เช่น "25 ส.ค. 2569" */
 export function formatThaiDate(date: Date | string): string {
   return new Date(date).toLocaleDateString("th-TH", {
+    timeZone: BANGKOK,
     day: "numeric",
     month: "short",
     year: "numeric",
+  });
+}
+
+/** วันที่พร้อมเวลา เช่น "30 ก.ย. 2569 00:13" — ใช้กับของที่ต้องรู้ว่ากี่โมง เช่น สลิป */
+export function formatThaiDateTime(date: Date | string): string {
+  return new Date(date).toLocaleString("th-TH", {
+    timeZone: BANGKOK,
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }

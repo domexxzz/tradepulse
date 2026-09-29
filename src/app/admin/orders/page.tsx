@@ -3,7 +3,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { plans } from "@/config/plans";
 import { formatTHB } from "@/lib/utils";
-import { formatThaiDate } from "@/lib/date";
+import { formatThaiDate, formatThaiDateTime } from "@/lib/date";
 import { approveOrder, rejectOrder, markOrderRefunded } from "@/lib/actions/payment";
 import { slipVerifyEnabled } from "@/lib/slip-verify";
 import { ShieldCheck, ShieldAlert, ShieldQuestion, Download } from "lucide-react";
@@ -171,7 +171,7 @@ export default async function OrdersPage({
                     {plan?.name ?? o.planCode} · <b>{formatTHB(o.amountTHB)}</b>
                   </div>
                   <div className="mt-1 text-xs text-muted">
-                    {new Date(o.createdAt).toLocaleString("th-TH")}
+                    {formatThaiDateTime(o.createdAt)}
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <span className={`inline-block rounded-full border px-2.5 py-0.5 text-xs ${statusStyle[o.status]}`}>
@@ -182,7 +182,15 @@ export default async function OrdersPage({
                   {o.verifyNote && o.verifyStatus !== "VERIFIED" && (
                     <p className="mt-2 text-xs text-muted">{o.verifyNote}</p>
                   )}
-                  {o.note && <p className="mt-1 text-xs text-down">เหตุผลที่ปฏิเสธ: {o.note}</p>}
+                  {/* โน้ตใช้เก็บได้หลายเรื่อง ไม่ได้มีแต่เหตุผลปฏิเสธ — เช่นใบที่ลูกค้าแจ้งว่า
+                      โอนมาแล้วระหว่างหยุดรับชำระเงิน ถ้าติดป้าย "เหตุผลที่ปฏิเสธ" กับทุกใบ
+                      ออเดอร์ที่ยังรอตรวจจะดูเหมือนถูกปฏิเสธไปแล้ว แล้วแอดมินจะข้ามมันไป */}
+                  {o.note &&
+                    (o.status === "REJECTED" ? (
+                      <p className="mt-1 text-xs text-down">เหตุผลที่ปฏิเสธ: {o.note}</p>
+                    ) : (
+                      <p className="mt-1 text-xs text-muted">หมายเหตุ: {o.note}</p>
+                    ))}
                   {o.refundedAt && (
                     <p className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-400/10 px-2.5 py-1 text-xs text-amber-400">
                       คืนเงินแล้ว {formatThaiDate(o.refundedAt)}

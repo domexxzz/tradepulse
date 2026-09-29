@@ -8,6 +8,9 @@
  * ผู้ให้บริการอ่านสลิปพลาดได้ (ภาพเบลอ/ครอบตัด) การตัดสินใจสุดท้ายต้องเป็นคน
  */
 import { receiverMatches, isSlipFresh, parseSlipDate } from "./slip-receiver";
+import { formatThaiDateTime } from "./date";
+import { checkQrIntegrity } from "./slip-qr-verify";
+import { readSlipWithAi } from "./slip-ai";
 
 const TOKEN = process.env.EASYSLIP_TOKEN;
 /** เลข PromptPay ที่เงินต้องเข้า — ตัวเดียวกับที่ใช้สร้าง QR */
@@ -15,7 +18,9 @@ const RECEIVER_ID = process.env.PROMPTPAY_ID || "";
 
 /** ตรวจแล้วยอดตรง = อนุมัติออเดอร์ให้อัตโนมัติ (ค่าเริ่มต้น: ปิด ให้แอดมินกดเอง) */
 export const slipAutoApprove = process.env.SLIP_AUTO_APPROVE === "true";
-export const slipVerifyEnabled = Boolean(TOKEN);
+/** อ่านสลิปด้วย AI แทน EasySlip — ใช้ตอนยังไม่มีบัญชีผู้ให้บริการ */
+export const slipAiFallback = process.env.SLIP_AI_FALLBACK === "true";
+export const slipVerifyEnabled = Boolean(TOKEN) || slipAiFallback;
 
 export type SlipVerifyStatus =
   | "VERIFIED"   // อ่านสลิปได้ และยอดตรงกับออเดอร์
@@ -48,6 +53,83 @@ function pickAmount(data: Record<string, unknown> | null): number | undefined {
 }
 
 /**
+ * ตรวจสลิปด้วยของที่เรามีเอง — AI อ่านตัวเลข + checksum ของ QR
+ *
+ * ใช้เมื่อยังไม่มี EASYSLIP_TOKEN ผลที่ได้ "อ่อนกว่า" EasySlip อย่างมีนัยสำคัญ
+ * เพราะไม่มีใครยืนยันกับธนาคารว่ารายการนี้มีจริง — ดูคำอธิบายใน slip-ai.ts
+ *
+ * สามด่านเหมือนเดิม แต่เพิ่มด่านศูนย์: QR ต้องไม่ใช่ของปลอมที่คำนวณ checksum ไม่ผ่าน
+ * ด่านนี้กันสลิปที่สร้างขึ้นเองทั้งใบหรือแคปจากเว็บทำสลิปปลอมได้
+ */
+async function verifyWithAi(input: {
+  base64: string;
+  mime: string;
+  expectAmountTHB: number;
+  orderCreatedAt: Date;
+  qrPayload?: string;
+}): Promise<SlipVerifyResult> {
+  const qr = checkQrIntegrity(input.qrPayload);
+  const transRef = input.qrPayload;
+
+  // ด่าน 0: QR ที่มี checksum แต่คำนวณไม่ตรง = มีคนแก้ payload มา ปฏิเสธทันที
+  if (qr.integrity === "invalid") {
+    return {
+      status: "FAILED",
+      note: `QR ในสลิปมี checksum ไม่ตรง (ควรเป็น ${qr.expected} แต่ได้ ${qr.actual}) — น่าสงสัยว่าถูกแก้`,
+      transRef,
+    };
+  }
+
+  const read = await readSlipWithAi({ base64: input.base64, mime: input.mime });
+  if (!read.ok || read.amount === undefined) {
+    return { status: "FAILED", note: `AI อ่านสลิปไม่ได้: ${read.reason ?? "ไม่ทราบสาเหตุ"}`, transRef };
+  }
+
+  const how = `อ่านด้วย ${read.model ?? "AI"} · QR ${qr.integrity === "valid" ? "checksum ตรง" : "ไม่มี checksum"}`;
+
+  // ด่าน 1: ยอดตรงไหม
+  if (Math.abs(read.amount - input.expectAmountTHB) > 0.01) {
+    return {
+      status: "MISMATCH",
+      note: `AI อ่านยอดได้ ${read.amount} แต่ออเดอร์นี้ต้องจ่าย ${input.expectAmountTHB} (${how})`,
+      transRef,
+      amount: read.amount,
+    };
+  }
+
+  // ด่าน 2: เงินเข้าบัญชีเราจริงไหม (เท่าที่ตัวเลขบนภาพบอก)
+  if (!RECEIVER_ID) {
+    return { status: "WRONG_ACCOUNT", note: "ยังไม่ได้ตั้ง PROMPTPAY_ID จึงตรวจบัญชีผู้รับไม่ได้", transRef, amount: read.amount };
+  }
+  if (!receiverMatches(RECEIVER_ID, [read.receiverAccount])) {
+    return {
+      status: "WRONG_ACCOUNT",
+      note: `ยอดตรง แต่บัญชีผู้รับที่อ่านได้ (${read.receiverAccount ?? "อ่านไม่ออก"}${read.receiverName ? ` · ${read.receiverName}` : ""}) ไม่ตรงกับบัญชีที่ใช้รับเงิน`,
+      transRef,
+      amount: read.amount,
+    };
+  }
+
+  // ด่าน 3: เป็นสลิปของออเดอร์นี้ ไม่ใช่ของเก่าที่ขุดมา
+  const when = parseSlipDate(read.transferredAt);
+  if (when && !isSlipFresh(when, input.orderCreatedAt, new Date())) {
+    return {
+      status: "STALE",
+      note: `สลิปลงวันที่ ${formatThaiDateTime(when)} ซึ่งอยู่นอกช่วงเวลาของออเดอร์นี้ (${how})`,
+      transRef,
+      amount: read.amount,
+    };
+  }
+
+  return {
+    status: "VERIFIED",
+    note: `ยอดตรง บัญชีผู้รับตรง และเป็นสลิปของออเดอร์นี้ (${how}) — ยังไม่ได้ยืนยันกับธนาคาร`,
+    transRef,
+    amount: read.amount,
+  };
+}
+
+/**
  * ส่งรูปสลิปไปให้ EasySlip อ่าน แล้วเทียบยอดกับที่ต้องจ่าย
  * ห้าม throw — ทุกความล้มเหลวคืนสถานะ FAILED เพื่อให้ตกไปที่การตรวจด้วยคน
  */
@@ -59,6 +141,9 @@ export async function verifySlip(input: {
   orderCreatedAt: Date;
 }): Promise<SlipVerifyResult> {
   if (!slipVerifyEnabled) return { status: "SKIPPED", note: "ยังไม่ได้เปิดระบบตรวจสลิปอัตโนมัติ" };
+
+  // ไม่มีบัญชี EasySlip ก็ใช้ของเราเองไปก่อน — อ่อนกว่าแต่ดีกว่าไม่ตรวจอะไรเลย
+  if (!TOKEN) return verifyWithAi(input);
 
   try {
     const form = new FormData();
@@ -132,7 +217,7 @@ export async function verifySlip(input: {
     if (slipDate && !isSlipFresh(slipDate, input.orderCreatedAt, new Date())) {
       return {
         status: "STALE",
-        note: `สลิปลงวันที่ ${slipDate.toLocaleString("th-TH")} ซึ่งอยู่นอกช่วงเวลาของออเดอร์นี้`,
+        note: `สลิปลงวันที่ ${formatThaiDateTime(slipDate)} ซึ่งอยู่นอกช่วงเวลาของออเดอร์นี้`,
         transRef,
         amount,
       };

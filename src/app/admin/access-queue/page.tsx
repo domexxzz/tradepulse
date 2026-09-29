@@ -1,3 +1,4 @@
+import { formatThaiDate } from "@/lib/date";
 import { prisma } from "@/lib/prisma";
 import {
   grantAccess,
@@ -75,7 +76,7 @@ export default async function AccessQueuePage() {
                     </span>
                   </td>
                   <td className="px-5 py-3 text-xs text-muted">
-                    {new Date(g.createdAt).toLocaleDateString("th-TH")}
+                    {formatThaiDate(g.createdAt)}
                   </td>
                   <td className="px-5 py-3">
                     <div className="flex justify-end gap-2">

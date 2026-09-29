@@ -1,3 +1,4 @@
+import { formatThaiDateTime } from "@/lib/date";
 import Link from "next/link";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -58,7 +59,7 @@ export default async function OrdersHistoryPage() {
               <div key={o.id} className="card-surface flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl p-5">
                 <div className="min-w-[120px]">
                   <div className="font-semibold">{plan?.name ?? o.planCode}</div>
-                  <div className="text-xs text-muted">{new Date(o.createdAt).toLocaleString("th-TH")}</div>
+                  <div className="text-xs text-muted">{formatThaiDateTime(o.createdAt)}</div>
                 </div>
                 <div className="font-display text-lg font-bold">{formatTHB(o.amountTHB)}</div>
                 <span className={`rounded-full border px-2.5 py-0.5 text-xs ${statusStyle[o.status]}`}>
