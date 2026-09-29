@@ -76,3 +76,6 @@ media-src/
 
 # token สำหรับ scripts/deploy-vercel.mjs — ห้าม commit
 .vercel-token
+
+# ความลับสำหรับยิง cron เอง — ห้าม commit (ค่าเดียวกับ env CRON_SECRET บน Vercel และ repo secret)
+.cron-secret

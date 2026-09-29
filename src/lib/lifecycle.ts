@@ -23,7 +23,7 @@ import {
 } from "@/lib/telegram";
 import { formatTHB } from "@/lib/utils";
 import { salesPaused } from "@/config/site";
-import { sendTelegramInviteEmail } from "@/lib/telegram-invite";
+import { sendTelegramInviteEmail, usersAwaitingInviteEmail } from "@/lib/telegram-invite";
 
 /**
  * เตือนล่วงหน้าที่หลักกี่วันก่อนหมดอายุ — เรียงจากไกลไปใกล้
@@ -421,6 +421,8 @@ export interface MaintenanceResult {
   reminded: number;
   /** ส่งลิงก์กลุ่ม Telegram ให้คนที่ตกหล่นไปกี่ราย */
   invited: number;
+  /** ควรได้ลิงก์แต่ส่งไม่สำเร็จกี่ราย — ต้องมีคนไปดู ไม่ใช่ปล่อยให้ค้าง */
+  stuck: number;
   checkedAt: string;
 }
 
@@ -470,18 +472,22 @@ export async function runMembershipMaintenance(): Promise<MaintenanceResult> {
     }
   }
 
-  const invited = await inviteMissedMembers();
+  const invite = await inviteMissedMembers();
 
-  if (due.length > 0 || reminded > 0 || invited > 0) {
+  if (due.length > 0 || reminded > 0 || invite.sent > 0 || invite.stuck.length > 0) {
     await sendAdminAlert(
       `🕐 งานประจำวันสมาชิก
 ปิดสิทธิ์ (หมดอายุ): ${due.length} ราย
 เตือนใกล้หมดอายุ: ${reminded} ราย
-ส่งลิงก์กลุ่มที่ตกหล่น: ${invited} ราย${due.length > 0 ? "\nตรวจคิวถอนสิทธิ์ที่ /admin/access-queue และ /admin/telegram" : ""}`
+ส่งลิงก์กลุ่มที่ตกหล่น: ${invite.sent} ราย` +
+        (invite.stuck.length > 0
+          ? `\n⚠️ ส่งลิงก์ไม่สำเร็จ ${invite.stuck.length} ราย — บอทสร้างลิงก์เชิญไม่ได้ หรืออีเมลส่งไม่ออก\nดูที่ /admin/telegram`
+          : "") +
+        (due.length > 0 ? "\nตรวจคิวถอนสิทธิ์ที่ /admin/access-queue และ /admin/telegram" : "")
     );
   }
 
-  return { expired: due.length, reminded, invited, checkedAt: now.toISOString() };
+  return { expired: due.length, reminded, invited: invite.sent, stuck: invite.stuck.length, checkedAt: now.toISOString() };
 }
 
 /**
@@ -495,35 +501,35 @@ export async function runMembershipMaintenance(): Promise<MaintenanceResult> {
  * รอบนี้จึงไล่หาคนที่สิทธิ์ยังใช้งานได้แต่ notifiedAt ยังว่าง แล้วส่งให้
  * นับแค่ status PENDING — ที่เป็น ADDED คือเข้ากลุ่มไปแล้ว ไม่ต้องส่งอะไรอีก
  */
-/** เรียกจาก cron รายวัน และจากปุ่มในหน้า /admin/telegram เมื่ออยากส่งเลยไม่รอถึงรอบ */
-export async function inviteMissedMembers(): Promise<number> {
-  const active = await prisma.subscription.findMany({
-    where: { status: { in: ACTIVE_STATUSES }, currentPeriodEnd: { gte: new Date() } },
-    select: { userId: true },
-    take: 500,
-  });
-  if (active.length === 0) return 0;
+export interface InviteSweepResult {
+  sent: number;
+  /**
+   * คนที่ควรได้ลิงก์แต่ส่งไม่สำเร็จ — เช่นบอทสร้างลิงก์เชิญไม่ได้ หรืออีเมลส่งไม่ออก
+   *
+   * ต้องรายงานออกมา ไม่ใช่เงียบ ๆ ไม่งั้นคนกลุ่มนี้จะถูกนับบนหน้าแอดมินทุกวัน
+   * โดยไม่มีใครรู้ว่าทำไมตัวเลขไม่ลด แล้วแอดมินจะกดปุ่มซ้ำไปเรื่อย ๆ เปล่า ๆ
+   */
+  stuck: string[];
+}
 
-  const pending = await prisma.telegramGrant.findMany({
-    where: {
-      userId: { in: active.map((s) => s.userId) },
-      status: "PENDING",
-      notifiedAt: null,
-    },
-    select: { userId: true },
-  });
+/** เรียกจาก cron รายวัน และจากปุ่มในหน้า /admin/telegram เมื่ออยากส่งเลยไม่รอถึงรอบ */
+export async function inviteMissedMembers(): Promise<InviteSweepResult> {
+  const waiting = await usersAwaitingInviteEmail();
 
   let sent = 0;
-  for (const { userId } of pending) {
+  const stuck: string[] = [];
+  for (const userId of waiting) {
     try {
       // ยังไม่มีลิงก์ก็สร้างให้ก่อน (เช่นตอนอนุมัติ บอทสร้างไม่ทัน)
       await ensureTelegramInvite(userId);
       if (await sendTelegramInviteEmail(userId)) sent += 1;
+      else stuck.push(userId);
     } catch (e) {
       console.error("invite backfill failed for", userId, e);
+      stuck.push(userId);
     }
   }
-  return sent;
+  return { sent, stuck };
 }
 
 /** ใช้ตอนแอดมินสั่งปิดสิทธิ์เอง (ไม่รอ cron) */

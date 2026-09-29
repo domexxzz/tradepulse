@@ -6,7 +6,7 @@ import {
   resendTelegramInvite,
   sendPendingTelegramInvites,
 } from "@/lib/actions/admin";
-import { ACTIVE_STATUSES } from "@/lib/subscription";
+import { usersAwaitingInviteEmail } from "@/lib/telegram-invite";
 import { telegramGroupManaged } from "@/lib/telegram";
 import { formatThaiDate } from "@/lib/date";
 
@@ -44,20 +44,9 @@ export default async function TelegramQueuePage() {
   // ถ้าดูจากตารางคิวอย่างเดียวจะมองไม่เห็นคนที่ผูกไว้แต่ไม่มีแถวคิว แล้วปลดไม่ได้เลย
   // (เจอของจริง 31 ส.ค. 2569 — บัญชีที่ถือ Telegram อยู่ไม่โผล่ในคิวสักแถว)
   // กี่คนที่สิทธิ์ยังใช้ได้แต่ยังไม่เคยได้ลิงก์ทางอีเมล — ตัวเลขบนปุ่มส่งทั้งหมด
-  // ถ้าไม่โชว์ตัวเลข แอดมินจะไม่รู้ว่ามีใครค้างอยู่ ก็ไม่มีเหตุให้ไปกด
-  const activeUserIds = (
-    await prisma.subscription.findMany({
-      where: { status: { in: ACTIVE_STATUSES }, currentPeriodEnd: { gte: new Date() } },
-      select: { userId: true },
-      take: 500,
-    })
-  ).map((s) => s.userId);
-  const awaitingInvite =
-    activeUserIds.length === 0
-      ? 0
-      : await prisma.telegramGrant.count({
-          where: { userId: { in: activeUserIds }, status: "PENDING", notifiedAt: null },
-        });
+  // ใช้ตัวเดียวกับที่รอบกวาดใช้ ห้ามเขียน query เองที่นี่
+  // ของเดิมเขียนแยกแล้วถามคนละคำถาม หน้านี้ขึ้น 7 ราย แต่ส่งจริงได้ 0
+  const awaitingInvite = (await usersAwaitingInviteEmail()).length;
 
   const linked = await prisma.user.findMany({
     where: { telegramUserId: { not: null } },

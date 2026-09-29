@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { PrismaClient } from "@prisma/client";
 import { activateMembership, runMembershipMaintenance } from "@/lib/lifecycle";
-import { markTelegramInviteNotified, sendTelegramInviteEmail } from "@/lib/telegram-invite";
+import {
+  markTelegramInviteNotified,
+  sendTelegramInviteEmail,
+  usersAwaitingInviteEmail,
+} from "@/lib/telegram-invite";
 import { salesPaused } from "@/config/site";
 import { getUserSubscription, isSubscriptionActive } from "@/lib/subscription";
 import { addMonths, daysUntil } from "@/lib/date";
@@ -391,5 +395,78 @@ describe("S-1 · หยุดรับเงินแล้วคนที่โ
     });
     const reused = await make();
     expect(reused?.id).toBe(first.id);
+  });
+});
+
+/**
+ * ตัวนับบนหน้าแอดมินกับตัวส่งต้องตอบคำถามเดียวกันเสมอ
+ *
+ * ของเดิมเขียน query แยกกันแล้วถามคนละคำถาม — หน้าเว็บขึ้น "ยังไม่ได้ลิงก์ 7 ราย"
+ * แต่สั่งส่งจริงได้ 0 (29 ก.ย. 69) ตัวเลขที่ไม่ตรงกับสิ่งที่ระบบทำได้จริง
+ * แย่กว่าไม่มีตัวเลขเลย เพราะแอดมินจะกดแล้วกดอีกโดยไม่รู้ว่าทำไมไม่ขยับ
+ */
+describe("T-2 · ตัวนับกับตัวส่งต้องตรงกัน", () => {
+  async function member(tag: string) {
+    const user = await makeUser(tag);
+    await activateMembership({
+      userId: user.id, planCode: "MONTH", amountTHB: 990,
+      providerRef: `uat_${tag}_${user.id}`, provider: "web",
+    });
+    return user;
+  }
+
+  it("มีแถว PENDING ที่ยังไม่ส่ง = ต้องถูกนับ", async () => {
+    const user = await member("await-yes");
+    await prisma.telegramGrant.updateMany({
+      where: { userId: user.id },
+      data: { inviteLink: "https://t.me/+uat" },
+    });
+    expect(await usersAwaitingInviteEmail()).toContain(user.id);
+  });
+
+  it("เข้ากลุ่มไปแล้ว ต้องไม่ถูกนับ แม้จะมีแถว PENDING เก่าค้างอยู่", async () => {
+    const user = await member("await-added");
+    // แถวเก่าที่ค้างอยู่ ยังไม่เคยส่ง
+    await prisma.telegramGrant.updateMany({
+      where: { userId: user.id },
+      data: { inviteLink: "https://t.me/+uat-old", notifiedAt: null },
+    });
+    // แถวใหม่ที่บอกว่าเข้ากลุ่มแล้ว
+    await prisma.telegramGrant.create({
+      data: { userId: user.id, status: "ADDED", addedAt: new Date() },
+    });
+
+    const waiting = await usersAwaitingInviteEmail();
+    expect(waiting).not.toContain(user.id);
+  });
+
+  it("คนที่ยังไม่มีลิงก์เชิญ ต้องยังถูกนับ — รอบกวาดสร้างลิงก์ให้ก่อนส่ง", async () => {
+    // เคสนี้เกิดตอนบอทสร้างลิงก์ไม่ทันตอนอนุมัติ ถ้าตัดออกจากตัวนับ
+    // คนกลุ่มนี้จะหายไปเงียบ ๆ ไม่มีใครตามให้
+    const user = await member("await-nolink");
+    const grant = await prisma.telegramGrant.findFirst({ where: { userId: user.id } });
+    expect(grant?.inviteLink).toBeNull();
+
+    expect(await usersAwaitingInviteEmail()).toContain(user.id);
+  });
+
+  it("รอบกวาดต้องรายงานคนที่ส่งไม่สำเร็จ ไม่ใช่เงียบ", async () => {
+    // ชุดทดสอบไม่มีบอทและไม่มีระบบอีเมล ทุกคนที่ค้างจึงส่งไม่ได้
+    // ตัวเลขนี้คือสิ่งที่ทำให้แอดมินรู้ว่าทำไมตัวเลขบนหน้าเว็บไม่ลด
+    const result = await runMembershipMaintenance();
+    expect(result.stuck).toBeGreaterThan(0);
+    expect(result.invited).toBe(0);
+  });
+
+  it("ประทับว่าส่งแล้ว ต้องหลุดออกจากตัวนับ", async () => {
+    const user = await member("await-done");
+    await prisma.telegramGrant.updateMany({
+      where: { userId: user.id },
+      data: { inviteLink: "https://t.me/+uat-done" },
+    });
+    expect(await usersAwaitingInviteEmail()).toContain(user.id);
+
+    await markTelegramInviteNotified(user.id);
+    expect(await usersAwaitingInviteEmail()).not.toContain(user.id);
   });
 });

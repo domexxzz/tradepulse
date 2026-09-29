@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { telegramInviteEmail } from "@/lib/email-templates";
-import { getUserSubscription } from "@/lib/subscription";
+import { ACTIVE_STATUSES, getUserSubscription } from "@/lib/subscription";
 
 /**
  * ส่งลิงก์เข้ากลุ่ม Telegram ให้สมาชิกทางอีเมล
@@ -20,8 +20,11 @@ import { getUserSubscription } from "@/lib/subscription";
 export async function sendTelegramInviteEmail(userId: string): Promise<boolean> {
   const [user, grant] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true } }),
+    // ต้องกรองว่ามีลิงก์จริง ไม่ใช่หยิบแถวล่าสุดมาแล้วค่อยเช็ก
+    // สมาชิกคนหนึ่งมีได้หลายแถว (เช่น แถว ADDED จากรอบก่อน + แถว PENDING ใหม่)
+    // ถ้าแถวล่าสุดไม่มีลิงก์ จะคืน false ทั้งที่มีแถวอื่นที่ส่งได้
     prisma.telegramGrant.findFirst({
-      where: { userId, status: { in: ["PENDING", "ADDED"] } },
+      where: { userId, status: { in: ["PENDING", "ADDED"] }, inviteLink: { not: null } },
       orderBy: { createdAt: "desc" },
       select: { id: true, inviteLink: true },
     }),
@@ -62,4 +65,38 @@ export async function markTelegramInviteNotified(userId: string, grantId?: strin
   if (!id) return;
 
   await prisma.telegramGrant.update({ where: { id }, data: { notifiedAt: new Date() } });
+}
+
+/**
+ * ใครที่ยังไม่ได้ลิงก์ทางอีเมล — แหล่งความจริงแหล่งเดียว
+ *
+ * ทำไมต้องรวมไว้ที่เดียว: ก่อนหน้านี้หน้าแอดมินกับรอบกวาดเขียน query แยกกัน
+ * แล้วถามคนละคำถาม หน้าแอดมินนับ "มีแถว PENDING" ส่วนตัวส่งหยิบ "แถวล่าสุด
+ * ที่เป็น PENDING หรือ ADDED" คนที่เข้ากลุ่มไปแล้วจึงถูกนับแต่ส่งไม่ได้
+ * หน้าเว็บขึ้น 7 ราย แต่ส่งจริงได้ 0 (เจอจริง 29 ก.ย. 69)
+ * ตัวเลขที่ไม่ตรงกับสิ่งที่ระบบทำได้จริง แย่กว่าไม่มีตัวเลขเลย
+ *
+ * กติกา: สิทธิ์ยังใช้งานได้ + มีแถว PENDING ที่ยังไม่เคยส่ง + ยังไม่ได้อยู่ในกลุ่ม
+ * คนที่อยู่ในกลุ่มแล้วไม่ต้องส่งอะไรอีก ต่อให้มีแถว PENDING เก่าค้างอยู่ก็ตาม
+ */
+export async function usersAwaitingInviteEmail(): Promise<string[]> {
+  const active = await prisma.subscription.findMany({
+    where: { status: { in: ACTIVE_STATUSES }, currentPeriodEnd: { gte: new Date() } },
+    select: { userId: true },
+    take: 500,
+  });
+  if (active.length === 0) return [];
+
+  const grants = await prisma.telegramGrant.findMany({
+    where: { userId: { in: active.map((s) => s.userId) }, status: { in: ["PENDING", "ADDED"] } },
+    select: { userId: true, status: true, notifiedAt: true },
+  });
+
+  const inGroup = new Set(grants.filter((g) => g.status === "ADDED").map((g) => g.userId));
+  const waiting = new Set(
+    grants
+      .filter((g) => g.status === "PENDING" && g.notifiedAt === null && !inGroup.has(g.userId))
+      .map((g) => g.userId),
+  );
+  return [...waiting];
 }
