@@ -7,7 +7,6 @@ import { requireAdmin } from "@/lib/admin";
 import { plans } from "@/config/plans";
 import { salesPaused } from "@/config/site";
 import { plansForUser } from "@/lib/pricing";
-import { activateMembership } from "@/lib/lifecycle";
 import { parseSlipDataUrl } from "@/lib/slip";
 import { verifySlip, slipAutoApprove, slipVerifyEnabled } from "@/lib/slip-verify";
 import { readSlipQr } from "@/lib/slip-qr";
