@@ -54,7 +54,11 @@ export function Footer() {
           <h3 className="mb-3 text-sm font-semibold">ติดต่อ / ช่วยเหลือ</h3>
           <ul className="space-y-2 text-sm text-muted">
             {hasLineContact && (
-              <li><a href={site.contact.lineUrl} className="hover:text-foreground">ติดต่อผ่าน LINE</a></li>
+              <li>
+                <a href={site.contact.lineUrl} target="_blank" rel="noopener noreferrer" className="hover:text-foreground">ติดต่อผ่าน LINE</a>
+                {/* บนคอม ลิงก์ lin.ee ขึ้นได้แค่ QR กดเพิ่มเพื่อนไม่ได้ — โชว์ไอดีไว้ให้ค้นในแอปเอา */}
+                {site.contact.lineId && <span className="ml-1.5 text-xs">{site.contact.lineId}</span>}
+              </li>
             )}
             {hasDiscord && (
               <li>

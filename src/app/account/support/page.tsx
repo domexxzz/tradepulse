@@ -14,12 +14,22 @@ export default function SupportPage() {
           สอบถามการใช้งาน แจ้งปัญหาสิทธิ์ หรือขอคำแนะนำการใช้ระบบ ทีมงานพร้อมช่วยเหลือ
         </p>
         {hasLineContact ? (
-          <a
-            href={site.contact.lineUrl}
-            className="mt-4 inline-block rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-brand-ink transition-colors hover:bg-brand-strong"
-          >
-            ติดต่อผ่าน LINE
-          </a>
+          <>
+            <a
+              href={site.contact.lineUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 inline-block rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-brand-ink transition-colors hover:bg-brand-strong"
+            >
+              ติดต่อผ่าน LINE
+            </a>
+            {/* บนคอม ลิงก์ lin.ee ขึ้นได้แค่ QR กดเพิ่มเพื่อนไม่ได้ — ต้องมีไอดีให้ค้นในแอปด้วย */}
+            {site.contact.lineId && (
+              <p className="mt-3 text-sm text-muted">
+                หรือค้นหาไอดี <span className="font-mono text-foreground">{site.contact.lineId}</span> ในแอป LINE
+              </p>
+            )}
+          </>
         ) : hasEmail ? (
           <a
             href={`mailto:${site.contact.email}`}
