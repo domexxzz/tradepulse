@@ -30,6 +30,9 @@ export const site = {
     { label: "ตัวอย่างการทำงาน", href: "/#results" },
     { label: "ราคา", href: "/#pricing" },
     { label: "วิธีการใช้งาน", href: "/#how" },
+    // คู่มืออยู่ในลิงก์ footer ที่เดียวมาตลอด พาร์ตเนอร์หาไม่เจอจนต้องทักมาถาม
+    // เป็นหน้าจริง ไม่ใช่ anchor เหมือนอันอื่นในเมนูนี้
+    { label: "คู่มือ", href: "/manual" },
     { label: "FAQ", href: "/#faq" },
   ],
 } as const;

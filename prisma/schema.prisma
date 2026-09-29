@@ -322,6 +322,12 @@ model BrokerApplication {
    */
   tradingViewUsername String
   /**
+   * อีเมลที่ใช้เปิดบัญชีกับโบรก — อาจไม่ใช่อีเมลที่สมัคร QVX
+   * แอดมินใช้ตัวนี้ตามหาบัญชีในระบบโบรก ซึ่งค้นด้วยเลขบัญชีอย่างเดียวบางทีไม่เจอ
+   * ไม่บังคับ เพราะคำขอเก่าที่ส่งมาก่อนมีฟิลด์นี้จะเป็น null
+   */
+  brokerEmail         String?
+  /**
    * ค่าอยู่ใน BROKER_APPLICATION_STATUS (src/config/status.ts)
    */
   status              String    @default("PENDING")

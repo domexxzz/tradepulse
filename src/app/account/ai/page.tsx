@@ -29,11 +29,12 @@ export default async function AccountAiPage({
         <div className="card-surface space-y-4 rounded-2xl p-6">
           <p className="flex items-center gap-2 font-semibold">
             <Lock className="h-4 w-4 text-muted" />
-            ใช้ QVX AI ได้เมื่อสิทธิ์อินดิเคเตอร์ยังไม่หมดอายุ
+            QVX AI สำหรับสมาชิก QVX
           </p>
-          <p className="text-sm text-muted">
-            ได้สิทธิ์ทางไหนก็ใช้ได้ — ชำระค่าสมาชิก หรือเปิดบัญชีเทรดกับ Wisdom ผ่านลิงก์ของ QVX
-            สิทธิ์ AI เปิดและหมดอายุพร้อมสิทธิ์อินดิเคเตอร์
+          <p className="text-sm leading-relaxed text-muted">
+            เปิดใช้งาน QVX AI ได้เมื่อบัญชีของคุณมีสิทธิ์ใช้งาน QVX Indicator ที่ Active
+            <br />
+            รับสิทธิ์ได้จากแพ็กเกจสมาชิก หรือผ่านเงื่อนไข Wisdom
           </p>
           <div className="flex flex-wrap gap-2">
             <Link
@@ -129,9 +130,7 @@ function Header() {
   return (
     <div>
       <h1 className="display text-[length:var(--display-sm)]">QVX AI</h1>
-      <p className="mt-1.5 text-sm text-muted">
-        ผู้ช่วยความรู้การเทรด — ถามเรื่อง SMC, ICT, Price Action, การบริหารความเสี่ยง หรือวิธีใช้อินดิเคเตอร์ QVX
-      </p>
+      <p className="mt-1.5 text-sm text-muted">ผู้ช่วยวิเคราะห์และเรียนรู้การเทรดสำหรับผู้ใช้งาน QVX</p>
     </div>
   );
 }

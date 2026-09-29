@@ -36,9 +36,22 @@ export const BROKERS: Record<string, Broker> = {
     name: "Wisdom",
     fullName: "Wisdom Financial Services",
     platform: "MT5",
-    signupUrl: process.env.NEXT_PUBLIC_WISDOM_SIGNUP_URL ?? "",
+    /**
+     * ลิงก์แนะนำของ QVX — พาร์ตเนอร์ยืนยันตัวนี้เมื่อ 29 ก.ย. 2569
+     *
+     * เขียนไว้ในโค้ดตรง ๆ ไม่ปล่อยให้ env ว่าง เพราะเดิมอ่านจาก
+     * NEXT_PUBLIC_WISDOM_SIGNUP_URL ซึ่งไม่เคยถูกตั้งบน production เลย
+     * ผลคือหน้ารับสิทธิ์ไม่มีปุ่มเปิดบัญชีให้กดมาตลอด ลูกค้าไปต่อไม่ได้
+     *
+     * ไม่ใช่ความลับอยู่แล้ว — NEXT_PUBLIC_* ถูกฝังลงบันเดิลให้เบราว์เซอร์เห็นทั้งหมด
+     * ยังเปลี่ยนผ่าน env ได้ถ้าต้องสลับลิงก์ด่วนโดยไม่ deploy
+     */
+    signupUrl:
+      process.env.NEXT_PUBLIC_WISDOM_SIGNUP_URL ??
+      "https://zone.wisdomtrade.com/regist-real?invitid=54de69130a6dbed84a692f106f13e928916715b2941cf716670f1e8116ba8573&e=t",
     officialUrl: "https://www.wisdomtrade.com/",
-    guideUrl: process.env.NEXT_PUBLIC_WISDOM_GUIDE_URL ?? "",
+    /** คู่มือเปิดบัญชีของเราเอง ไม่ใช่ PDF ข้างนอก — อยู่ในเว็บ กดแล้วไม่หลุดออกไป */
+    guideUrl: process.env.NEXT_PUBLIC_WISDOM_GUIDE_URL ?? "/manual/open-account",
     supportLine: "@wisdfx",
     markets: "Forex · หุ้น · ทองคำ · น้ำมัน · Crypto",
     maxLeverage: "1:1,000",

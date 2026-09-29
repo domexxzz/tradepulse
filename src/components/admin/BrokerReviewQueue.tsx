@@ -96,6 +96,13 @@ export async function BrokerReviewQueue({ partner = false }: { partner?: boolean
                       <td className="px-5 py-3">
                         <div className="font-medium">{a.user.name ?? a.user.email}</div>
                         <div className="text-xs text-muted">{a.user.email}</div>
+                        {/* อีเมลที่ลูกค้าใช้เปิดบัญชีโบรก — โชว์เฉพาะตอนไม่ตรงกับอีเมล QVX
+                            เพราะนั่นคือกรณีที่ค้นในระบบโบรกด้วยอีเมล QVX แล้วไม่เจอ */}
+                        {a.brokerEmail && a.brokerEmail !== a.user.email && (
+                          <div className="mt-0.5 text-xs text-amber-400">
+                            อีเมลที่โบรก: {a.brokerEmail}
+                          </div>
+                        )}
                         <div className="mt-1 flex flex-wrap gap-1.5">
                           {a.isRenewal && (
                             <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[10px] text-brand">ต่ออายุ</span>

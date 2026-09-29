@@ -17,7 +17,7 @@ export default async function AccountWisdomPage() {
   const broker = BROKERS[DEFAULT_BROKER];
 
   const [user, latest, { isActive, daysLeft, sub }] = await Promise.all([
-    prisma.user.findUnique({ where: { id: userId }, select: { tradingViewUsername: true } }),
+    prisma.user.findUnique({ where: { id: userId }, select: { tradingViewUsername: true, email: true } }),
     prisma.brokerApplication.findFirst({
       where: { userId, broker: broker.id },
       orderBy: { createdAt: "desc" },
@@ -32,9 +32,9 @@ export default async function AccountWisdomPage() {
     <div className="max-w-xl space-y-6">
       <div>
         <h1 className="display text-[length:var(--display-sm)]">รับสิทธิ์ผ่าน {broker.name}</h1>
-        <p className="mt-1.5 text-sm text-muted">
-          เปิดบัญชีเทรดกับ {broker.fullName} ผ่านลิงก์ของ QVX แล้วรับสิทธิ์ใช้งานครบทุกอย่าง
-          เหมือนสมาชิกแบบชำระเงิน — ไม่ต้องจ่ายค่าสมาชิก
+        <p className="mt-1.5 text-sm leading-relaxed text-muted">
+          เปิดบัญชีผ่าน QVX และรับสิทธิ์ใช้งานทุกอย่างของ QVX Indicator ตามเงื่อนไขที่กำหนด
+          โดยไม่เสียค่าสมาชิก
         </p>
       </div>
 
@@ -76,63 +76,79 @@ export default async function AccountWisdomPage() {
         </div>
       )}
 
-      {/* ต้องมี TradingView username ก่อน */}
-      {!user?.tradingViewUsername ? (
-        <div className="card-surface rounded-xl p-6">
-          <h2 className="font-semibold">กรอก TradingView username ก่อน</h2>
-          <p className="mt-1.5 text-sm text-muted">
-            ผ่านการตรวจแล้วระบบจะเพิ่มสิทธิ์อินดิเคเตอร์ให้บัญชี TradingView นี้ทันที
-          </p>
-          <Link
-            href="/account/tradingview"
-            className="mt-4 inline-flex h-10 items-center rounded-full bg-brand px-5 text-sm font-semibold text-brand-ink hover:bg-brand-strong"
-          >
-            ไปกรอก TradingView username
-          </Link>
-        </div>
-      ) : waiting ? null : tooEarly ? (
+      {waiting ? null : tooEarly ? (
         <p className="text-sm text-muted">
           คุณยังมีสิทธิ์ใช้งานอีก {daysLeft} วัน — ขอต่ออายุได้เมื่อเหลือไม่เกิน {BROKER_RENEWAL_WINDOW_DAYS} วัน
         </p>
       ) : (
         <>
-          <ol className="card-surface space-y-2.5 rounded-2xl p-6 text-sm text-muted">
-            <li className="font-medium text-foreground">ขั้นตอน</li>
-            <li>
-              1. เปิดบัญชี {broker.platform} กับ {broker.name}{" "}
+          {/* รู้จักโบรกก่อน แล้วค่อยเงื่อนไข แล้วค่อยฟอร์ม — เรียงตามลำดับที่ลูกค้าตัดสินใจจริง
+              ของเดิมเปิดมาเจอฟอร์มเลย ทั้งที่ยังไม่รู้ว่าต้องเปิดบัญชีกับใครและได้อะไร */}
+          <div className="card-surface rounded-2xl p-6">
+            <h2 className="font-semibold">{broker.fullName}</h2>
+            <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+              <div className="flex justify-between gap-3 sm:block">
+                <dt className="text-muted">ตลาดที่เทรดได้</dt>
+                <dd className="text-right sm:mt-0.5 sm:text-left">{broker.markets}</dd>
+              </div>
+              <div className="flex justify-between gap-3 sm:block">
+                <dt className="text-muted">เลเวอเรจสูงสุด</dt>
+                <dd className="tnum text-right sm:mt-0.5 sm:text-left">{broker.maxLeverage}</dd>
+              </div>
+              <div className="flex justify-between gap-3 sm:block">
+                <dt className="text-muted">แพลตฟอร์ม</dt>
+                <dd className="text-right sm:mt-0.5 sm:text-left">{broker.platform}</dd>
+              </div>
+              <div className="flex justify-between gap-3 sm:block">
+                <dt className="text-muted">ฝากขั้นต่ำของโบรก</dt>
+                <dd className="tnum text-right sm:mt-0.5 sm:text-left">${broker.brokerMinDepositUSD}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div className="card-surface rounded-2xl p-6">
+            <h2 className="font-semibold">เงื่อนไขการรับสิทธิ์ QVX 30 วัน</h2>
+            <ol className="mt-3 space-y-2 text-sm text-muted">
+              <li>1. เปิดบัญชี {broker.platform} กับ {broker.name} ผ่านลิงก์ของ QVX เท่านั้น</li>
+              <li>2. ยืนยันตัวตน (KYC) ให้ผ่าน</li>
+              <li>3. ฝากเงินไม่ต่ำกว่า ${broker.qvxMinDepositUSD}</li>
+              <li>4. ส่งคำขอด้านล่าง ทีมงานตรวจแล้วเปิดสิทธิ์ให้ 30 วัน</li>
+            </ol>
+            {/* เตือนตรงนี้เพราะเป็นข้อที่พลาดแล้วเสียเวลาที่สุด — สมัครผ่านลิงก์ทั่วไปแล้วต้องเปิดบัญชีใหม่ทั้งใบ */}
+            <p className="mt-3 rounded-lg border border-amber-400/30 bg-amber-400/10 p-3 text-xs leading-relaxed">
+              บัญชีที่สมัครผ่านลิงก์อื่นหรือสมัครไว้ก่อนแล้ว จะไม่นับเป็นบัญชีของ QVX และไม่ผ่านการตรวจสอบ
+            </p>
+
+            <div className="mt-4 flex flex-wrap gap-2">
               {broker.signupUrl ? (
                 <a
                   href={broker.signupUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-brand underline underline-offset-2"
+                  className="inline-flex h-10 items-center gap-1.5 rounded-full bg-brand px-5 text-sm font-semibold text-brand-ink hover:bg-brand-strong"
                 >
-                  ผ่านลิงก์ของ QVX <ExternalLink className="h-3 w-3" />
+                  เปิดบัญชีเริ่มต้นใช้งาน <ExternalLink className="h-3.5 w-3.5" />
                 </a>
               ) : (
-                <span>— ติดต่อทีมงานเพื่อรับลิงก์สมัคร</span>
+                <span className="text-sm text-muted">— ติดต่อทีมงานเพื่อรับลิงก์สมัคร</span>
               )}
-            </li>
-            <li>2. ยืนยันตัวตน (KYC) และฝากเงินไม่ต่ำกว่า ${broker.qvxMinDepositUSD}</li>
-            <li>3. ส่งเลขบัญชีเทรดด้านล่าง ทีมงานตรวจแล้วเปิดสิทธิ์ให้</li>
-            {broker.guideUrl && (
-              <li>
-                <a
+              {broker.guideUrl && (
+                <Link
                   href={broker.guideUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-brand underline underline-offset-2"
+                  className="inline-flex h-10 items-center rounded-full border border-border px-5 text-sm hover:bg-surface-2"
                 >
-                  คู่มือเปิดบัญชีแบบละเอียด
-                </a>
-              </li>
-            )}
-          </ol>
+                  ดูคู่มือเปิดบัญชี
+                </Link>
+              )}
+            </div>
+          </div>
 
           <BrokerApplicationForm
             broker={broker.id}
             qvxMinDepositUSD={broker.qvxMinDepositUSD}
             renewal={isActive}
+            defaultTvUsername={user?.tradingViewUsername ?? ""}
+            defaultEmail={user?.email ?? ""}
           />
         </>
       )}

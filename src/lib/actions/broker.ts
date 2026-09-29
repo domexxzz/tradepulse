@@ -27,6 +27,8 @@ export async function submitBrokerApplicationAction(
     userId: session.user.id,
     broker: String(formData.get("broker") ?? DEFAULT_BROKER),
     tradingAccount: String(formData.get("tradingAccount") ?? ""),
+    tradingViewUsername: String(formData.get("tvUsername") ?? ""),
+    brokerEmail: String(formData.get("brokerEmail") ?? ""),
   });
   if (!r.ok) return { error: r.error };
 

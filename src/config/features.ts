@@ -267,41 +267,39 @@ export interface Step {
   imageAlt: string;
 }
 /**
- * ขั้นตอนตั้งแต่สมัครจนเปิดกราฟใช้งานได้จริง
+ * ขั้นตอนหลังได้สิทธิ์แล้ว — เอาอินดิเคเตอร์ขึ้นกราฟยังไง
  *
- * ⚠️ เขียนตามที่ระบบทำงานจริง อย่าแต่งให้ดูง่ายกว่าความจริง
- * ขั้นที่ 3 มีอยู่เพราะสคริปต์บน TradingView เป็นแบบ invite-only
- * ทีมงานต้องรู้ username ถึงจะเพิ่มสิทธิ์ให้ถูกบัญชีได้ ข้ามไม่ได้
- * ขั้นที่ 4 ใช้คำว่า "หลังตรวจสอบ" ไม่ใช่ "ทันที" เพราะสลิปต้องผ่านการตรวจก่อน
+ * ⚠️ ของเดิมเป็น "สมัคร → เลือกแพ็กเกจ → กรอก TradingView → รับอินดิเคเตอร์"
+ * ซึ่งเป็นขั้นตอนการ "ซื้อ" ไม่ใช่การ "ใช้งาน" คนที่จ่ายเงินแล้วยังเปิดกราฟไม่เป็น
+ * ชุดนี้จึงเริ่มนับจากตอนที่ได้สิทธิ์แล้ว ตามที่พาร์ตเนอร์ขอมา
+ *
+ * ภาพทั้งสามใบพาร์ตเนอร์ออกแบบมาเอง 1920x1080 — ตัวหนังสือบนภาพเป็นภาษาไทย
+ * และอ่านไม่ออกถ้าย่อเล็กกว่านี้ จึงวางเต็มความกว้างคอลัมน์ ไม่จัดเป็นกริดสองช่อง
+ *
+ * desc เขียนไว้นอกภาพด้วย เพราะข้อความในภาพ screen reader อ่านไม่ได้
+ * และ Google ก็ไม่เห็น
  */
 export const steps: Step[] = [
   {
     no: "1",
-    title: "สมัครสมาชิก",
-    desc: "สร้างบัญชีด้วยอีเมล ใช้เวลาไม่ถึงนาที",
-    image: "/images/how-it-works/site-capture-infographic-v4/qvx-step-01-register.webp",
-    imageAlt: "ขั้นตอนที่ 1 สมัครสมาชิก — สร้างบัญชีด้วยอีเมล ใช้เวลาไม่ถึงนาที พร้อมภาพประกอบฟอร์มสมัครสมาชิกและเครื่องหมายยืนยัน",
+    title: "ตรวจสอบ TradingView Username",
+    desc: "ค้นหา Username ของบัญชี TradingView ตามภาพด้านล่าง จากนั้นนำ Username ไปกรอกในหน้าบัญชีผู้ใช้งาน QVX เพื่อให้ระบบตรวจสอบและดำเนินการเปิดสิทธิ์ใช้งาน Indicator",
+    image: "/images/how-it-works/qvx-start-v1/01-tradingview-username.webp",
+    imageAlt: "วิธีดู TradingView Username — เปิดเมนูโปรไฟล์ในแอป TradingView แล้วดูชื่อผู้ใช้ใต้รูปโปรไฟล์ ตัวอย่างในภาพคือ QVXOfficial",
   },
   {
     no: "2",
-    title: "เลือกแพ็กเกจ",
-    desc: "เลือกระยะเวลาที่ต้องการ ชำระผ่าน PromptPay แล้วแนบสลิป",
-    image: "/images/how-it-works/site-capture-infographic-v4/qvx-step-02-package.webp",
-    imageAlt: "ขั้นตอนที่ 2 เลือกแพ็กเกจ — รายเดือน ฿999, ราย 3 เดือน ฿2,890, ราย 6 เดือน ฿5,590, รายปี ฿10,790 ชำระผ่าน PromptPay แล้วแนบสลิป",
+    title: "เปิดใช้งาน QVX Indicator บนมือถือ",
+    desc: "หลังจากได้รับการอนุมัติสิทธิ์เรียบร้อยแล้ว สามารถเปิด QVX Indicator ผ่านแอป TradingView บนมือถือ โดยทำตามขั้นตอนในภาพด้านล่าง",
+    image: "/images/how-it-works/qvx-start-v1/02-enable-mobile.webp",
+    imageAlt: "วิธีเปิดใช้งาน QVX Indicator บนมือถือ สี่ขั้น — กดเมนูสามจุด เลือกอินดิเคเตอร์ เลือกเมนูผู้ได้รับเชิญเท่านั้น แล้วกดที่ชื่อ QVX INDICATOR เพื่อเปิดใช้งาน",
   },
   {
     no: "3",
-    title: "กรอกชื่อ TradingView",
-    desc: "หลังจาก Login ระบบ ให้กรอกชื่อ TradingView เพื่อให้ทีมงานเพิ่มสิทธิ์ให้ถูกบัญชี",
-    image: "/images/how-it-works/site-capture-infographic-v4/qvx-step-03-tradingview-username.webp",
-    imageAlt: "ขั้นตอนที่ 3 กรอกชื่อ TradingView — หลังจาก Login ระบบ ให้กรอก TradingView Username เพื่อให้ทีมงานเพิ่มสิทธิ์ให้ถูกบัญชี",
-  },
-  {
-    no: "4",
-    title: "รับอินดิเคเตอร์",
-    desc: "หลังตรวจสอบ รับอินดิเคเตอร์บน TradingView พร้อมเข้ากลุ่ม Telegram",
-    image: "/images/how-it-works/site-capture-infographic-v4/qvx-step-04-access-granted.webp",
-    imageAlt: "ขั้นตอนที่ 4 รับอินดิเคเตอร์ — หลังตรวจสอบ รับอินดิเคเตอร์บน TradingView พร้อมเข้ากลุ่ม Telegram",
+    title: "เปิดใช้งาน QVX Indicator บนคอมพิวเตอร์",
+    desc: "สำหรับการใช้งานบนคอมพิวเตอร์ หลังจากได้รับการอนุมัติสิทธิ์แล้ว สามารถเปิด QVX Indicator บน TradingView ได้ตามขั้นตอนด้านล่าง",
+    image: "/images/how-it-works/qvx-start-v1/03-enable-desktop.webp",
+    imageAlt: "วิธีเปิดใช้งาน QVX Indicator บนคอมพิวเตอร์ — กดเมนูอินดิเคเตอร์บนแถบเครื่องมือ เลือกเมนูผู้ได้รับเชิญเท่านั้น แล้วกดที่ชื่อ QVX INDICATOR เพื่อเปิดใช้งาน",
   },
 ];
 

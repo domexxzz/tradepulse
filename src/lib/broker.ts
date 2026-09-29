@@ -12,6 +12,10 @@ import {
   isRejectionReason,
 } from "@/config/brokers";
 
+/** ชุดเดียวกับหน้า /account/tradingview — คนละกติกาเมื่อไหร่ ลูกค้าจะกรอกผ่านที่หนึ่งแต่ไม่ผ่านอีกที่ */
+const TRADINGVIEW_USERNAME_RE = /^[a-zA-Z0-9_]{3,40}$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 /**
  * ทางที่ 2 ของการได้อินดิเคเตอร์ — เปิดพอร์ตกับโบรกผ่านลิงก์ QVX แทนการจ่ายเงิน
  *
@@ -54,6 +58,15 @@ export async function submitBrokerApplication(input: {
   userId: string;
   broker: string;
   tradingAccount: string;
+  /**
+   * กรอกมาในฟอร์มเดียวกับเลขบัญชี — ของเดิมบังคับให้ไปกรอกหน้าอื่นก่อน
+   * ลูกค้าจึงเจอหน้าว่างที่มีแต่ปุ่ม "ไปกรอก TradingView username"
+   * โดยยังไม่ทันเห็นเงื่อนไขหรือลิงก์เปิดบัญชีเลย
+   * ไม่ส่งมา = ใช้ค่าที่เคยบันทึกไว้ในบัญชี (คำขอต่ออายุไม่ต้องพิมพ์ซ้ำ)
+   */
+  tradingViewUsername?: string;
+  /** อีเมลที่ใช้เปิดบัญชีกับโบรก อาจคนละตัวกับอีเมลที่สมัคร QVX */
+  brokerEmail?: string;
 }): Promise<BrokerResult> {
   const broker = getBroker(input.broker);
   if (!broker) return { ok: false, error: "ไม่รู้จักโบรกนี้" };
@@ -68,9 +81,19 @@ export async function submitBrokerApplication(input: {
     select: { tradingViewUsername: true, email: true, name: true },
   });
   if (!user) return { ok: false, error: "ไม่พบบัญชีผู้ใช้" };
-  if (!user.tradingViewUsername) {
-    // ต้องมีตั้งแต่ตอนส่ง — อนุมัติแล้วบอทต้องรู้ทันทีว่าจะเพิ่มสิทธิ์ให้ใคร
-    return { ok: false, error: "กรอก TradingView username ก่อน แล้วค่อยส่งคำขอ" };
+
+  const tvUsername = (input.tradingViewUsername ?? "").trim() || user.tradingViewUsername;
+  if (!tvUsername) {
+    // ยังต้องมีตั้งแต่ตอนส่ง — อนุมัติแล้วบอทต้องรู้ทันทีว่าจะเพิ่มสิทธิ์ให้ใคร
+    return { ok: false, error: "กรอก TradingView username ด้วย" };
+  }
+  if (!TRADINGVIEW_USERNAME_RE.test(tvUsername)) {
+    return { ok: false, error: "TradingView username ใช้ได้เฉพาะ a-z, 0-9 และ _ (3–40 ตัว)" };
+  }
+
+  const brokerEmail = (input.brokerEmail ?? "").trim() || null;
+  if (brokerEmail && !EMAIL_RE.test(brokerEmail)) {
+    return { ok: false, error: "รูปแบบอีเมลไม่ถูกต้อง" };
   }
 
   const pending = await prisma.brokerApplication.findFirst({
@@ -89,13 +112,27 @@ export async function submitBrokerApplication(input: {
   const blocked = await renewalBlock(input.userId);
   if (blocked) return { ok: false, error: blocked };
 
+  // เขียนกลับเข้าบัญชีด้วย เพราะตอนอนุมัติบอทอ่าน tradingViewUsername จาก User ไม่ใช่จากคำขอ
+  // ถ้าไม่เขียน คนที่กรอกชื่อครั้งแรกในฟอร์มนี้จะถูกเพิ่มสิทธิ์ให้บัญชีว่าง
+  if (tvUsername !== user.tradingViewUsername) {
+    await prisma.user.update({
+      where: { id: input.userId },
+      data: { tradingViewUsername: tvUsername },
+    });
+    await prisma.accessGrant.updateMany({
+      where: { userId: input.userId, status: "PENDING" },
+      data: { tradingViewUsername: tvUsername },
+    });
+  }
+
   const { isActive } = await getUserSubscription(input.userId);
   const created = await prisma.brokerApplication.create({
     data: {
       userId: input.userId,
       broker: broker.id,
       tradingAccount: account,
-      tradingViewUsername: user.tradingViewUsername,
+      tradingViewUsername: tvUsername,
+      brokerEmail,
       isRenewal: isActive,
     },
     select: { id: true },
@@ -106,8 +143,8 @@ export async function submitBrokerApplication(input: {
     await sendAdminAlert(
       `🏦 คำขอ${isActive ? "ต่ออายุ" : "รับสิทธิ์"}ผ่าน ${broker.name}
 สมาชิก: ${user.name ?? user.email ?? input.userId}
-เลขบัญชี: ${account}
-TradingView: ${user.tradingViewUsername}
+เลขบัญชี: ${account}${brokerEmail ? `\nอีเมลที่โบรก: ${brokerEmail}` : ""}
+TradingView: ${tvUsername}
 ตรวจแล้วกดอนุมัติที่ /admin/wisdom`
     );
   } catch {}

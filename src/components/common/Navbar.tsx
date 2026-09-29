@@ -63,7 +63,9 @@ export function Navbar() {
           <a href="/login" className="text-sm font-medium text-muted transition-colors hover:text-foreground">
             เข้าสู่ระบบ
           </a>
-          <Button href="#pricing" size="md">เริ่มใช้งาน</Button>
+          {/* ของเดิมเขียน "เริ่มใช้งาน" แล้วเลื่อนลงไปตารางราคา ซึ่งไม่ได้พาไปไหน
+              คนที่ตั้งใจสมัครต้องเลื่อนหาปุ่มสมัครเองอีกที — พาร์ตเนอร์ขอให้ชี้ตรงไปหน้าสมัครเลย */}
+          <Button href="/register" size="md">สมัครสมาชิก</Button>
         </div>
 
         <button
@@ -97,7 +99,7 @@ export function Navbar() {
             >
               เข้าสู่ระบบ
             </a>
-            <Button href="#pricing" className="mt-2" onClick={() => setOpen(false)}>เริ่มใช้งาน</Button>
+            <Button href="/register" className="mt-2" onClick={() => setOpen(false)}>สมัครสมาชิก</Button>
           </div>
         </div>
       )}
