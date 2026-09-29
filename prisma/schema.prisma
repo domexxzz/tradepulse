@@ -130,6 +130,14 @@ model Subscription {
   stripeCustomerId     String?
   status               String    @default("INACTIVE")
   currentPeriodEnd     DateTime?
+  /**
+   * เตือนใกล้หมดอายุไปแล้วที่หลักกี่วัน — เก็บหลักที่เล็กที่สุดที่ส่งไปแล้ว
+   *
+   * ของเดิมใช้ expiryNotifiedAt เป็นธงว่า "เตือนแล้ว" ซึ่งเตือนได้ครั้งเดียวต่อรอบบิล
+   * พอจะเตือนหลายหลัก (7/3/1) ต้องรู้ว่าหลักไหนส่งไปแล้ว ไม่งั้นจะส่งซ้ำทุกวัน
+   * null = ยังไม่เคยเตือนรอบนี้ · 7 = เตือนหลัก 7 วันแล้ว เหลือ 3 กับ 1
+   */
+  expiryNotifiedDays   Int?
   cancelAtPeriodEnd    Boolean   @default(false)
   // เวลาที่ cron ปิดสิทธิ์จริง (ไม่ใช่แค่วันครบกำหนด) ใช้ตรวจย้อนหลังว่าปิดไปแล้วจริง
   expiredAt            DateTime?

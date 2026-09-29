@@ -197,19 +197,34 @@ export function expiringSoonEmail(input: {
   planName: string;
   until: Date;
   daysLeft: number;
+  /**
+   * หยุดรับชำระเงินอยู่ไหม — เปลี่ยนวิธีบอกลูกค้าว่าต่ออายุยังไง
+   *
+   * ถ้าไม่สลับ ลูกค้าจะถูกพาไปหน้าจ่ายเงินที่ขึ้นว่า "เปิดให้ชำระเงินเร็ว ๆ นี้"
+   * แล้วไม่รู้ว่าต้องทำอะไรต่อ จนสิทธิ์หมดไปเฉย ๆ
+   */
+  salesPaused?: boolean;
 }): EmailContent {
   const until = formatThaiDate(input.until);
+  const renew = input.salesPaused
+    ? `<p style="margin:0;">ช่วงนี้ยังไม่เปิดให้ชำระเงินผ่านเว็บ — ทักทีมงานไว้ก่อนหมดอายุ เดี๋ยวจัดการต่ออายุให้</p>
+       ${button(`${site.url}/account/support`, "ติดต่อทีมงาน")}`
+    : `<p style="margin:0;">ต่ออายุก่อนหมดวัน วันที่เหลือจะถูกทบให้ ไม่หายครับ</p>
+       ${button(`${site.url}/account/subscription`, "ต่ออายุแพ็กเกจ")}`;
+  const renewText = input.salesPaused
+    ? `ช่วงนี้ยังไม่เปิดให้ชำระเงินผ่านเว็บ — ทักทีมงานที่ ${site.url}/account/support`
+    : `ต่ออายุที่ ${site.url}/account/subscription`;
+
   return {
     subject: `แพ็กเกจของคุณเหลืออีก ${input.daysLeft} วัน — ${site.name}`,
     html: shell(
       `<p style="margin:0 0 12px;">${hi(input.name)}</p>
        <p style="margin:0 0 20px;">แพ็กเกจ <b>${input.planName}</b> ของคุณจะหมดอายุใน <b style="color:${BRAND};">${input.daysLeft} วัน</b> (${until})</p>
        <p style="margin:0 0 8px;">เมื่อหมดอายุ ระบบจะปิดสิทธิ์อินดิเคเตอร์บน TradingView ยศในเซิร์ฟเวอร์ Discord และสิทธิ์กลุ่มสัญญาณ Telegram โดยอัตโนมัติ</p>
-       <p style="margin:0;">ต่ออายุก่อนหมดวัน วันที่เหลือจะถูกทบให้ ไม่หายครับ</p>
-       ${button(`${site.url}/account/subscription`, "ต่ออายุแพ็กเกจ")}`,
+       ${renew}`,
       `แพ็กเกจหมดอายุใน ${input.daysLeft} วัน (${until})`
     ),
-    text: `${hi(input.name)}\n\nแพ็กเกจ ${input.planName} จะหมดอายุใน ${input.daysLeft} วัน (${until})\nต่ออายุที่ ${site.url}/account/subscription`,
+    text: `${hi(input.name)}\n\nแพ็กเกจ ${input.planName} จะหมดอายุใน ${input.daysLeft} วัน (${until})\n${renewText}`,
   };
 }
 

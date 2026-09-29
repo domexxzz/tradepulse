@@ -4,6 +4,7 @@ import { getUserSubscription } from "@/lib/subscription";
 import { syncCheckoutSession } from "@/lib/stripe-sync";
 import { prisma } from "@/lib/prisma";
 import { plans } from "@/config/plans";
+import { salesPaused } from "@/config/site";
 import { formatTHB } from "@/lib/utils";
 import { formatThaiDate } from "@/lib/date";
 import { PageHeader } from "@/components/portal/PortalShell";
@@ -76,14 +77,20 @@ export default async function AccountOverview({
             <CalendarClock className="mt-0.5 h-5 w-5 shrink-0 text-down" />
             <div>
               <div className="font-medium text-down">แพ็กเกจเหลืออีก {Math.max(0, daysLeft)} วัน</div>
-              <p className="mt-0.5 text-muted">ต่ออายุก่อนหมดวัน ระบบจะทบวันที่เหลือให้ ไม่เสียของเดิม</p>
+              {/* ปิดรับเงินอยู่แล้วบอกให้ "ต่ออายุ" จะพาไปหน้าที่กดอะไรไม่ได้
+                  ลูกค้าจะงงแล้วปล่อยให้หมดอายุไปเฉย ๆ — สลับเป็นให้ทักทีมงานแทน */}
+              <p className="mt-0.5 text-muted">
+                {salesPaused
+                  ? "หมดอายุแล้วระบบจะปิดสิทธิ์อินดิเคเตอร์ Telegram และ Discord อัตโนมัติ — ช่วงนี้ยังไม่เปิดให้ชำระเงินผ่านเว็บ ทักทีมงานไว้ก่อนได้เลย"
+                  : "ต่ออายุก่อนหมดวัน ระบบจะทบวันที่เหลือให้ ไม่เสียของเดิม"}
+              </p>
             </div>
           </div>
           <Link
-            href="/account/subscription"
+            href={salesPaused ? "/account/support" : "/account/subscription"}
             className="rounded-full bg-brand px-5 py-2 text-sm font-semibold text-brand-ink transition-colors hover:bg-brand-strong"
           >
-            ต่ออายุ
+            {salesPaused ? "ติดต่อทีมงาน" : "ต่ออายุ"}
           </Link>
         </div>
       )}

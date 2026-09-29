@@ -22,9 +22,15 @@ import {
   isGroupMember,
 } from "@/lib/telegram";
 import { formatTHB } from "@/lib/utils";
+import { salesPaused } from "@/config/site";
 
-/** เตือนล่วงหน้ากี่วันก่อนหมดอายุ */
-export const EXPIRY_REMINDER_DAYS = 3;
+/**
+ * เตือนล่วงหน้าที่หลักกี่วันก่อนหมดอายุ — เรียงจากไกลไปใกล้
+ *
+ * ของเดิมเตือนหลักเดียว 3 วัน ซึ่งน้อยไปสำหรับคนที่ต้องติดต่อแอดมินเพื่อต่ออายุ
+ * สามหลักให้โอกาสทักมาก่อนสิทธิ์ดับจริง
+ */
+export const EXPIRY_REMINDER_DAYS = [7, 3, 1] as const;
 
 /** ไม่มีวันหมดอายุของแพ็กเกจให้ยึด = ให้เท่าสเปคขั้นต่ำ 1 เดือน (ห้ามให้บอทเพิ่มแบบไม่จำกัดวัน) */
 const DEFAULT_GRANT_DAYS = 30;
@@ -92,6 +98,7 @@ export async function activateMembership(input: ActivateInput): Promise<Activate
             currentPeriodEnd: until,
             expiredAt: null,
             expiryNotifiedAt: null, // รอบใหม่ต้องเตือนได้อีกครั้ง
+            expiryNotifiedDays: null, // ล้างหลักที่เคยเตือน ไม่งั้นรอบใหม่จะเงียบ
           },
         })
       : await tx.subscription.create({
@@ -367,9 +374,21 @@ export async function expireSubscription(sub: Subscription): Promise<void> {
   }
 }
 
-/** ส่งอีเมลเตือนใกล้หมดอายุ (ครั้งเดียวต่อรอบบิล) */
+/**
+ * ส่งอีเมลเตือนใกล้หมดอายุ — หลักละครั้งต่อรอบบิล (7 / 3 / 1 วัน)
+ *
+ * expiryNotifiedDays เก็บหลักที่เล็กที่สุดที่ส่งไปแล้ว ถ้าไม่เก็บ cron จะยิงซ้ำทุกครั้งที่รัน
+ * คนเหลือ 2 วันจะได้อีเมลวันละหลายฉบับจนรำคาญแล้วกดสแปม
+ */
 async function remindExpiring(sub: Subscription): Promise<boolean> {
   if (!sub.currentPeriodEnd) return false;
+
+  const daysLeft = Math.max(1, daysUntil(sub.currentPeriodEnd));
+  // หลักที่ควรส่งตอนนี้ = หลักเล็กสุดที่ยังครอบ daysLeft อยู่
+  const due = EXPIRY_REMINDER_DAYS.filter((d) => daysLeft <= d).sort((a, b) => a - b)[0];
+  if (due === undefined) return false;
+  // เคยส่งหลักนี้หรือหลักที่ใกล้กว่าไปแล้ว
+  if (sub.expiryNotifiedDays !== null && sub.expiryNotifiedDays <= due) return false;
 
   const user = await prisma.user.findUnique({
     where: { id: sub.userId },
@@ -381,7 +400,8 @@ async function remindExpiring(sub: Subscription): Promise<boolean> {
     name: user.name,
     planName: planName(sub.planCode),
     until: sub.currentPeriodEnd,
-    daysLeft: Math.max(1, daysUntil(sub.currentPeriodEnd)),
+    daysLeft,
+    salesPaused,
   });
 
   const res = await sendEmail({ to: user.email, ...mail });
@@ -390,7 +410,7 @@ async function remindExpiring(sub: Subscription): Promise<boolean> {
 
   await prisma.subscription.update({
     where: { id: sub.id },
-    data: { expiryNotifiedAt: new Date() },
+    data: { expiryNotifiedAt: new Date(), expiryNotifiedDays: due },
   });
   return true;
 }
@@ -427,11 +447,12 @@ export async function runMembershipMaintenance(): Promise<MaintenanceResult> {
     }
   }
 
-  const soonEnd = new Date(now.getTime() + EXPIRY_REMINDER_DAYS * 24 * 60 * 60 * 1000);
+  // ดึงทุกคนที่เข้าหลักไกลสุด แล้วค่อยตัดสินทีละคนว่าถึงหลักไหนแล้ว
+  const widest = Math.max(...EXPIRY_REMINDER_DAYS);
+  const soonEnd = new Date(now.getTime() + widest * 24 * 60 * 60 * 1000);
   const expiring = await prisma.subscription.findMany({
     where: {
       status: { in: ACTIVE_STATUSES },
-      expiryNotifiedAt: null,
       currentPeriodEnd: { gte: now, lte: soonEnd },
     },
     take: 500,
