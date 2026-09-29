@@ -15,6 +15,9 @@ const TOPIC_THREAD: Record<Timeframe, string | undefined> = {
 };
 
 export const telegramEnabled = Boolean(TOKEN && CHAT_ID);
+
+/** กลุ่มปลายทางปัจจุบัน — ใช้เทียบว่าลิงก์เก่าออกให้กลุ่มไหน */
+export const currentChatId = CHAT_ID ?? null;
 export const TIMEFRAMES: Timeframe[] = ["M5", "M15", "M30", "1H"];
 
 function escapeHtml(s: string) {

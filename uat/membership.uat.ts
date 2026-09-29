@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { PrismaClient } from "@prisma/client";
-import { activateMembership, runMembershipMaintenance } from "@/lib/lifecycle";
+import { activateMembership, ensureTelegramInvite, runMembershipMaintenance } from "@/lib/lifecycle";
 import {
   markTelegramInviteNotified,
   sendTelegramInviteEmail,
@@ -468,5 +468,50 @@ describe("T-2 · ตัวนับกับตัวส่งต้องตร
 
     await markTelegramInviteNotified(user.id);
     expect(await usersAwaitingInviteEmail()).not.toContain(user.id);
+  });
+});
+
+/**
+ * ย้ายกลุ่มแล้วลิงก์เก่าต้องไม่ถูกส่งต่อให้ลูกค้า
+ *
+ * ลิงก์เชิญผูกกับกลุ่มที่ออกให้ตลอดไป ถ้าระบบเห็นว่า "มีลิงก์แล้ว" แล้วข้ามไป
+ * ลูกค้าที่จ่ายเงินหลังย้ายกลุ่มจะถูกส่งไปผิดห้องเงียบ ๆ (เกิดจริง 29 ก.ย. 69)
+ */
+describe("T-3 · ย้ายกลุ่มแล้วต้องออกลิงก์ใหม่ ไม่ใช่ส่งลิงก์ห้องเก่า", () => {
+  it("ลิงก์ที่ออกให้กลุ่มอื่นต้องถูกทิ้ง ไม่ส่งต่อให้ลูกค้า", async () => {
+    const user = await makeUser("chat-moved");
+    await activateMembership({
+      userId: user.id, planCode: "MONTH", amountTHB: 990,
+      providerRef: `uat_moved_${user.id}`, provider: "web",
+    });
+    await prisma.telegramGrant.updateMany({
+      where: { userId: user.id },
+      data: { inviteLink: "https://t.me/+old-group", chatId: "-100OLDGROUP" },
+    });
+
+    await ensureTelegramInvite(user.id);
+
+    const after = await prisma.telegramGrant.findFirst({ where: { userId: user.id } });
+    // ชุดทดสอบไม่มีบอท จึงสร้างลิงก์ใหม่ไม่ได้ — แต่ของเก่าต้องถูกทิ้งไปแล้ว
+    // สำคัญกว่าการมีลิงก์ใหม่ คือต้องไม่เหลือลิงก์ห้องเก่าไว้ให้ส่ง
+    expect(after?.inviteLink).not.toBe("https://t.me/+old-group");
+  });
+
+  it("ลิงก์ของกลุ่มปัจจุบันต้องไม่ถูกออกใหม่โดยไม่จำเป็น", async () => {
+    const user = await makeUser("chat-same");
+    await activateMembership({
+      userId: user.id, planCode: "MONTH", amountTHB: 990,
+      providerRef: `uat_same_${user.id}`, provider: "web",
+    });
+    const { currentChatId } = await import("@/lib/telegram");
+    await prisma.telegramGrant.updateMany({
+      where: { userId: user.id },
+      data: { inviteLink: "https://t.me/+current", chatId: currentChatId },
+    });
+
+    await ensureTelegramInvite(user.id);
+
+    const after = await prisma.telegramGrant.findFirst({ where: { userId: user.id } });
+    expect(after?.inviteLink).toBe("https://t.me/+current");
   });
 });

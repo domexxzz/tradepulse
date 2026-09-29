@@ -20,6 +20,8 @@ import {
   createMemberInviteLink,
   removeGroupMember,
   isGroupMember,
+  revokeInviteLink,
+  currentChatId,
 } from "@/lib/telegram";
 import { formatTHB } from "@/lib/utils";
 import { salesPaused } from "@/config/site";
@@ -241,8 +243,49 @@ export async function syncTradingViewGrant(userId: string, daysOverride?: number
  * คนที่ยังอยู่ในกลุ่มจากรอบก่อนไม่ต้องได้ลิงก์ใหม่ — ปิดคิวให้เลย
  * ห้าม throw: Telegram ล่มไม่ควรทำให้การเปิดสิทธิ์ทั้งก้อนล้ม
  */
+/**
+ * ทิ้งลิงก์เชิญที่ออกให้ "กลุ่มอื่น" — คืนค่า true เมื่อทิ้งจริง
+ *
+ * ลิงก์เชิญผูกกับกลุ่มที่ออกให้ตลอดไป ย้ายกลุ่มเมื่อไหร่ ลิงก์เก่าจะยังพาลูกค้า
+ * ไปห้องเดิม และโค้ดเดิมเห็นว่า "มีลิงก์แล้ว" ก็ข้ามไป ไม่ออกใหม่ให้
+ * ผลคือลูกค้าที่จ่ายเงินหลังย้ายกลุ่มถูกส่งไปผิดห้องเงียบ ๆ
+ * (เกิดจริง 29 ก.ย. 69 — ย้ายจาก TD_SMC ไป QVX SIGNAL)
+ *
+ * chatId เป็น null คือใบที่ออกก่อนมีช่องนี้ ถือว่าเป็นของกลุ่มเก่าไว้ก่อน —
+ * ออกลิงก์ใหม่เสียหายน้อยกว่าส่งลูกค้าไปผิดห้อง
+ */
+async function dropLinkFromOtherGroup(userId: string): Promise<boolean> {
+  const grant = await prisma.telegramGrant.findFirst({
+    where: { userId, status: { in: ["PENDING", "ADDED"] } },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, inviteLink: true, chatId: true },
+  });
+  if (!grant?.inviteLink || grant.chatId === currentChatId) return false;
+
+  await revokeInviteLink(grant.inviteLink).catch(() => {
+    // ลิงก์อยู่คนละกลุ่มกับที่ตั้งไว้ตอนนี้ Telegram จะปฏิเสธ — คาดไว้แล้ว
+  });
+  await prisma.telegramGrant.update({
+    where: { id: grant.id },
+    data: {
+      status: "PENDING",
+      inviteLink: null,
+      invitedAt: null,
+      notifiedAt: null,
+      telegramUserId: null,
+      addedAt: null,
+      note: "กลุ่มปลายทางเปลี่ยน — ออกลิงก์ใหม่ให้อัตโนมัติ",
+    },
+  });
+  return true;
+}
+
 export async function ensureTelegramInvite(userId: string): Promise<void> {
   await ensureTelegramGrant(userId);
+
+  // ต้องทำก่อนเช็ก telegramGroupManaged — ลิงก์ผิดห้องที่ค้างอยู่ในระบบ
+  // อันตรายกว่าไม่มีลิงก์เลย เพราะรอบส่งอีเมลจะหยิบไปส่งให้ลูกค้าได้ทันที
+  const dropped = await dropLinkFromOtherGroup(userId);
   if (!telegramGroupManaged) return;
 
   try {
@@ -250,7 +293,8 @@ export async function ensureTelegramInvite(userId: string): Promise<void> {
       where: { userId, status: { in: ["PENDING", "ADDED"] } },
       orderBy: { createdAt: "desc" },
     });
-    if (!grant || grant.status === "ADDED" || grant.inviteLink) return;
+    if (!grant) return;
+    if (!dropped && (grant.status === "ADDED" || grant.inviteLink)) return;
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -273,7 +317,8 @@ export async function ensureTelegramInvite(userId: string): Promise<void> {
     const inviteLink = await createMemberInviteLink(grant.id);
     await prisma.telegramGrant.update({
       where: { id: grant.id },
-      data: { inviteLink, invitedAt: new Date(), note: "ลิงก์เชิญส่วนตัวพร้อมใช้งาน" },
+      // เก็บกลุ่มที่ออกให้ไว้ด้วย รอบหน้าจะได้รู้ว่าลิงก์ใบนี้ของกลุ่มไหน
+      data: { inviteLink, chatId: currentChatId, invitedAt: new Date(), note: "ลิงก์เชิญส่วนตัวพร้อมใช้งาน" },
     });
   } catch (e) {
     console.error("telegram invite failed:", e);
