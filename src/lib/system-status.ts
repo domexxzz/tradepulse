@@ -8,7 +8,7 @@
 import { bridgeUrls, tvAutoGrantEnabled } from "@/lib/tradingview";
 import { telegramEnabled, telegramGroupManaged } from "@/lib/telegram";
 import { discordBotEnabled } from "@/lib/discord";
-import { emailEnabled } from "@/lib/email";
+import { emailEnabled, emailConfigStatus } from "@/lib/email";
 import { slipVerifyEnabled, slipAutoApprove } from "@/lib/slip-verify";
 import { promptpayEnabled } from "@/lib/promptpay";
 import { stripeEnabled } from "@/lib/stripe";
@@ -119,6 +119,34 @@ async function checkTelegram(): Promise<StatusRow> {
   }
 }
 
+/**
+ * อีเมลต้องขึ้นสีแดง ไม่ใช่ "ปิดอยู่" สีเทา
+ *
+ * ของเดิมใช้ configRow ซึ่งแสดงเป็น "ปิดอยู่" เหมือนฟีเจอร์ที่เลือกไม่เปิด
+ * แต่อีเมลไม่ใช่ของเสริม — ปิดอยู่แปลว่าลูกค้าที่จ่ายเงินไม่ได้รับใบเสร็จ
+ * ไม่ได้ลิงก์เข้ากลุ่ม และรีเซ็ตรหัสผ่านเองไม่ได้ โดยที่ไม่มีอะไรฟ้องเลย
+ * (เจอจริง 29 ก.ย. 69 — RESEND_API_KEY เป็นค่าว่างบน production
+ * อีเมลทุกฉบับถูกข้ามเงียบ ๆ มาตลอด และหน้านี้ก็ขึ้นเทา ๆ จนไม่มีใครเอะใจ)
+ */
+function emailRow(): StatusRow {
+  if (emailEnabled) {
+    return {
+      name: "อีเมล",
+      health: "ok",
+      detail: "ส่งใบเสร็จ / ลิงก์กลุ่ม / เตือนหมดอายุ / ลืมรหัสผ่าน ได้",
+    };
+  }
+
+  const { hasKey, hasFrom } = emailConfigStatus();
+  const missing = [!hasKey && "RESEND_API_KEY", !hasFrom && "EMAIL_FROM"].filter(Boolean).join(" และ ");
+  return {
+    name: "อีเมล",
+    health: "down",
+    detail: `❌ ส่งอีเมลไม่ออกเลย — ลูกค้าไม่ได้รับใบเสร็จ ไม่ได้ลิงก์เข้ากลุ่ม และรีเซ็ตรหัสผ่านเองไม่ได้ (ขาด ${missing})`,
+    action: `ตั้ง ${missing} บน Vercel แล้ว deploy ใหม่หนึ่งครั้ง`,
+  };
+}
+
 function configRow(name: string, on: boolean, onText: string, offText: string, action?: string): StatusRow {
   return { name, health: on ? "ok" : "off", detail: on ? onText : offText, action: on ? undefined : action };
 }
@@ -157,13 +185,7 @@ export async function getSystemStatus(): Promise<StatusRow[]> {
     },
     loginProvidersRow(),
     configRow("ยศ Discord", discordBotEnabled, "ให้ยศอัตโนมัติเมื่ออนุมัติสลิป", "ยังไม่ได้ตั้งบอท", "ดู docs/DISCORD.md"),
-    configRow(
-      "อีเมล",
-      emailEnabled,
-      "ส่งใบเสร็จ / เตือนหมดอายุ / ลืมรหัสผ่าน ได้",
-      "ยังไม่ได้ตั้งค่า — สมาชิกรีเซ็ตรหัสผ่านเองไม่ได้",
-      "ตั้ง RESEND_API_KEY + EMAIL_FROM"
-    ),
+    emailRow(),
     configRow(
       "งานประจำวัน (ปิดสิทธิ์หมดอายุ)",
       Boolean(process.env.CRON_SECRET),

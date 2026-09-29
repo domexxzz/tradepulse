@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { sendAdminAlert } from "@/lib/telegram";
+import { emailConfigStatus, emailEnabled } from "@/lib/email";
 
 /**
  * จับงานประจำที่ "หยุดไปเงียบ ๆ"
@@ -89,5 +90,35 @@ export async function checkStaleJobs(): Promise<StaleJob[]> {
     ).catch((e) => console.error("stale job alert failed:", e));
   }
 
+  await warnIfEmailBroken();
   return stale;
+}
+
+/**
+ * อีเมลส่งไม่ออกต้องมีคนทัก ทุกวัน จนกว่าจะแก้
+ *
+ * เป็นความล้มเหลวที่มองไม่เห็นจากข้างนอกเลย — เว็บยังเปิดปกติ กดอนุมัติได้ปกติ
+ * ลูกค้าแค่ไม่ได้รับอะไร แล้วไปถามแอดมินทีละคน โดยไม่มีใครรู้ว่าต้นเหตุคืออะไร
+ * แจ้งเตือนซ้ำทุกวันโดยตั้งใจ เพราะยิ่งปล่อยไว้นาน ยิ่งมีลูกค้าที่ไม่ได้รับของ
+ */
+async function warnIfEmailBroken(): Promise<void> {
+  if (emailEnabled) return;
+
+  const { hasKey, hasFrom } = emailConfigStatus();
+  const missing = [!hasKey && "RESEND_API_KEY", !hasFrom && "EMAIL_FROM"].filter(Boolean).join(" และ ");
+  await sendAdminAlert(
+    [
+      "🔴 ระบบอีเมลส่งไม่ออกเลย",
+      `ขาดค่า: ${missing}`,
+      "",
+      "ผลกระทบตอนนี้:",
+      "· ลูกค้าที่จ่ายเงินไม่ได้รับใบเสร็จ",
+      "· ไม่ได้ลิงก์เข้ากลุ่ม Telegram ทางอีเมล",
+      "· ไม่ได้อีเมลเตือนก่อนหมดอายุ",
+      "· สมาชิกรีเซ็ตรหัสผ่านเองไม่ได้",
+      "",
+      `ต้องทำ: ตั้ง ${missing} บน Vercel แล้ว deploy ใหม่หนึ่งครั้ง`,
+      "ดูสถานะได้ที่ /admin/system",
+    ].join("\n"),
+  ).catch((e) => console.error("email broken alert failed:", e));
 }
