@@ -41,6 +41,14 @@ export default async function OrdersHistoryPage() {
       {orders.length === 0 ? (
         <div className="card-surface rounded-xl p-6 text-center text-sm text-muted">
           ยังไม่มีออเดอร์ — <Link href="/#pricing" className="text-brand hover:underline">เลือกแพ็กเกจ</Link>
+          {/* คนที่โอนนอกระบบมาแล้วจะไม่มีออเดอร์เลย ถ้าไม่บอกไว้ตรงนี้
+              เขาจะสรุปว่าเงินหาย ทั้งที่แค่ต้องแนบสลิปให้เราเห็น */}
+          <p className="mt-3">
+            โอนเงินมาแล้วแต่ไม่เห็นออเดอร์?{" "}
+            <Link href="/account/pay/transferred" className="text-brand hover:underline">
+              แนบสลิปที่นี่
+            </Link>
+          </p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -61,8 +69,10 @@ export default async function OrdersHistoryPage() {
                 )}
                 <div className="ml-auto">
                   {o.status === "PENDING" ? (
+                    /* คำว่า "ชำระเงิน" อย่างเดียวทำให้คนที่โอนไปแล้วไม่กล้ากด
+                       เพราะกลัวโดนเก็บเงินซ้ำ แล้วก็ไปทักแอดมินแทน */
                     <Link href={`/account/pay/${o.id}`} className="rounded-full bg-brand px-4 py-2 text-xs font-semibold text-brand-ink hover:bg-brand-strong">
-                      ชำระเงิน
+                      ชำระเงิน / แนบสลิป
                     </Link>
                   ) : o.status === "SUBMITTED" ? (
                     <Link href={`/account/pay/${o.id}`} className="text-xs text-brand hover:underline">ดูสถานะ</Link>

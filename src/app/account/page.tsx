@@ -10,7 +10,7 @@ import { formatThaiDate } from "@/lib/date";
 import { PageHeader } from "@/components/portal/PortalShell";
 import {
   CheckCircle2, Circle, AlertCircle, LineChart, PartyPopper,
-  Send, CalendarClock, ArrowRight, Receipt,
+  Send, CalendarClock, ArrowRight, Receipt, Clock,
 } from "lucide-react";
 
 /**
@@ -59,6 +59,19 @@ export default async function AccountOverview({
   });
   const cheapest = Math.min(...plans.map((p) => p.perMonthTHB));
 
+  /**
+   * ออเดอร์ที่ยังไม่จบ — ต้องทักลูกค้าก่อน ไม่ใช่รอให้เขาเดินไปหาเอง
+   *
+   * ทางกลับไปทำต่อมีอยู่แล้วที่เมนู "ประวัติออเดอร์" แต่ลูกค้าต้องรู้เองว่าต้องไปกดตรงนั้น
+   * คนที่โอนเงินไปแล้วแต่ลืมแนบสลิปจะไม่รู้ด้วยซ้ำว่าตัวเองลืมอะไร
+   * เขาเห็นแค่ว่าจ่ายเงินไปแล้วไม่ได้ของ แล้วก็ไปทักแอดมินแทน
+   */
+  const openOrder = await prisma.slipOrder.findFirst({
+    where: { userId, status: { in: ["PENDING", "SUBMITTED"] } },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, status: true, amountTHB: true },
+  });
+
   return (
     <>
       {checkout === "success" && (
@@ -105,13 +118,44 @@ export default async function AccountOverview({
       />
 
       {/*
-        คนที่โอนเงินมาแล้วแต่ระบบยังไม่เห็น — นี่คือหน้าแรกที่เขาเจอหลังล็อกอิน
-        ตอนหยุดรับชำระเงิน ปุ่มสมัครถูกปิดหมด เขาจึงหาที่แนบสลิปไม่เจอเลย
-        แล้วต้องไปทักแอดมิน ซึ่งแอดมินก็สร้างออเดอร์ให้ไม่ได้เหมือนกัน
-        (เกิดขึ้นจริง 29 ก.ย. 69) ป้ายนี้ต้องมาก่อนการ์ดสถานะ เพราะถ้าอยู่ล่างกว่านั้น
-        เขาจะอ่านว่า "ยังไม่มีแพ็กเกจ" แล้วคิดว่าเงินหาย
+        สามสถานะของคนที่ยังไม่ได้ของ เรียงตามความเร่งด่วน — ต้องอยู่เหนือการ์ดสถานะ
+        ไม่งั้นลูกค้าอ่านเจอ "ยังไม่มีแพ็กเกจ" ก่อนแล้วคิดว่าเงินหาย
+
+        1. มีออเดอร์ค้าง ยังไม่ได้แนบสลิป — เขาไม่รู้ด้วยซ้ำว่าตัวเองลืมอะไร
+           เห็นแค่ว่าจ่ายเงินไปแล้วไม่ได้ของ แล้วไปทักแอดมินแทน
+        2. ส่งสลิปแล้ว รอตรวจ — บอกไว้ให้อุ่นใจ จะได้ไม่ส่งซ้ำหรือทักมาถาม
+        3. ไม่มีออเดอร์เลย แต่อาจโอนมาแล้วนอกระบบ — พาไปสร้างใบแล้วแนบสลิป
+           (ไม่ผูกกับสถานะหยุดรับเงิน เพราะคนโอนนอกระบบมีได้ตลอด)
       */}
-      {!isActive && salesPaused && (
+      {openOrder?.status === "PENDING" ? (
+        <Link
+          href={`/account/pay/${openOrder.id}`}
+          className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-amber-400/40 bg-amber-400/5 p-4 transition-colors hover:bg-amber-400/10"
+        >
+          <div className="flex items-start gap-3 text-sm">
+            <Receipt className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
+            <div>
+              <div className="font-medium text-amber-400">
+                ออเดอร์ {formatTHB(openOrder.amountTHB)} ยังไม่ได้แนบสลิป
+              </div>
+              <p className="mt-0.5 text-muted">
+                โอนแล้วแนบสลิปด้วยนะครับ ทีมงานถึงจะตรวจสอบและเปิดสิทธิ์ให้ได้
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="h-4 w-4 shrink-0 text-amber-400" />
+        </Link>
+      ) : openOrder?.status === "SUBMITTED" ? (
+        <div className="mb-6 flex items-start gap-3 rounded-xl border border-border bg-surface-2 p-4 text-sm">
+          <Clock className="mt-0.5 h-5 w-5 shrink-0 text-muted" />
+          <div>
+            <div className="font-medium">ได้รับสลิปของคุณแล้ว กำลังตรวจสอบ</div>
+            <p className="mt-0.5 text-muted">
+              ปกติไม่เกิน 24 ชม. ไม่ต้องส่งซ้ำ — สถานะจะอัปเดตที่หน้านี้เอง
+            </p>
+          </div>
+        </div>
+      ) : !isActive ? (
         <Link
           href="/account/pay/transferred"
           className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-brand/40 bg-brand/5 p-4 transition-colors hover:bg-brand/10"
@@ -127,7 +171,7 @@ export default async function AccountOverview({
           </div>
           <ArrowRight className="h-4 w-4 shrink-0 text-brand" />
         </Link>
-      )}
+      ) : null}
 
       {/* สถานะแพ็กเกจ */}
       <div className="card-surface rounded-xl p-6">
