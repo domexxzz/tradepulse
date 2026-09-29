@@ -17,7 +17,15 @@ import { ACTIVE_STATUSES, getUserSubscription } from "@/lib/subscription";
  * ประทับ notifiedAt ไว้เพื่อให้รอบกวาดรู้ว่าคนนี้ได้ลิงก์ไปแล้ว
  * ถ้าไม่ประทับ cron จะยิงอีเมลซ้ำให้คนเดิมทุกวันจนลูกค้ากดสแปม
  */
-export async function sendTelegramInviteEmail(userId: string): Promise<boolean> {
+export type InviteSendResult = "sent" | "no-email" | "no-link" | "mail-failed";
+
+/**
+ * ส่งแล้วบอกด้วยว่าผลเป็นยังไง — ไม่ใช่แค่ true/false
+ *
+ * "ส่งไม่สำเร็จ" เฉย ๆ ไม่พอให้ใครไปแก้ได้ ต้องแยกให้ออกว่าเป็นเพราะ
+ * บอทสร้างลิงก์เชิญไม่ได้ หรือระบบอีเมลเองมีปัญหา — สองอย่างนี้แก้คนละที่
+ */
+export async function sendTelegramInviteEmailWithReason(userId: string): Promise<InviteSendResult> {
   const [user, grant] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true } }),
     // ต้องกรองว่ามีลิงก์จริง ไม่ใช่หยิบแถวล่าสุดมาแล้วค่อยเช็ก
@@ -29,7 +37,8 @@ export async function sendTelegramInviteEmail(userId: string): Promise<boolean> 
       select: { id: true, inviteLink: true },
     }),
   ]);
-  if (!user?.email || !grant?.inviteLink) return false;
+  if (!user?.email) return "no-email";
+  if (!grant?.inviteLink) return "no-link";
 
   const { sub, isActive } = await getUserSubscription(userId);
   const mail = telegramInviteEmail({
@@ -39,12 +48,17 @@ export async function sendTelegramInviteEmail(userId: string): Promise<boolean> 
   });
 
   const res = await sendEmail({ to: user.email, ...mail });
-  // ส่งไม่ออก (ยังไม่ตั้งค่าอีเมล / SMTP ล่ม) — อย่าประทับว่าส่งแล้ว
+  // ส่งไม่ออก (ยังไม่ตั้งค่าอีเมล / ผู้ให้บริการปฏิเสธ) — อย่าประทับว่าส่งแล้ว
   // รอบกวาดวันถัดไปจะได้ลองใหม่เอง
-  if (!res.ok) return false;
+  if (!res.ok) return "mail-failed";
 
   await markTelegramInviteNotified(userId, grant.id);
-  return true;
+  return "sent";
+}
+
+/** แบบย่อสำหรับที่ที่สนแค่ว่าสำเร็จไหม */
+export async function sendTelegramInviteEmail(userId: string): Promise<boolean> {
+  return (await sendTelegramInviteEmailWithReason(userId)) === "sent";
 }
 
 /**

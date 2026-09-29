@@ -23,7 +23,7 @@ import {
 } from "@/lib/telegram";
 import { formatTHB } from "@/lib/utils";
 import { salesPaused } from "@/config/site";
-import { sendTelegramInviteEmail, usersAwaitingInviteEmail } from "@/lib/telegram-invite";
+import { sendTelegramInviteEmailWithReason, usersAwaitingInviteEmail } from "@/lib/telegram-invite";
 
 /**
  * เตือนล่วงหน้าที่หลักกี่วันก่อนหมดอายุ — เรียงจากไกลไปใกล้
@@ -423,6 +423,8 @@ export interface MaintenanceResult {
   invited: number;
   /** ควรได้ลิงก์แต่ส่งไม่สำเร็จกี่ราย — ต้องมีคนไปดู ไม่ใช่ปล่อยให้ค้าง */
   stuck: number;
+  /** ส่งไม่สำเร็จเพราะอะไรบ้าง — บอกว่าต้องไปแก้ที่บอทหรือที่ระบบอีเมล */
+  reasons: Record<string, number>;
   checkedAt: string;
 }
 
@@ -481,13 +483,20 @@ export async function runMembershipMaintenance(): Promise<MaintenanceResult> {
 เตือนใกล้หมดอายุ: ${reminded} ราย
 ส่งลิงก์กลุ่มที่ตกหล่น: ${invite.sent} ราย` +
         (invite.stuck.length > 0
-          ? `\n⚠️ ส่งลิงก์ไม่สำเร็จ ${invite.stuck.length} ราย — บอทสร้างลิงก์เชิญไม่ได้ หรืออีเมลส่งไม่ออก\nดูที่ /admin/telegram`
+          ? `\n⚠️ ส่งลิงก์ไม่สำเร็จ ${invite.stuck.length} ราย (${describeReasons(invite.reasons)})\nดูที่ /admin/telegram`
           : "") +
         (due.length > 0 ? "\nตรวจคิวถอนสิทธิ์ที่ /admin/access-queue และ /admin/telegram" : "")
     );
   }
 
-  return { expired: due.length, reminded, invited: invite.sent, stuck: invite.stuck.length, checkedAt: now.toISOString() };
+  return {
+    expired: due.length,
+    reminded,
+    invited: invite.sent,
+    stuck: invite.stuck.length,
+    reasons: invite.reasons,
+    checkedAt: now.toISOString(),
+  };
 }
 
 /**
@@ -501,6 +510,22 @@ export async function runMembershipMaintenance(): Promise<MaintenanceResult> {
  * รอบนี้จึงไล่หาคนที่สิทธิ์ยังใช้งานได้แต่ notifiedAt ยังว่าง แล้วส่งให้
  * นับแค่ status PENDING — ที่เป็น ADDED คือเข้ากลุ่มไปแล้ว ไม่ต้องส่งอะไรอีก
  */
+/** แปลสาเหตุเป็นภาษาคน — แอดมินอ่านแล้วรู้เลยว่าต้องไปแก้ที่ไหน */
+function describeReasons(reasons: Record<string, number>): string {
+  const label: Record<string, string> = {
+    "no-link": "บอทสร้างลิงก์เชิญไม่ได้",
+    "mail-failed": "ระบบอีเมลส่งไม่ออก",
+    "no-email": "สมาชิกไม่มีอีเมล",
+    threw: "เกิดข้อผิดพลาด",
+  };
+  return (
+    Object.entries(reasons)
+      .filter(([k]) => k !== "sent")
+      .map(([k, n]) => `${label[k] ?? k} ${n}`)
+      .join(" · ") || "ไม่ทราบสาเหตุ"
+  );
+}
+
 export interface InviteSweepResult {
   sent: number;
   /**
@@ -510,6 +535,8 @@ export interface InviteSweepResult {
    * โดยไม่มีใครรู้ว่าทำไมตัวเลขไม่ลด แล้วแอดมินจะกดปุ่มซ้ำไปเรื่อย ๆ เปล่า ๆ
    */
   stuck: string[];
+  /** นับตามสาเหตุ เช่น { "no-link": 3, "mail-failed": 4 } — บอกว่าต้องไปแก้ที่ไหน */
+  reasons: Record<string, number>;
 }
 
 /** เรียกจาก cron รายวัน และจากปุ่มในหน้า /admin/telegram เมื่ออยากส่งเลยไม่รอถึงรอบ */
@@ -518,18 +545,22 @@ export async function inviteMissedMembers(): Promise<InviteSweepResult> {
 
   let sent = 0;
   const stuck: string[] = [];
+  const reasons: Record<string, number> = {};
   for (const userId of waiting) {
     try {
       // ยังไม่มีลิงก์ก็สร้างให้ก่อน (เช่นตอนอนุมัติ บอทสร้างไม่ทัน)
       await ensureTelegramInvite(userId);
-      if (await sendTelegramInviteEmail(userId)) sent += 1;
+      const r = await sendTelegramInviteEmailWithReason(userId);
+      reasons[r] = (reasons[r] ?? 0) + 1;
+      if (r === "sent") sent += 1;
       else stuck.push(userId);
     } catch (e) {
       console.error("invite backfill failed for", userId, e);
+      reasons.threw = (reasons.threw ?? 0) + 1;
       stuck.push(userId);
     }
   }
-  return { sent, stuck };
+  return { sent, stuck, reasons };
 }
 
 /** ใช้ตอนแอดมินสั่งปิดสิทธิ์เอง (ไม่รอ cron) */
