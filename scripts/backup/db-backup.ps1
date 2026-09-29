@@ -41,8 +41,8 @@ $dailyDir   = if ($cfg["DAILY_DIR"]) { $cfg["DAILY_DIR"] } else { "C:\QVXBackup\
 $weeklyDir  = if ($cfg["WEEKLY_DIR"]) { $cfg["WEEKLY_DIR"] } else { "E:\QVXBackup\weekly" }
 $keepDaily  = [int]$(if ($cfg["KEEP_DAILY"]) { $cfg["KEEP_DAILY"] } else { 30 })
 $keepWeekly = [int]$(if ($cfg["KEEP_WEEKLY"]) { $cfg["KEEP_WEEKLY"] } else { 12 })
-$tgToken    = $cfg["TELEGRAM_BOT_TOKEN"]
-$tgChat     = $cfg["TELEGRAM_CHAT_ID"]
+$alertUrl    = if ($cfg["ALERT_URL"]) { $cfg["ALERT_URL"] } else { "https://quantvisionx.com/api/backup/report" }
+$alertSecret = $cfg["BACKUP_ALERT_SECRET"]
 
 if (-not $dbUrl) { throw "ไม่ได้ตั้ง DATABASE_URL ใน $ConfigPath" }
 
@@ -59,13 +59,27 @@ function Log([string]$m) {
 }
 
 # แจ้งเตือนเฉพาะตอนพัง — สำเร็จทุกคืนแล้วเด้งทุกคืนคือ noise ที่ทำให้คนเลิกอ่าน
+#
+# ยิงผ่านเว็บ ไม่ยิง Telegram เอง เพราะของเดิมเก็บ bot token ไว้บนเครื่องนี้อีกชุด
+# และบอทตัวนั้น (@BMTradingViewIndicator_Bot) ไม่ได้อยู่ในห้องไหนเลย
+# แจ้งเตือนจึงไม่เคยถึงใคร ทั้งที่ log เขียนว่า "แจ้งเตือน Telegram แล้ว"
+# (ตรวจแล้ว 29 ก.ย. 69 — getChat ทั้งห้อง QVX SIGNAL และ Admin QVX ตอบ 400)
+#
+# เว็บใช้บอทที่อยู่ในห้อง Admin QVX จริง เครื่องนี้จึงถือแค่ความลับของ endpoint
+# ไม่ต้องถือ token ของบอทอีกต่อไป
+#
+# ต้องยืนยันว่าส่งถึงจริง ไม่ใช่แค่ยิงแล้วจบ — เขียน log ตามผลที่ได้จริง
 function Alert([string]$m) {
-  if (-not $tgToken -or -not $tgChat) { Log "  (ไม่ได้ตั้ง Telegram — ข้ามการแจ้งเตือน)"; return }
+  if (-not $alertSecret) { Log "  (ไม่ได้ตั้ง BACKUP_ALERT_SECRET — ข้ามการแจ้งเตือน)"; return }
   try {
-    $body = @{ chat_id = $tgChat; text = "🔴 สำรองฐานข้อมูล QVX ล้มเหลว`n$m`nเครื่อง: $env:COMPUTERNAME" }
-    Invoke-RestMethod -Method Post -Uri "https://api.telegram.org/bot$tgToken/sendMessage" -Body $body -TimeoutSec 20 | Out-Null
-    Log "  แจ้งเตือน Telegram แล้ว"
-  } catch { Log "  แจ้งเตือน Telegram ไม่สำเร็จ: $($_.Exception.Message)" }
+    $body = @{ ok = $false; host = $env:COMPUTERNAME; message = $m } | ConvertTo-Json -Compress
+    $res = Invoke-RestMethod -Method Post -Uri $alertUrl -TimeoutSec 20 `
+      -Headers @{ Authorization = "Bearer $alertSecret" } `
+      -ContentType "application/json; charset=utf-8" `
+      -Body ([Text.Encoding]::UTF8.GetBytes($body))
+    if ($res.ok) { Log "  แจ้งเตือนเข้าห้อง Admin QVX แล้ว" }
+    else { Log "  เว็บรับเรื่องแล้วแต่ส่งเข้า Telegram ไม่ได้: $($res.reason)" }
+  } catch { Log "  แจ้งเตือนไม่สำเร็จ: $($_.Exception.Message)" }
 }
 
 $stamp = Get-Date -Format "yyyyMMdd-HHmm"
