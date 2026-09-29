@@ -5,6 +5,7 @@ import {
   unlinkTelegram,
   resendTelegramInvite,
   sendPendingTelegramInvites,
+  reissueTelegramInvites,
 } from "@/lib/actions/admin";
 import { usersAwaitingInviteEmail } from "@/lib/telegram-invite";
 import { telegramGroupManaged } from "@/lib/telegram";
@@ -171,6 +172,41 @@ export default async function TelegramQueuePage() {
           </table>
         </div>
       )}
+
+      {/*
+        เครื่องมือย้ายกลุ่ม — อยู่ล่างสุดและต้องพิมพ์ยืนยัน เพราะใช้ผิดจังหวะแล้วเจ็บ
+        ลิงก์ที่ลูกค้าถืออยู่จะใช้ไม่ได้ทั้งหมดทันที
+      */}
+      <details className="card-surface rounded-2xl p-5">
+        <summary className="cursor-pointer text-sm font-medium">
+          เปลี่ยนกลุ่มปลายทาง / ออกลิงก์ใหม่ให้ทุกคน
+        </summary>
+        <div className="mt-4 space-y-3 text-sm leading-relaxed text-muted">
+          <p>
+            ลิงก์เชิญที่ออกไปแล้ว<strong className="text-foreground">ผูกกับกลุ่มเดิมตลอดไป</strong> —
+            เปลี่ยน <code className="rounded bg-surface-2 px-1">TELEGRAM_CHAT_ID</code> อย่างเดียว
+            คนที่ถือลิงก์เก่าจะยังเข้ากลุ่มเดิมได้อยู่ และระบบจะไม่ออกลิงก์ใหม่ให้เพราะเห็นว่ามีแล้ว
+          </p>
+          <ol className="list-decimal space-y-1 pl-5">
+            <li>ใส่บอทเข้ากลุ่มใหม่ ตั้งเป็นผู้ดูแล ให้สิทธิ์ &quot;เชิญผ่านลิงก์&quot; และ &quot;แบนสมาชิก&quot;</li>
+            <li>เปลี่ยน <code className="rounded bg-surface-2 px-1">TELEGRAM_CHAT_ID</code> บน Vercel แล้ว deploy</li>
+            <li>ค่อยกดปุ่มนี้ แล้วกด &quot;ส่งลิงก์ให้ทุกคนที่ยังไม่ได้&quot; ด้านบน</li>
+          </ol>
+          <p className="text-amber-400">
+            ปุ่มนี้ไม่เตะใครออกจากกลุ่มเดิม ถ้าเลิกใช้กลุ่มเดิมแล้วให้ลบกลุ่มทิ้งเอง
+          </p>
+          <form action={reissueTelegramInvites} className="flex flex-wrap items-center gap-2 pt-1">
+            <input
+              name="confirm"
+              placeholder="พิมพ์ ย้ายกลุ่ม เพื่อยืนยัน"
+              className="h-10 w-56 rounded-lg border border-border bg-surface-2 px-3 text-sm outline-none placeholder:text-muted focus:border-amber-400/50"
+            />
+            <button className="h-10 rounded-full bg-amber-400/15 px-5 text-sm font-medium text-amber-400 hover:bg-amber-400/25">
+              ออกลิงก์ใหม่ให้ทุกคน
+            </button>
+          </form>
+        </div>
+      </details>
 
       {/*
         ตารางนี้ตอบคำถามเดียว: "บัญชี Telegram นี้ตอนนี้เป็นของสมาชิกคนไหน"

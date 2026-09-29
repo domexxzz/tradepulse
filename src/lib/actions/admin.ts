@@ -9,7 +9,7 @@ import {
   expireSubscriptionById,
   syncTradingViewGrant,
 } from "@/lib/lifecycle";
-import { removeGroupMember, sendAdminAlert, telegramGroupManaged } from "@/lib/telegram";
+import { removeGroupMember, revokeInviteLink, sendAdminAlert, telegramGroupManaged } from "@/lib/telegram";
 import { revokeTradingViewAccess } from "@/lib/tradingview";
 import { notifyAccessGranted } from "@/lib/access-notify";
 import { sendTelegramInviteEmail } from "@/lib/telegram-invite";
@@ -118,6 +118,59 @@ export async function resendTelegramInvite(formData: FormData) {
 export async function sendPendingTelegramInvites() {
   await requireAdmin();
   await inviteMissedMembers();
+  revalidatePath("/admin/telegram");
+}
+
+/**
+ * ออกลิงก์เชิญใหม่ให้ทุกคน — ใช้ตอน "ย้ายกลุ่ม" หรือลิงก์ชุดเดิมใช้ไม่ได้แล้ว
+ *
+ * ทำไมแค่เปลี่ยน TELEGRAM_CHAT_ID ไม่พอ: ลิงก์เชิญที่ออกไปแล้วผูกกับกลุ่มเดิม
+ * ตลอดไป คนที่ถือลิงก์เก่าจะยังเข้ากลุ่มเดิมได้เรื่อย ๆ และ ensureTelegramInvite
+ * จะข้ามคนที่มีลิงก์อยู่แล้ว ไม่ออกใหม่ให้ — ต้องล้างของเก่าทิ้งก่อน
+ *
+ * ทำสามอย่างกับทุกคนที่สิทธิ์ยังไม่ถูกถอน
+ *   1. ยกเลิกลิงก์เก่าที่กลุ่มเดิม (พยายามอย่างเดียว ล้มก็ไม่เป็นไร — ถ้าเปลี่ยนกลุ่ม
+ *      ไปแล้ว Telegram จะปฏิเสธเพราะลิงก์ไม่ได้อยู่กลุ่มนี้ ซึ่งคาดไว้อยู่แล้ว)
+ *   2. ล้างลิงก์ + สถานะกลับเป็นรอเข้ากลุ่ม (คนที่เข้ากลุ่มเก่าไปแล้วก็ต้องเข้าใหม่)
+ *   3. ล้าง notifiedAt เพื่อให้รอบส่งอีเมลส่งลิงก์ชุดใหม่ให้
+ *
+ * ไม่เตะใครออกจากกลุ่มเดิม — ถ้าเลิกใช้กลุ่มเดิมแล้วให้ลบกลุ่มทิ้งเอง
+ * เตะออกอัตโนมัติจากที่นี่อันตรายเกินไป เพราะถ้ากดผิดตอนที่ยังไม่ได้เปลี่ยนกลุ่ม
+ * สมาชิกที่จ่ายเงินจะหลุดออกจากกลุ่มจริงทันที
+ */
+export async function reissueTelegramInvites(formData: FormData) {
+  await requireAdmin();
+
+  // ต้องพิมพ์ยืนยัน — งานนี้ทำให้ลิงก์ที่ลูกค้าถืออยู่ใช้ไม่ได้ทั้งหมด
+  if (String(formData.get("confirm") ?? "").trim() !== "ย้ายกลุ่ม") return;
+
+  const grants = await prisma.telegramGrant.findMany({
+    where: { status: { in: ["PENDING", "ADDED"] } },
+    select: { id: true, inviteLink: true },
+  });
+
+  for (const g of grants) {
+    if (g.inviteLink) {
+      try {
+        await revokeInviteLink(g.inviteLink);
+      } catch {
+        // ลิงก์อยู่คนละกลุ่มกับที่ตั้งไว้ตอนนี้ — คาดไว้แล้วเมื่อเพิ่งย้ายกลุ่ม
+      }
+    }
+    await prisma.telegramGrant.update({
+      where: { id: g.id },
+      data: {
+        status: "PENDING",
+        inviteLink: null,
+        invitedAt: null,
+        notifiedAt: null,
+        telegramUserId: null,
+        addedAt: null,
+        note: "ออกลิงก์ใหม่ (เปลี่ยนกลุ่ม)",
+      },
+    });
+  }
+
   revalidatePath("/admin/telegram");
 }
 
