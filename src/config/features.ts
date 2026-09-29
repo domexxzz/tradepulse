@@ -283,7 +283,9 @@ export const steps: Step[] = [
   {
     no: "1",
     title: "ตรวจสอบ TradingView Username",
-    desc: "ค้นหา Username ของบัญชี TradingView ตามภาพด้านล่าง จากนั้นนำ Username ไปกรอกในหน้าบัญชีผู้ใช้งาน QVX เพื่อให้ระบบตรวจสอบและดำเนินการเปิดสิทธิ์ใช้งาน Indicator",
+    // เตือนเรื่องชื่อตัวอย่างเพราะเกิดขึ้นจริงแล้ว — ลูกค้ารายหนึ่งกรอก QVXOfficial
+    // ตามที่เห็นในภาพ ระบบเลยไปเพิ่มสิทธิ์ให้บัญชีของเราเองแทนบัญชีเขา
+    desc: "ค้นหา Username ของบัญชี TradingView ตามภาพด้านล่าง จากนั้นนำ Username ไปกรอกในหน้าบัญชีผู้ใช้งาน QVX เพื่อให้ระบบตรวจสอบและดำเนินการเปิดสิทธิ์ใช้งาน Indicator — กรอกชื่อผู้ใช้ของคุณเอง ไม่ใช่ QVXOfficial ที่เห็นในภาพตัวอย่าง",
     image: "/images/how-it-works/qvx-start-v1/01-tradingview-username.webp",
     imageAlt: "วิธีดู TradingView Username — เปิดเมนูโปรไฟล์ในแอป TradingView แล้วดูชื่อผู้ใช้ใต้รูปโปรไฟล์ ตัวอย่างในภาพคือ QVXOfficial",
   },
