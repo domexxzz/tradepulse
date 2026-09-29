@@ -119,9 +119,20 @@ vercel env add NEXT_PUBLIC_DISCORD_INVITE_URL   # ลิงก์เชิญแ
 4. ตั้ง env สองตัว แล้ว deploy ใหม่
 
 ```bash
-vercel env add DISCORD_CLIENT_ID       # ไม่ใช่ความลับ
-vercel env add DISCORD_CLIENT_SECRET   # เป็นความลับ ห้ามวางในแชต
+vercel env add DISCORD_CLIENT_ID       # ไม่ใช่ความลับ (= Application ID)
 ```
+
+ส่วน Client Secret อย่าพิมพ์ลงบรรทัดคำสั่ง มันติดใน shell history และโผล่ใน `ps`
+ของทุกโปรเซสบนเครื่อง ก๊อปมาแล้วส่งผ่านไฟล์แทน
+
+```bash
+pbpaste > .discord-secret && chmod 600 .discord-secret
+node scripts/set-vercel-env.mjs DISCORD_CLIENT_SECRET .discord-secret
+rm -f .discord-secret
+```
+
+สคริปต์ไม่พิมพ์ค่าออกมา บอกแค่ความยาว (ของ Discord ยาว 32 ตัว) และดักกรณี
+ก๊อปผิดของ — ได้ URL หรือ `KEY=value` มาแทน — ให้ก๊อปใหม่ แทนที่จะตั้งค่าผิดเงียบ ๆ
 
 **บอทต้องมีสิทธิ์ Create Invite ด้วย** ไม่ใช่แค่ Manage Roles ไม่งั้นการพาเข้าเซิร์ฟเวอร์
 จะถูกปฏิเสธ (ลูกค้าจะเห็นข้อความให้กดลิงก์เชิญเข้าเอง)
