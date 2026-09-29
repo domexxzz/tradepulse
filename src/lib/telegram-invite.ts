@@ -17,7 +17,8 @@ import { ACTIVE_STATUSES, getUserSubscription } from "@/lib/subscription";
  * ประทับ notifiedAt ไว้เพื่อให้รอบกวาดรู้ว่าคนนี้ได้ลิงก์ไปแล้ว
  * ถ้าไม่ประทับ cron จะยิงอีเมลซ้ำให้คนเดิมทุกวันจนลูกค้ากดสแปม
  */
-export type InviteSendResult = "sent" | "no-email" | "no-link" | "mail-failed";
+/** "mail-failed" อาจมีรหัสจากผู้ให้บริการต่อท้าย เช่น "mail-failed:resend 401" */
+export type InviteSendResult = "sent" | "no-email" | "no-link" | (string & {});
 
 /**
  * ส่งแล้วบอกด้วยว่าผลเป็นยังไง — ไม่ใช่แค่ true/false
@@ -50,7 +51,9 @@ export async function sendTelegramInviteEmailWithReason(userId: string): Promise
   const res = await sendEmail({ to: user.email, ...mail });
   // ส่งไม่ออก (ยังไม่ตั้งค่าอีเมล / ผู้ให้บริการปฏิเสธ) — อย่าประทับว่าส่งแล้ว
   // รอบกวาดวันถัดไปจะได้ลองใหม่เอง
-  if (!res.ok) return "mail-failed";
+  // ต่อรหัสที่ผู้ให้บริการตอบกลับมาด้วย (เช่น "resend 401") — บอกได้ทันทีว่าเป็น
+  // คีย์ผิด โดเมนยังไม่ verify หรือโดนจำกัดอัตรา โดยไม่ต้องไล่อ่าน log
+  if (!res.ok) return `mail-failed${res.error ? `:${res.error}` : ""}` as InviteSendResult;
 
   await markTelegramInviteNotified(userId, grant.id);
   return "sent";
