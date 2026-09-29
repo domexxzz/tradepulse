@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ACTIVE_STATUSES } from "@/lib/subscription";
 import { formatThaiDate } from "@/lib/date";
+import { ensureTelegramInvite } from "@/lib/lifecycle";
+import { sendTelegramInviteEmailWithReason } from "@/lib/telegram-invite";
+import { revokeInviteLink, currentChatId } from "@/lib/telegram";
 
 export const dynamic = "force-dynamic";
 
@@ -101,5 +104,79 @@ export async function GET(req: Request) {
     complete: members.filter((m) => m.complete).length,
     incomplete: members.filter((m) => !m.complete).length,
     members,
+  });
+}
+
+/**
+ * ออกลิงก์กลุ่มใหม่แล้วส่งอีเมลให้สมาชิกรายเดียว
+ *
+ * มีไว้สำหรับเคสที่สถานะในระบบบอกว่า "เข้ากลุ่มแล้ว" แต่ลูกค้ายืนยันว่าไม่ได้อยู่
+ * ซึ่งเกิดได้จากสถานะค้างจากกลุ่มเดิมก่อนย้ายมา QVX SIGNAL
+ * ต่างจากรอบกวาดรายวันตรงที่ตัวนี้ "บังคับออกใหม่" ไม่สนสถานะเดิม
+ *
+ * ล้างของเก่าทิ้งก่อนเสมอ เพราะลิงก์เชิญผูกกับกลุ่มที่ออกให้ตลอดไป
+ * ถ้าไม่ล้าง ระบบจะเห็นว่ามีลิงก์แล้วแล้วส่งลิงก์ห้องเก่าให้ลูกค้าซ้ำอีกรอบ
+ */
+export async function POST(req: Request) {
+  if (!authorized(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+  let body: { invite?: unknown };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "bad json" }, { status: 400 });
+  }
+
+  const email = typeof body.invite === "string" ? body.invite.trim().toLowerCase() : "";
+  if (!email) return NextResponse.json({ error: "ต้องระบุ invite เป็นอีเมลของสมาชิก" }, { status: 400 });
+
+  const user = await prisma.user.findFirst({
+    where: { email: { equals: email, mode: "insensitive" } },
+    select: { id: true, email: true, name: true },
+  });
+  if (!user) return NextResponse.json({ error: `ไม่พบสมาชิกอีเมล ${email}` }, { status: 404 });
+
+  const grant = await prisma.telegramGrant.findFirst({
+    where: { userId: user.id, status: { in: ["PENDING", "ADDED"] } },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, inviteLink: true, status: true, chatId: true },
+  });
+
+  if (grant) {
+    if (grant.inviteLink) {
+      await revokeInviteLink(grant.inviteLink).catch(() => {
+        // ลิงก์ของกลุ่มเก่า Telegram จะปฏิเสธ — คาดไว้แล้ว
+      });
+    }
+    await prisma.telegramGrant.update({
+      where: { id: grant.id },
+      data: {
+        status: "PENDING",
+        inviteLink: null,
+        invitedAt: null,
+        notifiedAt: null,
+        telegramUserId: null,
+        addedAt: null,
+        note: "ออกลิงก์ใหม่ตามที่ร้องขอ",
+      },
+    });
+  }
+
+  await ensureTelegramInvite(user.id);
+  const result = await sendTelegramInviteEmailWithReason(user.id);
+
+  const after = await prisma.telegramGrant.findFirst({
+    where: { userId: user.id, status: { in: ["PENDING", "ADDED"] } },
+    orderBy: { createdAt: "desc" },
+    select: { status: true, inviteLink: true, chatId: true },
+  });
+
+  return NextResponse.json({
+    ok: result === "sent",
+    member: user.name ?? user.email,
+    email: user.email,
+    before: grant ? { status: grant.status, hadLink: Boolean(grant.inviteLink), chatId: grant.chatId } : null,
+    result,
+    now: { status: after?.status, hasLink: Boolean(after?.inviteLink), chatId: after?.chatId, currentChatId },
   });
 }
