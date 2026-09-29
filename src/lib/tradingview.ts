@@ -76,24 +76,51 @@ async function bridgeTargets(): Promise<string[]> {
  * เช็กว่าบริดจ์ตัวไหนยังมีชีวิต — ใช้โดย cron เฝ้าระวัง
  * คืนสถานะแต่ละตัว (primary/backup) แยกกัน เพื่อให้แจ้งเตือนได้ตรงจุด
  */
-export async function checkBridgeHealth(): Promise<{
-  primary: { url: string; up: boolean } | null;
-  backup: { url: string; up: boolean } | null;
+/**
+ * "ไม่ตอบ" ไม่เท่ากับ "ตาย" — บริดจ์เงียบระหว่างทำงานเป็นเรื่องปกติ
+ *
+ * ตัวบริดจ์ขับ Chrome ด้วย Selenium ซึ่งเป็นงานแบบบล็อก ระหว่างเพิ่มสิทธิ์ให้ลูกค้า
+ * (ราว 90 วินาทีต่อคน) มันจะไม่ตอบ /health เลย ถ้าตีว่าตายทันที จะเตือนผิด
+ * บ่อยที่สุดในจังหวะที่ระบบทำงานหนักที่สุด — คือตอนลูกค้ากำลังซื้อ
+ * แล้วเจ้าของจะเลิกอ่านแจ้งเตือนไปเลย ซึ่งอันตรายกว่าไม่มีแจ้งเตือน
+ * (เจอจริง 30 ก.ย. 69 — เตือนว่าบริดจ์ล่มทั้งที่กำลังเพิ่มสิทธิ์ให้ลูกค้าอยู่)
+ *
+ * botkeeper บนเครื่องนั้นรายงานตัวเข้ามาทุกนาทีอยู่แล้ว (ตาราง BridgeEndpoint)
+ * ถ้าเพิ่งรายงานมา แปลว่าเครื่องยังเปิดและ keeper ยังเดินอยู่ — นับว่ายังไม่ตาย
+ */
+const BRIDGE_BUSY_GRACE_MS = 4 * 60_000;
+
+export async function checkBridgeHealth(now = Date.now()): Promise<{
+  primary: { url: string; up: boolean; busy?: boolean } | null;
+  backup: { url: string; up: boolean; busy?: boolean } | null;
 }> {
-  const ping = async (url?: string) => {
+  const seen = new Map<string, Date>();
+  try {
+    const rows = await prisma.bridgeEndpoint.findMany();
+    for (const r of rows) seen.set(r.role, r.lastSeenAt);
+  } catch (e) {
+    console.error("checkBridgeHealth: read lastSeenAt failed", e);
+  }
+
+  const ping = async (role: BridgeRole, url?: string) => {
     if (!url) return null;
     try {
       const res = await fetch(`${url}/health`, {
         signal: AbortSignal.timeout(10_000),
         cache: "no-store",
       });
-      return { url, up: res.ok };
+      if (res.ok) return { url, up: true };
     } catch {
-      return { url, up: false };
+      // ตกมาที่การเช็กว่าเพิ่งรายงานตัวมาหรือเปล่า
     }
+
+    const last = seen.get(role);
+    const recent = Boolean(last && now - last.getTime() <= BRIDGE_BUSY_GRACE_MS);
+    return { url, up: recent, busy: recent };
   };
-  const urls = await bridgeUrls();
-  const [primary, backup] = await Promise.all([ping(urls.primary), ping(urls.backup)]);
+
+  const urls = await bridgeUrls(now);
+  const [primary, backup] = await Promise.all([ping("primary", urls.primary), ping("backup", urls.backup)]);
   return { primary, backup };
 }
 

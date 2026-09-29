@@ -52,8 +52,15 @@ async function run(req: Request) {
   const backupUp = health.backup?.up ?? false;
 
   // ตัวหลักปกติ = ไม่ต้องทำอะไร (ไม่กวนแอดมิน)
+  // "busy" คือกำลังเพิ่มสิทธิ์ให้ลูกค้าอยู่ ไม่ใช่ปัญหา — ห้ามเตือน
   if (primaryUp) {
-    return NextResponse.json({ ok: true, primaryUp: true, backupUp, alerted: false });
+    return NextResponse.json({
+      ok: true,
+      primaryUp: true,
+      primaryBusy: health.primary?.busy ?? false,
+      backupUp,
+      alerted: false,
+    });
   }
 
   // ตัวหลักล่ม — เตือนแอดมิน พร้อมบอกว่าเว็บยิงไปโฮสต์ไหน และต้องกู้เครื่องไหน
