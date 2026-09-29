@@ -4,7 +4,7 @@
 // build ผ่านแต่พังตอนรันจริง ถ้าลืมบรรทัดนี้
 import {
   LayoutDashboard, CreditCard, LineChart, ReceiptText,
-  ScrollText, MessageCircle, Star, Hash, ShieldCheck, Landmark, Bot } from "lucide-react";
+  ScrollText, MessageCircle, Star, Hash, ShieldCheck, Landmark, Bot, BookOpen } from "lucide-react";
 import { PortalNav, type NavLink } from "@/components/portal/PortalNav";
 
 const links: NavLink[] = [
@@ -17,6 +17,9 @@ const links: NavLink[] = [
   { href: "/account/orders", label: "ประวัติออเดอร์", icon: ScrollText },
   { href: "/account/billing", label: "ประวัติการชำระ", icon: ReceiptText },
   { href: "/account/reviews", label: "รีวิวของฉัน", icon: Star },
+  // คู่มืออยู่นอกโซนล็อกอิน แต่ต้องกดถึงจากในนี้ด้วย — สมาชิกที่จ่ายเงินแล้วเปิดกราฟไม่เป็น
+  // จะหาทางออกไปหน้าคู่มือไม่เจอเลยถ้าไม่มีลิงก์ตรงนี้
+  { href: "/manual", label: "คู่มือใช้งาน", icon: BookOpen },
   { href: "/account/support", label: "ช่วยเหลือ", icon: MessageCircle },
 ];
 
