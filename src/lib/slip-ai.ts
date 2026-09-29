@@ -86,7 +86,17 @@ export async function readSlipWithAi(input: {
   const dataUrl = `data:${input.mime};base64,${input.base64}`;
   let lastReason = "ไม่มีโมเดลที่อ่านภาพได้";
 
+  /**
+   * โดนจำกัดอัตรา (429) ต้องรอแล้วลองใหม่ ไม่ใช่ยอมแพ้ทันที
+   *
+   * ตรวจสลิปหลายใบติดกันชนเพดานของผู้ให้บริการได้ง่ายมาก ถ้าไม่ลองใหม่
+   * ใบที่เหลือจะกลายเป็น "อ่านไม่ได้" ทั้งแถบ ทั้งที่ระบบไม่ได้มีอะไรผิด
+   * แล้วแอดมินต้องมานั่งตรวจเองเหมือนเดิม (เจอจริงรอบแรกที่เปิดใช้ 30 ก.ย. 69)
+   */
+  const RETRY_WAIT_MS = [1500, 4000, 9000];
+
   for (const p of list) {
+    for (let attempt = 0; attempt <= RETRY_WAIT_MS.length; attempt++) {
     try {
       const res = await fetch(`${p.baseUrl}/chat/completions`, {
         method: "POST",
@@ -111,7 +121,13 @@ export async function readSlipWithAi(input: {
 
       if (!res.ok) {
         lastReason = `${p.source} ตอบ ${res.status}`;
-        continue;
+        // 429 = ยิงถี่เกิน · 5xx = ปลายทางสะดุดชั่วคราว ทั้งสองอย่างรอแล้วลองใหม่ได้
+        const retryable = res.status === 429 || res.status >= 500;
+        if (retryable && attempt < RETRY_WAIT_MS.length) {
+          await new Promise((r) => setTimeout(r, RETRY_WAIT_MS[attempt]));
+          continue;
+        }
+        break;
       }
 
       const json = (await res.json()) as {
@@ -140,6 +156,12 @@ export async function readSlipWithAi(input: {
       };
     } catch (e) {
       lastReason = `${p.source} ล้มเหลว: ${e instanceof Error ? e.message : "unknown"}`;
+      if (attempt < RETRY_WAIT_MS.length) {
+        await new Promise((r) => setTimeout(r, RETRY_WAIT_MS[attempt]));
+        continue;
+      }
+      break;
+    }
     }
   }
 
