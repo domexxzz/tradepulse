@@ -16,6 +16,26 @@ const TOKEN = process.env.EASYSLIP_TOKEN;
 /** เลข PromptPay ที่เงินต้องเข้า — ตัวเดียวกับที่ใช้สร้าง QR */
 const RECEIVER_ID = process.env.PROMPTPAY_ID || "";
 
+/**
+ * เลขบัญชีปลายทางที่ยอมรับเพิ่มเติม (คั่นด้วยจุลภาค) ใส่ตัวปิดบังได้ เช่น "xxx-x-x0543-x"
+ *
+ * จำเป็นเพราะสลิปโชว์ "เลขบัญชีธนาคาร" ของปลายทาง ไม่ใช่เลขพร้อมเพย์ที่ใช้สร้าง QR
+ * ถ้าพร้อมเพย์ผูกกับ e-wallet หรือเบอร์มือถือ สองเลขนี้จะคนละตัวกันสนิท
+ * เทียบกับ PROMPTPAY_ID อย่างเดียวจึงขึ้น "ผิดบัญชี" ทุกใบทั้งที่เงินเข้าถูกบัญชี
+ */
+const EXTRA_RECEIVERS = (process.env.SLIP_RECEIVER_ACCOUNTS || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+/** ปลายทางในสลิปตรงกับบัญชีใดบัญชีหนึ่งของเราไหม */
+function receiverIsOurs(refs: (string | undefined | null)[]): boolean {
+  for (const id of [RECEIVER_ID, ...EXTRA_RECEIVERS]) {
+    if (id && receiverMatches(id, refs)) return true;
+  }
+  return false;
+}
+
 /** ตรวจแล้วยอดตรง = อนุมัติออเดอร์ให้อัตโนมัติ (ค่าเริ่มต้น: ปิด ให้แอดมินกดเอง) */
 export const slipAutoApprove = process.env.SLIP_AUTO_APPROVE === "true";
 /** อ่านสลิปด้วย AI แทน EasySlip — ใช้ตอนยังไม่มีบัญชีผู้ให้บริการ */
@@ -98,10 +118,10 @@ async function verifyWithAi(input: {
   }
 
   // ด่าน 2: เงินเข้าบัญชีเราจริงไหม (เท่าที่ตัวเลขบนภาพบอก)
-  if (!RECEIVER_ID) {
-    return { status: "WRONG_ACCOUNT", note: "ยังไม่ได้ตั้ง PROMPTPAY_ID จึงตรวจบัญชีผู้รับไม่ได้", transRef, amount: read.amount };
+  if (!RECEIVER_ID && EXTRA_RECEIVERS.length === 0) {
+    return { status: "WRONG_ACCOUNT", note: "ยังไม่ได้ตั้งบัญชีผู้รับ จึงตรวจไม่ได้", transRef, amount: read.amount };
   }
-  if (!receiverMatches(RECEIVER_ID, [read.receiverAccount])) {
+  if (!receiverIsOurs([read.receiverAccount])) {
     return {
       status: "WRONG_ACCOUNT",
       note: `ยอดตรง แต่บัญชีผู้รับที่อ่านได้ (${read.receiverAccount ?? "อ่านไม่ออก"}${read.receiverName ? ` · ${read.receiverName}` : ""}) ไม่ตรงกับบัญชีที่ใช้รับเงิน`,
@@ -203,7 +223,7 @@ export async function verifySlip(input: {
         amount,
       };
     }
-    if (!receiverMatches(RECEIVER_ID, receiverRefs)) {
+    if (!receiverIsOurs(receiverRefs)) {
       return {
         status: "WRONG_ACCOUNT",
         note: "ยอดตรง แต่บัญชีผู้รับในสลิปไม่ตรงกับบัญชีที่ใช้รับเงิน",

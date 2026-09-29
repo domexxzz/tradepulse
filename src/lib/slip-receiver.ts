@@ -39,7 +39,12 @@ export function normalizeAccountRef(raw: string): string {
  * จะกลายเป็นผ่านทุกกรณี
  */
 export function accountRefMatches(configuredId: string, slipRef: string): boolean {
-  const want = configuredId.replace(/\D/g, "");
+  // ฝั่งที่เราตั้งค่าก็ใส่ตัวปิดบังได้ เช่น "xxx-x-x0543-x"
+  //
+  // จำเป็นเพราะบางทีเรารู้แค่เลขท้ายของบัญชีตัวเอง (เช่นดูจากสลิปที่ลูกค้าส่งมา)
+  // ถ้าบังคับให้ใส่เลขเต็มอย่างเดียว การเทียบชิดขวาจะเพี้ยนทันทีเมื่อสลิป
+  // มีตัวปิดบังต่อท้าย เช่น "xxx-x-x0543-x" ที่ลงท้ายด้วย x หนึ่งตัว
+  const want = normalizeAccountRef(configuredId);
   const got = normalizeAccountRef(slipRef);
   if (!want || !got) return false;
 
@@ -49,7 +54,8 @@ export function accountRefMatches(configuredId: string, slipRef: string): boolea
   for (let i = 1; i <= steps; i++) {
     const w = want[want.length - i];
     const g = got[got.length - i];
-    if (g === "x") continue;
+    // ตำแหน่งที่ฝั่งใดฝั่งหนึ่งถูกปิดบัง = เทียบไม่ได้ ข้ามไป ไม่นับว่าตรงและไม่นับว่าผิด
+    if (g === "x" || w === "x") continue;
     if (g !== w) return false;
     realDigits++;
   }
