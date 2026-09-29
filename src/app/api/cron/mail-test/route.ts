@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { sendEmail, emailConfigStatus } from "@/lib/email";
 import { site } from "@/config/site";
+import { telegramInviteEmail } from "@/lib/email-templates";
+import { checkGroupPermissions, createMemberInviteLink, telegramGroupManaged } from "@/lib/telegram";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +47,41 @@ async function run(req: Request) {
   }
 
   const stamp = new Date().toLocaleString("th-TH", { timeZone: "Asia/Bangkok" });
+
+  /**
+   * ?invite=1 — ส่ง "อีเมลฉบับจริงที่ลูกค้าได้" พร้อมลิงก์เชิญจริง
+   *
+   * ต่างจากอีเมลทดสอบธรรมดาตรงที่พิสูจน์ได้ถึงปลายทาง: เปิดลิงก์แล้วเห็นชื่อห้อง
+   * ว่าพาไปห้องถูกไหม ซึ่งเป็นสิ่งที่ตรวจจากฝั่งเซิร์ฟเวอร์อย่างเดียวไม่ได้
+   * (ลิงก์เชิญเป็นสตริงทึบ ดูไม่ออกว่าของกลุ่มไหนจนกว่าจะเปิด)
+   */
+  const wantInvite = new URL(req.url).searchParams.get("invite") === "1";
+  let invite: Record<string, unknown> | undefined;
+
+  if (wantInvite) {
+    if (!telegramGroupManaged) {
+      invite = { ok: false, reason: "ยังไม่ได้เปิดระบบกลุ่มอัตโนมัติ" };
+    } else {
+      try {
+        const perm = await checkGroupPermissions();
+        const link = await createMemberInviteLink(`mailtest-${Date.now()}`);
+        const mail = telegramInviteEmail({
+          name: "แอดมิน",
+          inviteUrl: link,
+          until: null,
+        });
+        const sent = [];
+        for (const address of to) {
+          const res = await sendEmail({ to: address, ...mail });
+          sent.push({ to: address, ok: res.ok, error: res.error });
+        }
+        invite = { ok: sent.every((r) => r.ok), group: perm.title, sent };
+      } catch (e) {
+        invite = { ok: false, reason: e instanceof Error ? e.message : "unknown" };
+      }
+    }
+  }
+
   const results = [];
   for (const address of to) {
     const res = await sendEmail({
@@ -59,7 +96,7 @@ async function run(req: Request) {
   }
 
   const ok = results.every((r) => r.ok);
-  return NextResponse.json({ ok, config, results }, { status: ok ? 200 : 502 });
+  return NextResponse.json({ ok, config, results, ...(invite ? { invite } : {}) }, { status: ok ? 200 : 502 });
 }
 
 export const GET = run;
