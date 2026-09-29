@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin";
 import { plans } from "@/config/plans";
+import { salesPaused } from "@/config/site";
 import { plansForUser } from "@/lib/pricing";
 import { activateMembership } from "@/lib/lifecycle";
 import { parseSlipDataUrl } from "@/lib/slip";
@@ -15,6 +16,10 @@ import { sendAdminAlert } from "@/lib/telegram";
 
 /** สร้างออเดอร์ QR แล้วพาไปหน้าชำระเงิน */
 export async function createQrOrder(formData: FormData) {
+  // กันฝั่งเซิร์ฟเวอร์ด้วย ไม่ใช่แค่ซ่อนปุ่ม — server action เรียกตรงได้จากข้างนอก
+  // ซ่อนปุ่มอย่างเดียวคือปิดแค่หน้าจอ ไม่ได้ปิดระบบจริง
+  if (salesPaused) redirect("/#pricing");
+
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 

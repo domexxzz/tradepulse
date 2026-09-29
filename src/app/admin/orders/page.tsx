@@ -5,7 +5,7 @@ import { plans } from "@/config/plans";
 import { formatTHB } from "@/lib/utils";
 import { approveOrder, rejectOrder } from "@/lib/actions/payment";
 import { slipVerifyEnabled } from "@/lib/slip-verify";
-import { ShieldCheck, ShieldAlert, ShieldQuestion } from "lucide-react";
+import { ShieldCheck, ShieldAlert, ShieldQuestion, Download } from "lucide-react";
 
 const PER_PAGE = 20;
 
@@ -99,14 +99,26 @@ export default async function OrdersPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="display text-[length:var(--display-sm)]">ออเดอร์ / ตรวจสลิป</h1>
-        <p className="mt-1 text-sm text-muted">
-          ตรวจสลิปที่สมาชิกแนบมา แล้วกด &quot;อนุมัติ&quot; เพื่อเปิดสิทธิ์อัตโนมัติ
-          {slipVerifyEnabled
-            ? " — ระบบอ่านยอดในสลิปให้แล้ว ดูป้ายผลตรวจประกอบได้"
-            : " (ยังไม่ได้เปิดระบบตรวจสลิปอัตโนมัติ)"}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="display text-[length:var(--display-sm)]">ออเดอร์ / ตรวจสลิป</h1>
+          <p className="mt-1 text-sm text-muted">
+            ตรวจสลิปที่สมาชิกแนบมา แล้วกด &quot;อนุมัติ&quot; เพื่อเปิดสิทธิ์อัตโนมัติ
+            {slipVerifyEnabled
+              ? " — ระบบอ่านยอดในสลิปให้แล้ว ดูป้ายผลตรวจประกอบได้"
+              : " (ยังไม่ได้เปิดระบบตรวจสลิปอัตโนมัติ)"}
+          </p>
+        </div>
+
+        {/* ไฟล์เดียวที่มีเงินเข้าทุกรายการพร้อมเลขอ้างอิงโอน — ใช้ตอนต้องคืนเงินหลายคน
+            หน้านี้ดูทีละหน้าและไม่มี transRef เทียบกับรายการเดินบัญชีไม่ได้ */}
+        <a
+          href="/api/admin/payments-log"
+          className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-border px-4 text-sm hover:bg-surface-2"
+        >
+          <Download className="h-4 w-4" />
+          ดาวน์โหลดบันทึกเงินเข้า (CSV)
+        </a>
       </div>
 
       <div className="flex flex-wrap gap-2">

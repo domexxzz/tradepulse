@@ -2,7 +2,8 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 import { plansFor, planIncludes } from "@/config/plans";
 import { getPromoState } from "@/lib/pricing";
 import { PromoCard } from "./PromoCard";
-import { paymentsEnabled, paymentMode } from "@/config/site";
+import { paymentsEnabled, paymentMode, salesPaused } from "@/config/site";
+import { SalesPausedNotice } from "@/components/common/SalesPausedNotice";
 import { createQrOrder } from "@/lib/actions/payment";
 import { formatTHB } from "@/lib/utils";
 import { CheckoutButton } from "./CheckoutButton";
@@ -87,7 +88,13 @@ export async function Pricing() {
                 </p>
 
                 <div className="mt-6">
-                  {paymentMode === "qr" ? (
+                  {/* หยุดรับเงินต้องมาก่อนทุกเงื่อนไข ของเดิมเช็ก paymentMode ก่อน
+                      ซึ่งเป็น "qr" โดยปริยาย ปุ่มโอนเลยโผล่เสมอไม่ว่าจะตั้งอะไรไว้ */}
+                  {salesPaused ? (
+                    <span className={`${cls} pointer-events-none opacity-50`} aria-disabled="true">
+                      เปิดให้ชำระเงินเร็ว ๆ นี้
+                    </span>
+                  ) : paymentMode === "qr" ? (
                     <form action={createQrOrder}>
                       <input type="hidden" name="planCode" value={p.id} />
                       <button className={cls}>สมัคร · โอนผ่าน QR</button>
@@ -103,10 +110,14 @@ export async function Pricing() {
           })}
         </div>
 
-        {!paymentsEnabled && (
-          <p className="mx-auto mt-6 max-w-2xl text-center text-sm text-muted">
-            สมัครบัญชีไว้ก่อนได้เลย — ระบบชำระเงินออนไลน์กำลังเปิดให้บริการ
-          </p>
+        {salesPaused ? (
+          <SalesPausedNotice className="mx-auto mt-8 max-w-2xl" />
+        ) : (
+          !paymentsEnabled && (
+            <p className="mx-auto mt-6 max-w-2xl text-center text-sm text-muted">
+              สมัครบัญชีไว้ก่อนได้เลย — ระบบชำระเงินออนไลน์กำลังเปิดให้บริการ
+            </p>
+          )
         )}
 
         <div className="card-frame mx-auto mt-10 max-w-2xl rounded-2xl p-6">

@@ -2,8 +2,17 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { stripe, priceIdFor } from "@/lib/stripe";
+import { salesPaused } from "@/config/site";
 
 export async function POST(req: Request) {
+  // ทางที่สองที่เก็บเงินได้ — ต้องปิดพร้อมกับ QR ไม่งั้นปิดไม่จริง
+  if (salesPaused) {
+    return NextResponse.json(
+      { error: "หยุดรับชำระเงินชั่วคราว — ติดต่อทีมงานได้ตามช่องทางในหน้าเว็บ" },
+      { status: 503 }
+    );
+  }
+
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
