@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { runMembershipMaintenance } from "@/lib/lifecycle";
 import { prisma } from "@/lib/prisma";
+import { checkStaleJobs } from "@/lib/heartbeat";
 
 export const dynamic = "force-dynamic";
 /** กวาดสมาชิกหลายร้อยรายพร้อมยิงอีเมล/Discord ต้องให้เวลาพอ */
@@ -39,7 +40,15 @@ async function run(req: Request) {
       .then((r) => r.count)
       .catch(() => 0);
 
-    return NextResponse.json({ ok: true, ...result, rateLimitPurged: purged });
+    // งานประจำที่หยุดไปเงียบ ๆ — ต้องมีใครถามหา ไม่งั้นความเงียบดูเหมือนปกติ
+    // เกาะ cron ตัวนี้เพราะเป็น cron เดียวที่ Vercel รันให้ตามตาราง (vercel.json)
+    // ล้มก็ไม่ควรทำให้งานปิดสิทธิ์สมาชิกล้มไปด้วย จึงครอบ catch แยก
+    const staleJobs = await checkStaleJobs().catch((e) => {
+      console.error("checkStaleJobs failed:", e);
+      return [];
+    });
+
+    return NextResponse.json({ ok: true, ...result, rateLimitPurged: purged, staleJobs });
   } catch (e) {
     console.error("cron/expire failed:", e);
     return NextResponse.json(

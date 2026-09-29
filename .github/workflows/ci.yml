@@ -58,6 +58,25 @@ jobs:
           fi
           echo "ไม่มีไฟล์ก๊อป"
 
+      # PowerShell 5.1 บนคอมเฟิร์ส (Windows) เดาว่าไฟล์ไม่มี BOM เป็น ANSI
+      # ภาษาไทยในสคริปต์จะกลายเป็นขยะแล้ว parser ล้มทันที — สคริปต์ไม่ทำงานเลย
+      # ที่รันอยู่บนเครื่องนั้นมี BOM เพราะคนใส่ให้ตอน copy ซึ่งลืมได้ง่าย
+      # เช็คที่นี่แทน ให้ scp จากรีโปตรง ๆ ใช้ได้เสมอ
+      - name: สคริปต์ PowerShell ต้องมี UTF-8 BOM
+        run: |
+          bad=""
+          for f in $(git ls-files '*.ps1'); do
+            if [ "$(head -c 3 "$f" | xxd -p)" != "efbbbf" ]; then bad="$bad$f\n"; fi
+          done
+          if [ -n "$bad" ]; then
+            echo "ไฟล์ .ps1 ที่ไม่มี BOM (ภาษาไทยจะเพี้ยนบน PowerShell 5.1):"
+            printf "$bad" | sed 's/^/  /'
+            echo ""
+            echo "แก้ด้วย: printf '\\xef\\xbb\\xbf' | cat - FILE > tmp && mv tmp FILE"
+            exit 1
+          fi
+          echo "สคริปต์ PowerShell มี BOM ครบ"
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22

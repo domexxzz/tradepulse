@@ -6,7 +6,8 @@ import { formatThaiDate, daysUntil } from "@/lib/date";
 import { ACTIVE_STATUSES } from "@/lib/subscription";
 import { channelLabel } from "@/config/channels";
 import { PageHeader } from "@/components/portal/PortalShell";
-import { Users, CreditCard, ClipboardList, Wallet, Receipt, CalendarClock, ArrowRight } from "lucide-react";
+import { WATCHED_JOBS } from "@/lib/heartbeat";
+import { Users, CreditCard, ClipboardList, Wallet, Receipt, CalendarClock, ArrowRight, HardDriveDownload } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -80,6 +81,26 @@ export default async function AdminDashboard() {
 
   const totalRevenue = revenue._sum.amountTHB ?? 0;
 
+  /**
+   * สถานะงานเบื้องหลัง — ของที่ไม่มีใครเห็นจนวันที่ต้องใช้แล้วไม่มี
+   *
+   * แจ้งเตือนทาง Telegram มีอยู่แล้ว แต่ต้องมีที่ให้ "เข้ามาดูเองได้" ด้วย
+   * ไม่งั้นต้องรอให้มีคนบอก ซึ่งก็คือรอให้มีปัญหาก่อน
+   */
+  const heartbeats = await prisma.systemHeartbeat.findMany({
+    where: { name: { in: WATCHED_JOBS.map((j) => j.name) } },
+  });
+  const jobStatus = WATCHED_JOBS.map((job) => {
+    const row = heartbeats.find((h) => h.name === job.name);
+    const hours = row ? (now.getTime() - row.lastSeenAt.getTime()) / 36e5 : null;
+    return {
+      ...job,
+      lastSeenAt: row?.lastSeenAt ?? null,
+      detail: row?.detail ?? null,
+      stale: hours !== null && hours > job.staleHours,
+    };
+  });
+
   return (
     <>
       <PageHeader
@@ -95,6 +116,38 @@ export default async function AdminDashboard() {
         <Stat label="แพ็คเกจใช้งานอยู่" value={activeSubs} href="/admin/members" icon={CreditCard} />
         <Stat label="รายได้รวม" value={formatTHB(totalRevenue)} href="/admin/orders" icon={Wallet} />
       </div>
+
+      <section className="mt-10">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-medium text-muted">
+          <HardDriveDownload className="h-4 w-4" />
+          งานเบื้องหลัง
+        </h2>
+        <div className="card-surface divide-y divide-border overflow-hidden rounded-xl">
+          {jobStatus.map((j) => (
+            <div key={j.name} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+              <div>
+                <div className="text-sm font-medium">{j.label}</div>
+                <div className="mt-0.5 text-xs text-muted">
+                  {j.lastSeenAt
+                    ? `ล่าสุด ${formatThaiDate(j.lastSeenAt)}${j.detail ? ` · ${j.detail}` : ""}`
+                    : "ยังไม่เคยรายงานผลเข้ามา — ตรวจการตั้งค่าที่ docs/BACKUP.md"}
+                </div>
+              </div>
+              <span
+                className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs ${
+                  j.lastSeenAt === null
+                    ? "border-border bg-surface-2 text-muted"
+                    : j.stale
+                      ? "border-down/30 bg-down/10 text-down"
+                      : "border-up/30 bg-up/10 text-up"
+                }`}
+              >
+                {j.lastSeenAt === null ? "ยังไม่มีข้อมูล" : j.stale ? "เงียบนานผิดปกติ" : "ปกติ"}
+              </span>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {byChannel.length > 0 && (
         <section className="mt-10">

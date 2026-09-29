@@ -1,4 +1,4 @@
-# สำรองฐานข้อมูล production ลงเครื่องที่บ้าน
+﻿# สำรองฐานข้อมูล production ลงเครื่องที่บ้าน
 #
 # ทำไมต้องมี: ข้อมูลลูกค้าทั้งหมดอยู่บน Neon ที่เดียว แผนฟรี และโปรเจกต์อยู่บนบัญชี
 # ที่เราไม่ได้เป็นเจ้าของคนเดียว — บัญชีโดนระงับหรือเผลอลบ branch = หายถาวร
@@ -82,6 +82,23 @@ function Alert([string]$m) {
   } catch { Log "  แจ้งเตือนไม่สำเร็จ: $($_.Exception.Message)" }
 }
 
+# รายงานตอนสำเร็จด้วย — ไม่ส่งข้อความเข้าห้อง แค่ให้เว็บรู้ว่ารอบนี้รันแล้ว
+#
+# ทำไมต้องรายงานตอนสำเร็จ: ถ้าเตือนแค่ตอนพัง กรณี "ไม่ได้รันเลย" จะไม่มีใครส่งอะไรมา
+# — เครื่องปิด, งานตั้งเวลาถูกปิด, สคริปต์หาย — ความเงียบจึงดูเหมือนว่าปกติ
+# เว็บมี cron รายวันคอยดูว่าเงียบเกิน 26 ชม. หรือยัง แล้วทักเอง (ดู src/lib/heartbeat.ts)
+function Heartbeat([string]$m) {
+  if (-not $alertSecret) { return }
+  try {
+    $body = @{ ok = $true; host = $env:COMPUTERNAME; message = $m } | ConvertTo-Json -Compress
+    Invoke-RestMethod -Method Post -Uri $alertUrl -TimeoutSec 20 `
+      -Headers @{ Authorization = "Bearer $alertSecret" } `
+      -ContentType "application/json; charset=utf-8" `
+      -Body ([Text.Encoding]::UTF8.GetBytes($body)) | Out-Null
+    Log "  รายงานผลให้เว็บแล้ว"
+  } catch { Log "  รายงานผลให้เว็บไม่สำเร็จ: $($_.Exception.Message)" }
+}
+
 $stamp = Get-Date -Format "yyyyMMdd-HHmm"
 $out   = Join-Path $dailyDir "qvx-$stamp.dump"
 
@@ -128,6 +145,7 @@ try {
   $kept = (Get-ChildItem $dailyDir -Filter "qvx-*.dump").Count
   "สำเร็จ $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') · $sizeMB MB · $tables ตาราง · เก็บไว้ $kept ไฟล์" | Set-Content $status
   Log "เสร็จสิ้น (เก็บไว้ $kept ไฟล์)"
+  Heartbeat "$sizeMB MB · $tables ตาราง · เก็บไว้ $kept ไฟล์"
 }
 catch {
   $msg = $_.Exception.Message

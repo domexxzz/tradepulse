@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sendAdminAlert } from "@/lib/telegram";
+import { recordHeartbeat } from "@/lib/heartbeat";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +33,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  let body: { ok?: boolean; host?: string; message?: string };
+  let body: { ok?: boolean; test?: boolean; host?: string; message?: string };
   try {
     body = await req.json();
   } catch {
@@ -42,12 +43,22 @@ export async function POST(req: Request) {
   const host = clamp(String(body.host ?? "ไม่ระบุ"), 60);
   const message = clamp(String(body.message ?? ""), 1200);
 
-  // สำเร็จทุกคืนแล้วเด้งทุกคืนคือ noise ที่ทำให้คนเลิกอ่าน — แจ้งเฉพาะตอนพัง
-  // แต่ยังรับ ok:true ไว้เพื่อให้ทดสอบท่อได้ว่าถึงห้องจริงหรือยัง
-  const text = body.ok
-    ? `🟢 ทดสอบท่อแจ้งเตือนสำรองข้อมูล\nเครื่อง: ${host}${message ? `\n${message}` : ""}`
-    : `🔴 สำรองฐานข้อมูล QVX ล้มเหลว\n${message}\nเครื่อง: ${host}`;
+  // ทดสอบท่อ — ส่งข้อความจริงเข้าห้อง เพื่อยืนยันด้วยตาว่าถึงปลายทาง
+  if (body.test) {
+    const res = await sendAdminAlert(
+      `🟢 ทดสอบท่อแจ้งเตือนสำรองข้อมูล\nเครื่อง: ${host}${message ? `\n${message}` : ""}`,
+    );
+    return NextResponse.json({ ok: res.sent, reason: res.reason }, { status: res.sent ? 200 : 502 });
+  }
 
-  const res = await sendAdminAlert(text);
+  // สำเร็จ — บันทึกเงียบ ๆ ไม่ส่งข้อความ
+  // สำเร็จทุกคืนแล้วเด้งทุกคืนคือ noise ที่ทำให้คนเลิกอ่าน แล้วจะพลาดข้อความจริง
+  // แต่ต้องบันทึกไว้ ไม่งั้นจับกรณี "ไม่ได้รันเลย" ไม่ได้ (ดู lib/heartbeat.ts)
+  if (body.ok) {
+    await recordHeartbeat("db-backup", `${host}${message ? ` · ${message}` : ""}`);
+    return NextResponse.json({ ok: true, recorded: true });
+  }
+
+  const res = await sendAdminAlert(`🔴 สำรองฐานข้อมูล QVX ล้มเหลว\n${message}\nเครื่อง: ${host}`);
   return NextResponse.json({ ok: res.sent, reason: res.reason }, { status: res.sent ? 200 : 502 });
 }
