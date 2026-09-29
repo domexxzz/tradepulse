@@ -81,25 +81,58 @@ Wisdom **ไม่มี API** ให้เชื่อม (ถามแล้�
 
 ## อีเมลแจ้งเตือนจากโบรก (บอทอ่านเมล)
 
-`scripts/broker/mailbot.py` อ่านอีเมลจากกล่องที่พาร์ตเนอร์ส่งต่อมา แล้ว POST เข้า `/api/broker/email`
+`scripts/broker/mailbot.py` อ่านกล่อง **QVXofficial09@gmail.com** แล้ว POST อีเมลจาก Wisdom เข้า `/api/broker/email`
+รันอยู่บน **คอมเฟิร์ส** ที่ `C:\QVXMail` — ย้ายมาจากคอมเบสเมื่อ 30 ก.ย. 2569
+(ของเดิมบนคอมเบส `C:\QVXAI\mailbot.py` เลิกใช้แล้ว ไม่เคยได้รัน อย่าเปิดคู่กัน)
 
 - บอท**ไม่ตัดสินอะไรเลย** ส่งอีเมลดิบให้เว็บอ่าน — ตรรกะอยู่ที่ `src/lib/broker-events.ts` ที่มีเทสต์คุม
   แก้ pattern แล้วไม่ต้องขึ้นเครื่องใหม่
-- อ่านเฉพาะอีเมลที่ยังไม่อ่าน · ส่งเข้าเว็บสำเร็จค่อยมาร์คว่าอ่านแล้ว (ส่งไม่ได้ = รอบหน้าลองใหม่ ไม่มีอีเมลหาย)
+- **เปิดกล่องแบบอ่านอย่างเดียว** — ไม่มาร์คว่าอ่านแล้ว ไม่ติดป้าย จำว่าส่งถึงฉบับไหนด้วย UID ใน `mailbot.state.json`
+  (รุ่นแรกอ่านเฉพาะอีเมลที่ยังไม่อ่าน แต่กล่องนี้มีคนเปิดอ่านด้วย ใครเปิดก่อนบอทวนถึง ฉบับนั้นหายถาวร)
+- ส่งไม่สำเร็จ แยกตามสาเหตุ เพราะข้ามผิดจังหวะ = อีเมลหาย
+  - secret ไม่ตรง (401) / เว็บยังไม่เปิดรับ (503) / เน็ตหลุด = **รอ ไม่ข้ามอีเมล** แก้แล้วส่งต่อได้ครบ
+  - เว็บบอกว่าฉบับนี้ใช้ไม่ได้ (400 / 413 / 422) = ข้ามฉบับนั้น
+  - อ่านฉบับนี้ไม่ได้ หรือเว็บล่ม 5xx = ลองใหม่ เกิน 180 รอบ (~6 ชม.) ค่อยข้ามพร้อมเขียน log
+- อ่าน `mail.env` ใหม่ทุกรอบ — เปลี่ยนรหัสแอปแล้วมีผลรอบถัดไป ไม่ต้องรีสตาร์ต · IMAP มี timeout 60 วินาที ค้างแล้วไม่แข็ง
 - เว็บกันข้อมูลซ้ำด้วย Message-ID
 - **อ่านไม่ออกก็ไม่ทิ้ง** — เก็บเป็น `UNKNOWN` พร้อมข้อความดิบ และแจ้งเตือนแอดมินทาง Telegram ให้ไปปรับ pattern
+- เทสต์: `python -m unittest scripts/broker/test_mailbot.py`
+
+> **บอทรุ่นแรกทำอีเมลหายทุกฉบับ (แก้ 30 ก.ย. 2569)** — ส่งเวลาแบบ `+07:00` แต่ `/api/broker/email` ตรวจด้วย
+> `z.string().datetime()` ซึ่งรับแค่ `Z` → เว็บตอบ 400 → บอทถือว่าจบแล้วมาร์คอ่าน ไม่มีอะไรฟ้อง
+> ตอนนี้ส่งเป็น UTC ลงท้าย `Z` มีเทสต์คุม · อีกตัวคือ log ที่มี "·" ทำบอทล้มทันทีเมื่อ stdout ถูก redirect
+> บน Windows ภาษาไทย (cp874) — บอทบังคับ UTF-8 เองแล้ว
 
 ⚠️ **ยังไม่เคยเห็นอีเมลจริงจาก Wisdom สักฉบับ** ตัวอ่านเขียนจากรูปแบบที่พบบ่อย (ป้าย Account/Login/เลขบัญชี,
 Amount/USD, Name/Client) พออีเมลจริงฉบับแรกเข้ามาให้ดู `rawText` ใน `BrokerEvent` แล้วปรับ pattern
 + เพิ่มเทสต์ใน `src/lib/__tests__/broker-events.test.ts`
 
-**ตั้งค่าบนเครื่องที่รันบอท** (`C:\QVXAI\mail.env`) — ใช้ **app password ของ Gmail ไม่ใช่รหัสผ่านจริง**
+### บนคอมเฟิร์ส (`oneye@100.107.33.82`)
+
+| อะไร | อยู่ไหน |
+|---|---|
+| ตัวบอท | `C:\QVXMail\mailbot.py` — ก๊อปจาก `scripts/broker/` |
+| ค่าตั้ง | `C:\QVXMail\mail.env` — `IMAP_USER=QVXofficial09@gmail.com` · `SENDER_FILTER=wisdom` · `BROKER_MAIL_SECRET` ตรงกับบน Vercel |
+| ตัวเฝ้า | งานตั้งเวลา `QVXMailbot` ทุก 10 นาที → `mailbot-watchdog.ps1` ไม่เจอบอทก็เปิดให้ · ยังไม่มีรหัสแอปก็รอเฉย ๆ |
+| log | `mailbot.log` (บอท) · `watchdog.log` (ตัวเฝ้า) |
+| ตำแหน่งที่อ่านถึง | `mailbot.state.json` — ลบทิ้ง = รอบหน้าย้อนอ่าน 7 วันใหม่ (เว็บกันซ้ำให้อยู่แล้ว) |
+
+**ใส่ / เปลี่ยนรหัสแอป** — ใช้ app password ของ Gmail (16 ตัว) ไม่ใช่รหัสผ่านจริง
+สร้างที่ https://myaccount.google.com/apppasswords (ต้องเปิดการยืนยันแบบ 2 ขั้นตอนก่อน) แล้วรัน:
+```bash
+ssh -t oneye@100.107.33.82 "powershell -NoProfile -ExecutionPolicy Bypass -File C:\QVXMail\set-mail-password.ps1"
 ```
-IMAP_HOST=imap.gmail.com
-IMAP_USER=...
-IMAP_PASSWORD=...
-BROKER_MAIL_SECRET=<ตรงกับบน Vercel>
-SITE=https://quantvisionx.com
-SENDER_FILTER=wisdom
+ช่องพิมพ์ซ่อนตัวอักษร รหัสเข้า `mail.env` ตรง ๆ ไม่ผ่านแชทหรือไฟล์อื่น แล้วลองล็อกอิน + แสดงรายการอีเมลที่จะส่ง (ยังไม่ส่งจริง)
+
+**สั่งงานผ่าน SSH** — ⚠️ ห้ามเปิดบอทตรง ๆ ผ่าน SSH (process ตายตอน session หลุด) ให้งานตั้งเวลาเปิดเสมอ
+```bash
+# เปิดทันที (ไม่ต้องรอ 10 นาที)
+ssh oneye@100.107.33.82 "powershell -NoProfile -Command Start-ScheduledTask -TaskName QVXMailbot"
+# ดู log
+ssh oneye@100.107.33.82 "powershell -NoProfile -Command Get-Content C:\QVXMail\mailbot.log -Tail 20 -Encoding UTF8"
+# อัปเดตบอท: ก๊อปไฟล์ใหม่ → หยุดตัวเก่า → ให้งานตั้งเวลาเปิดใหม่
+scp scripts/broker/mailbot.py oneye@100.107.33.82:C:/QVXMail/
+ssh oneye@100.107.33.82 "powershell -NoProfile -ExecutionPolicy Bypass -File C:\QVXMail\mailbot-watchdog.ps1 -Stop"
+ssh oneye@100.107.33.82 "powershell -NoProfile -Command Start-ScheduledTask -TaskName QVXMailbot"
 ```
-รัน: `python mailbot.py --interval 120` (ทำเป็น scheduled task แบบเดียวกับ QVXAIKeeper ได้)
+`-Stop` ฆ่าเฉพาะ python ที่รัน `mailbot.py` — เครื่องนี้มี python ของบริดจ์ TradingView ด้วย ห้ามสั่ง `Stop-Process -Name python`
