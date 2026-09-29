@@ -33,23 +33,12 @@ import { execFileSync } from "node:child_process";
 const API = "https://api.vercel.com";
 const TOKEN_FILE = process.env.VERCEL_TOKEN_FILE || ".vercel-token";
 
-const token = (
-  process.env.VERCEL_TOKEN ||
-  (await readFile(TOKEN_FILE, "utf8").catch(() => ""))
-).trim();
+const token = (process.env.VERCEL_TOKEN || (await readFile(TOKEN_FILE, "utf8").catch(() => ""))).trim();
 if (!token) {
-  console.error(
-    `ไม่เจอ token — ทำตามนี้ก่อน\n  pbpaste > ${TOKEN_FILE}\n  chmod 600 ${TOKEN_FILE}`,
-  );
+  console.error(`ไม่เจอ token — ทำตามนี้ก่อน\n  pbpaste > ${TOKEN_FILE}\n  chmod 600 ${TOKEN_FILE}`);
   process.exit(1);
 }
 
-/**
- * แปลงคำตอบที่ไม่ผ่านให้เป็นข้อความที่อ่านรู้เรื่อง — คืน null เมื่ออธิบายไม่ได้
- *
- * แยกออกมาจาก api() เพราะการสร้าง deployment ใช้ { raw: true } เพื่ออ่านรายชื่อไฟล์ที่ขาด
- * เลยไม่ผ่านด่านนี้ และเคยพ่น JSON ดิบของโควตาเต็มออกมาแทนคำอธิบาย
- */
 /** บรรทัด "ปลดล็อกเมื่อไหร่" ของโควตา — เว้นไว้เมื่อ Vercel ไม่ได้บอกเวลามา */
 const unlockLine = (json) => {
   const reset = json?.error?.limit?.reset;
@@ -57,6 +46,12 @@ const unlockLine = (json) => {
   return `ปลดล็อก ${new Date(reset).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })} (เวลาไทย)\n`;
 };
 
+/**
+ * แปลงคำตอบที่ไม่ผ่านให้เป็นข้อความที่อ่านรู้เรื่อง — คืน null เมื่ออธิบายไม่ได้
+ *
+ * แยกออกมาจาก api() เพราะการสร้าง deployment ใช้ { raw: true } เพื่ออ่านรายชื่อไฟล์ที่ขาด
+ * เลยไม่ผ่านด่านนี้ และเคยพ่น JSON ดิบของโควตาเต็มออกมาแทนคำอธิบาย
+ */
 const explain = (status, json, body = "") => {
   // 401/403 เกือบทุกครั้งแปลว่า token ถูกเพิกถอนหรือหมดอายุ ไม่ใช่โค้ดมีปัญหา
   // ถ้าไม่ดักตรงนี้ จะได้ JSON ดิบยาว ๆ ที่อ่านแล้วนึกว่า deploy พัง
@@ -123,9 +118,7 @@ const projectName = process.env.VERCEL_PROJECT || "tradepulse";
 const project = await api(`/v9/projects/${projectName}`);
 console.log(`โปรเจกต์ ${project.name} (${project.id})`);
 
-const paths = execFileSync("git", ["ls-files"], { encoding: "utf8" })
-  .split("\n")
-  .filter(Boolean);
+const paths = execFileSync("git", ["ls-files"], { encoding: "utf8" }).split("\n").filter(Boolean);
 
 // อ่านไฟล์ + คิด sha ไว้ก่อน ยังไม่อัปอะไร
 const files = [];
@@ -176,10 +169,7 @@ let res = await createDeployment();
 for (let round = 1; !res.ok && round <= 3; round++) {
   const missing = missingShas(res);
   if (missing.length === 0) {
-    throw new Error(
-      explain(res.status, res.json) ??
-        `POST /v13/deployments → ${res.status}\n${res.body}`,
-    );
+    throw new Error(explain(res.status, res.json) ?? `POST /v13/deployments → ${res.status}\n${res.body}`);
   }
 
   console.log(
@@ -201,8 +191,7 @@ for (let round = 1; !res.ok && round <= 3; round++) {
   }
   res = await createDeployment();
 }
-if (!res.ok)
-  throw new Error(`POST /v13/deployments → ${res.status}\n${res.body}`);
+if (!res.ok) throw new Error(`POST /v13/deployments → ${res.status}\n${res.body}`);
 
 const deployment = res.json;
 
@@ -218,9 +207,7 @@ while (state === "QUEUED" || state === "BUILDING" || state === "INITIALIZING") {
 console.log();
 
 if (state !== "READY") {
-  console.error(
-    `build ไม่ผ่าน (${state}) — ดู log ที่ https://${deployment.url}`,
-  );
+  console.error(`build ไม่ผ่าน (${state}) — ดู log ที่ https://${deployment.url}`);
   process.exit(1);
 }
 console.log("ขึ้น production เรียบร้อย");
