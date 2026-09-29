@@ -69,6 +69,14 @@ export function receiptEmail(input: {
   amountTHB: number;
   until: Date;
   orderId: string;
+  /**
+   * ลิงก์เชิญกลุ่ม Telegram — แนบมาตั้งแต่ใบเสร็จ ไม่ต้องรอให้บอทเพิ่มอินดิเคเตอร์เสร็จก่อน
+   *
+   * คนที่ยังไม่ได้กรอก TradingView username บอทจะไม่ได้ทำงานให้ และไม่มีอีเมล
+   * "เพิ่มอินดิเคเตอร์ให้แล้ว" ตามมา ถ้าไม่ใส่ตรงนี้เขาจะไม่ได้ลิงก์ทางอีเมลเลย
+   * ทั้งที่จ่ายเงินแล้วและมีสิทธิ์เข้ากลุ่มตั้งแต่วินาทีที่อนุมัติ
+   */
+  telegramInviteUrl?: string | null;
 }): EmailContent {
   const until = formatThaiDate(input.until);
   // ได้สิทธิ์โดยไม่ได้จ่ายเรา (ผ่านโบรก / แถมให้) — ไม่ใช่ใบเสร็จ
@@ -87,10 +95,20 @@ export function receiptEmail(input: {
          ${row("เลขที่ออเดอร์", input.orderId.slice(-8).toUpperCase())}
        </table>
        <p style="margin:20px 0 0;">ขั้นตอนต่อไป — กรอก TradingView username ในหน้าบัญชี เพื่อให้ทีมงานเพิ่มสิทธิ์อินดิเคเตอร์ให้</p>
-       ${button(`${site.url}/account/tradingview`, "กรอก TradingView username")}`,
+       ${button(`${site.url}/account/tradingview`, "กรอก TradingView username")}
+       ${
+         input.telegramInviteUrl
+           ? `<p style="margin:24px 0 0;">เข้ากลุ่มสัญญาณ Telegram ได้เลย — ลิงก์นี้เป็นลิงก์ส่วนตัวของคุณ ใช้ได้ครั้งเดียว ห้ามส่งต่อ</p>
+              ${button(input.telegramInviteUrl, "เข้ากลุ่ม Telegram")}`
+           : ""
+       }`,
       `${headline} ${input.planName} ใช้งานได้ถึง ${until}`
     ),
-    text: `${hi(input.name)}\n\n${paid ? "ยืนยันการชำระเงินเรียบร้อยแล้ว" : "เปิดสิทธิ์ใช้งานเรียบร้อยแล้ว"}\nแพ็กเกจ: ${input.planName}${paid ? `\nยอดชำระ: ${formatTHB(input.amountTHB)}` : ""}\nใช้งานได้ถึง: ${until}\n\nกรอก TradingView username ที่ ${site.url}/account/tradingview`,
+    text: `${hi(input.name)}\n\n${paid ? "ยืนยันการชำระเงินเรียบร้อยแล้ว" : "เปิดสิทธิ์ใช้งานเรียบร้อยแล้ว"}\nแพ็กเกจ: ${input.planName}${paid ? `\nยอดชำระ: ${formatTHB(input.amountTHB)}` : ""}\nใช้งานได้ถึง: ${until}\n\nกรอก TradingView username ที่ ${site.url}/account/tradingview${
+      input.telegramInviteUrl
+        ? `\n\nเข้ากลุ่ม Telegram (ลิงก์ส่วนตัว ใช้ได้ครั้งเดียว): ${input.telegramInviteUrl}`
+        : ""
+    }`,
   };
 }
 

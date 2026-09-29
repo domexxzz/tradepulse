@@ -134,12 +134,22 @@ async function notifyActivation(input: ActivateInput, until: Date) {
     });
 
     if (user?.email) {
+      // ensureTelegramInvite รันไปก่อนหน้านี้แล้ว ลิงก์จึงพร้อมใช้ตั้งแต่ตอนนี้
+      // แนบมาในใบเสร็จเลย ลูกค้าจะได้ไม่ต้องรอบอทเพิ่มอินดิเคเตอร์เสร็จก่อน
+      // (คนที่ยังไม่กรอก TradingView username บอทไม่ได้ทำงานให้ จะไม่มีอีเมลตามมา)
+      const tg = await prisma.telegramGrant.findFirst({
+        where: { userId: input.userId, status: { in: ["PENDING", "ADDED"] } },
+        orderBy: { createdAt: "desc" },
+        select: { inviteLink: true },
+      });
+
       const mail = receiptEmail({
         name: user.name,
         planName: planName(input.planCode),
         amountTHB: input.amountTHB,
         until,
         orderId: input.providerRef,
+        telegramInviteUrl: tg?.inviteLink ?? null,
       });
       await sendEmail({ to: user.email, ...mail });
     }
