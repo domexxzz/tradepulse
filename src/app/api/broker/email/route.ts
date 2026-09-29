@@ -63,8 +63,11 @@ export async function POST(req: Request) {
     rawText: `From: ${from}\nSubject: ${subject}\n\n${text}`,
   });
 
-  // อ่านไม่ออกหรือไม่เจอเลขบัญชี = ตัวอ่านยังไม่รู้จักรูปแบบนี้ ต้องมีคนไปดูแล้วปรับ
-  if (result.created && (email.type === T.UNKNOWN || !email.tradingAccount)) {
+  // อ่านไม่ออก หรือฝาก/ถอนแต่ไม่เจอเลขบัญชี = ตัวอ่านยังไม่รู้จักรูปแบบนี้ ต้องมีคนไปดูแล้วปรับ
+  // สมัครแล้วไม่มีเลขบัญชีเป็นเรื่องปกติ — Wisdom แจ้ง "ผู้ใช้ใหม่ลงทะเบียน" ก่อนลูกค้าเปิดบัญชีเทรด
+  // ถ้าแจ้งเตือนด้วย กลุ่มแอดมินจะเด้งทุกครั้งที่มีคนสมัคร (เจอจริงวันแรกที่เปิดบอท 30 ก.ย. 2569)
+  const unreadable = email.type === T.UNKNOWN || (email.type !== T.SIGNUP && !email.tradingAccount);
+  if (result.created && unreadable) {
     try {
       await sendAdminAlert(
         `📧 อีเมลโบรกที่อ่านไม่ครบ\nหัวข้อ: ${subject || "(ไม่มี)"}\n` +

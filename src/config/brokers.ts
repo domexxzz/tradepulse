@@ -24,6 +24,12 @@ export interface Broker {
   supportLine: string;
   markets: string;
   maxLeverage: string;
+  /**
+   * โดเมนอีเมลของโบรกเอง — ตัวอ่านอีเมลต้องไม่หยิบที่อยู่พวกนี้มาเป็นอีเมลลูกค้า
+   * อีเมลแจ้งเตือนของ Wisdom มี admin@wisdomfinancialservice.com อยู่ทุกฉบับ แต่ไม่มีอีเมลลูกค้าเลย
+   * เคยหยิบผิดจนหน้าตรวจขึ้น "อีเมลไม่ตรง" กับลูกค้าทุกคน (30 ก.ย. 2569)
+   */
+  emailDomains: string[];
   /** เงินฝากขั้นต่ำของโบรกเอง */
   brokerMinDepositUSD: number;
   /** เงื่อนไขของ QVX — ฝากถึงเท่านี้ถึงจะรับสิทธิ์ได้ */
@@ -55,6 +61,7 @@ export const BROKERS: Record<string, Broker> = {
     supportLine: "@wisdfx",
     markets: "Forex · หุ้น · ทองคำ · น้ำมัน · Crypto",
     maxLeverage: "1:1,000",
+    emailDomains: ["wisdomfinancialservice.com", "wisdomtrade.com"],
     brokerMinDepositUSD: 50,
     qvxMinDepositUSD: 100,
   },

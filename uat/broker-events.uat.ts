@@ -54,6 +54,19 @@ describe("E-1 · บันทึกอีเมล", () => {
     expect(await prisma.brokerEvent.count({ where: { externalId: "<uat-dep-1@wisdom>" } })).toBe(1);
   });
 
+  it("ฉบับเดิมส่งซ้ำ = อ่านใหม่ทับค่าเดิม (ปรับ pattern แล้วแก้แถวเก่าได้) ไม่เกิดแถวใหม่", async () => {
+    await emailEvent({ subject: "Deposit", body: "no account here", id: "<uat-reparse@wisdom>" });
+    const again = await emailEvent({
+      subject: "Deposit",
+      body: `Account: ${ACC_A}\nAmount: $40`,
+      id: "<uat-reparse@wisdom>",
+    });
+    expect(again.created).toBe(false);
+    const rows = await prisma.brokerEvent.findMany({ where: { externalId: "<uat-reparse@wisdom>" } });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ tradingAccount: ACC_A, amountUSD: 40 });
+  });
+
   it("ไม่มี Message-ID ก็ยังเก็บได้ (อีเมลบางฉบับไม่มี)", async () => {
     const r = await emailEvent({ subject: "Deposit", body: `Account: ${ACC_A}\nAmount: $10`, id: null });
     expect(r.created).toBe(true);

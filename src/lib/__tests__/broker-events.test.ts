@@ -2,15 +2,15 @@ import { describe, it, expect, vi } from "vitest";
 
 vi.mock("@/lib/prisma", () => ({ prisma: {} }));
 
-const { parseBrokerEmail, classify, checkEvidence } = await import("@/lib/broker-events");
+const { parseBrokerEmail, classify, checkEvidence, compareNames } = await import("@/lib/broker-events");
 
 const AT = new Date("2026-09-27T10:00:00Z");
 const parse = (subject: string, body: string) => parseBrokerEmail({ subject, body, receivedAt: AT });
 
 /**
- * ยังไม่เคยเห็นอีเมลจริงจาก Wisdom สักฉบับ (โบรกไม่มี API พาร์ตเนอร์จะส่งอีเมลต่อให้)
- * เทสต์ชุดนี้จึงคุมสองอย่าง: อ่านรูปแบบที่พบบ่อยได้ และ **อ่านผิดแล้วต้องไม่เดามั่ว**
- * — เดาเลขบัญชีผิดอันตรายกว่าอ่านไม่ออก เพราะจะไปโชว์เป็นหลักฐานของคนอื่น
+ * คุมสองอย่าง: อ่านอีเมลจริงของ Wisdom ได้ (ชุด "อีเมลจริงจาก Wisdom" ด้านล่าง)
+ * และ **อ่านผิดแล้วต้องไม่เดามั่ว** — เดาเลขบัญชีผิดอันตรายกว่าอ่านไม่ออก
+ * เพราะจะไปโชว์เป็นหลักฐานของคนอื่น
  */
 describe("แยกชนิดเหตุการณ์", () => {
   it("จากหัวข้ออีเมล", () => {
@@ -141,6 +141,101 @@ Method: Bank transfer`;
   });
 });
 
+/**
+ * รูปแบบจริงจากกล่อง QVXofficial09 (30 ก.ย. 2569) — เปลี่ยนแค่ชื่อกับเลขบัญชี
+ * สังเกต: โคลอนตัวเต็ม "：" · ชื่อเรียง "นามสกุล ชื่อ" · มี \r ปน
+ * · ไม่มีอีเมลลูกค้า มีแต่อีเมลบริษัท admin@wisdomfinancialservice.com
+ */
+describe("อีเมลจริงจาก Wisdom", () => {
+  const wrap = (title: string, lines: string) => ` 邮件通知 \r
+  ﻿\r
+ ${title}
+ admin@wisdomfinancialservice.com
+Wisdom Financial service Limited\r
+ QVX Official,
+${lines}
+ เว็บไซต์ของบริษัท： https://wisdomfinancialservice.com/ / โทรศัพท์บริษัท： / กล่องจดหมายบริษัท： admin@wisdomfinancialservice.com
+ ที่อยู่บริษัท： Ground Floor, The Sotheby Building, Rodney Village, Rodney Bay, Gros-Islet, Saint Lucia\r
+ เค ล็ดลับความเสี่ยง： \r
+ COPYRIGHT © 2023 版权所有`;
+
+  it("ลูกค้าเปิดบัญชีเทรดใต้ QVX = สมัคร + เลขบัญชี + ชื่อ", () => {
+    const subject = "บัญชีธุรกรรมล่างสำเร็จแล้ว";
+    const body = wrap(
+      subject,
+      ` บัญชีธุรกรรมล่างของคุณเปิดบัญชีผู้ใช้แล้ว。
+ ชื่อ：Srisuk Anong
+ บัญชีผู้ใช้สำหรับการเทรด： 209911
+ พร็อกซี ที่มีสิทธิ：QVX Official
+ เซิร์ฟเวอร์：WisdomFinancial-Server`
+    );
+    expect(parse(subject, body)).toMatchObject({
+      type: "SIGNUP",
+      tradingAccount: "209911",
+      accountName: "Srisuk Anong",
+      accountEmail: null,
+      amountUSD: null,
+    });
+  });
+
+  it("ลูกค้าฝากเงิน = ยอดเงินกับเลขบัญชีถูก", () => {
+    const subject = "ผู้ใต้บังคับบัญชาฝากเงินสำเร็จ";
+    const body = wrap(
+      subject,
+      ` ผู้ใช้รายย่อยของคุณฝากเงินสำเร็จแล้ว。
+ ชื่อ：Srisuk Anong
+ บัญชีผู้ใช้สำหรับการเทรด： 209911
+ พร็อกซี ที่มีสิทธิ：QVX Official
+ วิธีการฝากเงิน：Third party payment
+ จำนวนเงินฝาก：100.00 USD
+ เวลาฝาก：2026-09-30 01:28:58`
+    );
+    expect(parse(subject, body)).toMatchObject({
+      type: "DEPOSIT",
+      tradingAccount: "209911",
+      accountName: "Srisuk Anong",
+      amountUSD: 100,
+      accountEmail: null,
+    });
+  });
+
+  it("สมัครผู้ใช้แต่ยังไม่มีบัญชีเทรด = สมัคร ไม่มีเลขบัญชี ไม่หยิบปีมาเป็นเลขบัญชี", () => {
+    const subject = "ผู้ใช้ใหม่ลงทะเบียนเรียบร้อยแล้ว";
+    const body = wrap(
+      subject,
+      ` เชิญผู้ใช้ใหม่ให้ลงทะเบียนสำเร็จแล้ว。
+ ชื่อ：Srisuk Anong
+ ผู้บังคับบัญชาโดยตรง：QVX Official
+ เวลาลงทะเบียน：2026-09-30 01:10:45`
+    );
+    expect(parse(subject, body)).toMatchObject({
+      type: "SIGNUP",
+      tradingAccount: null,
+      accountName: "Srisuk Anong",
+      accountEmail: null,
+    });
+  });
+
+  it("อีเมลบริษัทของโบรกไม่ใช่อีเมลลูกค้า (เคยทำหน้าตรวจขึ้นอีเมลไม่ตรงกับทุกคน)", () => {
+    expect(parse("Deposit", "Account: 12345678\nsupport@mail.wisdomtrade.com\nadmin@wisdomfinancialservice.com").accountEmail).toBeNull();
+    expect(parse("Deposit", "admin@wisdomfinancialservice.com\nEmail: client@example.com").accountEmail).toBe("client@example.com");
+  });
+});
+
+describe("เทียบชื่อ", () => {
+  it("ไม่สนลำดับคำ (Wisdom เรียงนามสกุลก่อน)", () => {
+    expect(compareNames("Srisuk Anong", "anong  srisuk")).toBe(true);
+  });
+
+  it("ภาษาเดียวกันแต่คนละชื่อ = ไม่ผ่าน", () => {
+    expect(compareNames("Srisuk Anong", "Somchai Jaidee")).toBe(false);
+  });
+
+  it("คนละภาษา = ให้คนเทียบเอง ไม่ขึ้นว่าไม่ผ่าน", () => {
+    expect(compareNames("Srisuk Anong", "อนงค์ ศรีสุข")).toBeNull();
+  });
+});
+
 describe("เทียบหลักฐานกับเงื่อนไข", () => {
   const base = { minDepositUSD: 100, customerName: "Anong Srisuk", customerEmail: "anong.s@example.com" };
   const ev = (over: Partial<Parameters<typeof checkEvidence>[0]> = {}) => ({
@@ -172,6 +267,15 @@ describe("เทียบหลักฐานกับเงื่อนไข"
 
   it("ชื่อไม่ตรง = ไม่ผ่าน (กันคนเอาเลขบัญชีคนอื่นมาแจ้ง)", () => {
     expect(checkEvidence(ev(), { ...base, customerName: "คนอื่น" }).ok).toBe(false);
+  });
+
+  it("โบรกไม่บอกอีเมลลูกค้า (แบบ Wisdom) = ไม่มีข้ออีเมล และยังผ่านครบได้", () => {
+    const r = checkEvidence(ev({ accountEmail: null, accountName: "Srisuk Anong" }), {
+      ...base,
+      customerName: "Anong Srisuk",
+    });
+    expect(r.lines.some((l) => l.label.includes("อีเมล"))).toBe(false);
+    expect(r.ok).toBe(true);
   });
 
   it("อีเมลไม่บอกชื่อ = ค้างไว้ (null) ไม่ตัดสินว่าผ่านหรือไม่ผ่าน", () => {

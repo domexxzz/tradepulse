@@ -2,16 +2,22 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { formatThaiDate } from "@/lib/date";
 import { BROKER_EVENT_TYPE as T, type BrokerEventType } from "@/config/status";
-import { DEFAULT_BROKER, TRADING_ACCOUNT_RE } from "@/config/brokers";
+import { BROKERS, DEFAULT_BROKER, TRADING_ACCOUNT_RE } from "@/config/brokers";
 
 /**
  * เหตุการณ์จากโบรก (สมัคร / ฝาก / ถอน) — หลักฐานประกอบการอนุมัติคำขอรับสิทธิ์ผ่าน Wisdom
  *
  * Wisdom ไม่มี API ให้เชื่อม (ถามแล้ว 27 ก.ย. 2569) ช่องทางที่ได้คืออีเมลแจ้งเตือน
- * ที่พาร์ตเนอร์ส่งต่อมา + พาร์ตเนอร์บันทึกเองจากหลังบ้านโบรก
+ * ที่เข้ากล่อง QVXofficial09 + พาร์ตเนอร์บันทึกเองจากหลังบ้านโบรก
  *
- * ตัวอ่านอีเมลเขียนแบบ "เดาให้ดีที่สุด" เพราะยังไม่เคยเห็นอีเมลจริงสักฉบับ
+ * อีเมลจริงของ Wisdom (เห็นครั้งแรก 30 ก.ย. 2569) มี 3 แบบ ใช้ป้ายไทยกับโคลอนตัวเต็ม "："
+ *   "ผู้ใช้ใหม่ลงทะเบียนเรียบร้อยแล้ว"  ชื่อ：… — สมัครผู้ใช้ ยังไม่มีบัญชีเทรด
+ *   "บัญชีธุรกรรมล่างสำเร็จแล้ว"       ชื่อ：… · บัญชีผู้ใช้สำหรับการเทรด： 208248
+ *   "ผู้ใต้บังคับบัญชาฝากเงินสำเร็จ"   ชื่อ：… · บัญชีผู้ใช้สำหรับการเทรด： … · จำนวนเงินฝาก：100.00 USD
+ * ชื่อเรียงแบบ "นามสกุล ชื่อ" และไม่มีอีเมลลูกค้าเลย มีแต่ admin@wisdomfinancialservice.com ของบริษัท
+ *
  * อ่านไม่ออกก็ไม่ทิ้ง — เก็บเป็น UNKNOWN พร้อมข้อความดิบให้คนเปิดดู แล้วค่อยปรับ pattern
+ * ปรับแล้วแก้แถวเก่าได้: ลบ mailbot.state.json บนคอมเฟิร์ส บอทจะส่งย้อนหลังซ้ำ แถวเดิมถูกอ่านใหม่
  * (ดู docs/WISDOM.md หัวข้อ "อีเมลแจ้งเตือนจากโบรก")
  */
 
@@ -34,22 +40,37 @@ const CLASSIFIERS: Array<[BrokerEventType, RegExp]> = [
   [T.WITHDRAWAL, /\b(withdraw\w*|payout)\b|ถอนเงิน|ถอน/i],
 ];
 
-/** เลขบัญชีเทรด — มองหาป้ายกำกับก่อน ถ้าไม่เจอค่อยเดาจากเลขโดด ๆ ที่ยาวพอ */
+/**
+ * เลขบัญชีเทรด — มองหาป้ายกำกับก่อน ถ้าไม่เจอค่อยเดาจากเลขโดด ๆ ที่ยาวพอ
+ * "：" คือโคลอนตัวเต็ม (U+FF1A) ที่อีเมลของ Wisdom ใช้ ไม่ใช่ ":" ธรรมดา
+ */
 const ACCOUNT_LABELS =
-  /(?:account(?:\s*(?:no|number|id|#))?|login|mt5|trading\s*account|เลขบัญชี|บัญชีเทรด|พอร์ต)\s*[:#]?\s*(\d{4,20})/i;
+  /(?:account(?:\s*(?:no|number|id|#))?|login|mt5|trading\s*account|บัญชีผู้ใช้สำหรับการเทรด|เลขบัญชี|บัญชีเทรด|พอร์ต)\s*[:#：]?\s*(\d{4,20})/i;
 
 /** จำนวนเงิน — รองรับ "$150", "150 USD", "USD 150.50", "1,500.00" */
 const AMOUNT =
   /(?:(?:amount|deposit(?:ed)?|sum|จำนวน|ยอด)\s*[:=]?\s*)?(?:\$|\bUSD\s*)([0-9][0-9,]*(?:\.[0-9]{1,2})?)|([0-9][0-9,]*(?:\.[0-9]{1,2})?)\s*(?:USD|\$)/i;
 
-const EMAIL = /\b([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})\b/;
+const EMAIL = /\b([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})\b/g;
+/** โดเมนของโบรกเอง — อีเมลบริษัทไม่ใช่อีเมลลูกค้า */
+const BROKER_DOMAINS = Object.values(BROKERS).flatMap((b) => b.emailDomains);
+
+function findCustomerEmail(text: string): string | null {
+  for (const m of text.matchAll(EMAIL)) {
+    const addr = m[1].toLowerCase();
+    const domain = addr.slice(addr.indexOf("@") + 1);
+    if (!BROKER_DOMAINS.some((d) => domain === d || domain.endsWith(`.${d}`))) return addr;
+  }
+  return null;
+}
+
 /**
- * ชื่อเจ้าของบัญชี — อ่านทีละบรรทัดและบังคับว่าต้องมี ":" หลังป้าย
+ * ชื่อเจ้าของบัญชี — อ่านทีละบรรทัดและบังคับว่าต้องมี ":" (หรือ "：" ตัวเต็มของ Wisdom) หลังป้าย
  * ห้ามใช้ \s* หลังป้าย เพราะ \s กินขึ้นบรรทัดใหม่ แล้วไปคว้าบรรทัดถัดไปมาเป็นชื่อ
  * (เจอตอนเทสต์: "New Client\nName: Somchai" ได้ชื่อเป็น "Name: Somchai")
  * เรียงจากป้ายเฉพาะเจาะจงไปกว้าง — "Client Name" ต้องชนะ "Client"
  */
-const NAME_LABELS = [/^[ \t]*client\s*name[ \t]*[:#][ \t]*(.+)$/im, /^[ \t]*(?:account\s*)?name[ \t]*[:#][ \t]*(.+)$/im, /^[ \t]*(?:client|customer)[ \t]*[:#][ \t]*(.+)$/im, /^[ \t]*(?:ชื่อลูกค้า|ชื่อ|ลูกค้า)[ \t]*[:#][ \t]*(.+)$/im];
+const NAME_LABELS = [/^[ \t]*client\s*name[ \t]*[:#：][ \t]*(.+)$/im, /^[ \t]*(?:account\s*)?name[ \t]*[:#：][ \t]*(.+)$/im, /^[ \t]*(?:client|customer)[ \t]*[:#：][ \t]*(.+)$/im, /^[ \t]*(?:ชื่อลูกค้า|ชื่อ|ลูกค้า)[ \t]*[:#：][ \t]*(.+)$/im];
 
 function findName(text: string): string | null {
   for (const re of NAME_LABELS) {
@@ -105,7 +126,7 @@ export function parseBrokerEmail(input: {
     type: classify(subject, body),
     tradingAccount,
     accountName: name,
-    accountEmail: hay.match(EMAIL)?.[1]?.toLowerCase() ?? null,
+    accountEmail: findCustomerEmail(hay),
     // ถอนเงินไม่ต้องรู้ยอดก็ได้ แต่ฝากเงินยอดสำคัญ (ใช้ตัดสินเงื่อนไขขั้นต่ำ)
     amountUSD: amountUSD !== null && amountUSD > 0 ? amountUSD : null,
     occurredAt: input.receivedAt,
@@ -115,6 +136,10 @@ export function parseBrokerEmail(input: {
 /**
  * บันทึกเหตุการณ์จากอีเมล — กันซ้ำด้วย Message-ID
  * คืน created=false เมื่อเคยบันทึกอีเมลฉบับนี้แล้ว (บอทอ่านซ้ำได้โดยไม่เกิดข้อมูลซ้ำ)
+ *
+ * ฉบับเดิมส่งซ้ำ = อ่านใหม่ด้วยตัวอ่านรุ่นล่าสุดแล้วทับค่าเดิม — ไว้แก้แถวที่เคยอ่านผิด
+ * (ปรับ pattern แล้วลบ mailbot.state.json บนคอมเฟิร์ส บอทจะส่งย้อนหลังมาให้อ่านใหม่)
+ * ไม่นับเป็นแถวใหม่ ยอดฝากจึงไม่บวกซ้ำ และหน้าเว็บไม่แจ้งเตือนซ้ำ
  */
 export async function recordEmailEvent(input: {
   parsed: ParsedEmail;
@@ -143,6 +168,11 @@ export async function recordEmailEvent(input: {
     return { created: true, id: row.id };
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      const { type, tradingAccount, accountName, accountEmail, amountUSD, occurredAt, rawText } = data;
+      await prisma.brokerEvent.updateMany({
+        where: { externalId: input.externalId, source: "email" },
+        data: { type, tradingAccount, accountName, accountEmail, amountUSD, occurredAt, rawText },
+      });
       const existing = await prisma.brokerEvent.findUnique({
         where: { externalId: input.externalId },
         select: { id: true },
@@ -222,7 +252,7 @@ export function checkEvidence(
   }
 
   const norm = (s: string | null) => (s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
-  const nameMatch = ev.accountName && opts.customerName ? norm(ev.accountName) === norm(opts.customerName) : null;
+  const nameMatch = compareNames(ev.accountName, opts.customerName);
   const emailMatch =
     ev.accountEmail && opts.customerEmail ? norm(ev.accountEmail) === norm(opts.customerEmail) : null;
 
@@ -242,14 +272,32 @@ export function checkEvidence(
     {
       label: "ชื่อตรงกับบัญชีโบรก",
       ok: nameMatch,
-      detail: ev.accountName ? `โบรก: ${ev.accountName}` : "อีเมลไม่ได้บอกชื่อเจ้าของบัญชี",
-    },
-    {
-      label: "อีเมลตรงกับบัญชีโบรก",
-      ok: emailMatch,
-      detail: ev.accountEmail ? `โบรก: ${ev.accountEmail}` : "อีเมลไม่ได้บอกอีเมลเจ้าของบัญชี",
+      detail: !ev.accountName
+        ? "อีเมลไม่ได้บอกชื่อเจ้าของบัญชี"
+        : nameMatch === null && opts.customerName
+          ? `โบรก: ${ev.accountName} — คนละภาษากับชื่อใน QVX เทียบเอง`
+          : `โบรก: ${ev.accountName}`,
     },
   ];
+  // Wisdom ไม่ส่งอีเมลลูกค้ามาเลย — แสดงข้อนี้เฉพาะเมื่อโบรกบอก ไม่งั้นไม่มีใคร "ผ่านครบ" ได้สักคน
+  if (ev.accountEmail) {
+    lines.push({ label: "อีเมลตรงกับบัญชีโบรก", ok: emailMatch, detail: `โบรก: ${ev.accountEmail}` });
+  }
 
   return { ok: lines.every((l) => l.ok === true), lines };
+}
+
+const hasThai = (s: string) => /[฀-๿]/.test(s);
+const nameWords = (s: string) => s.trim().toLowerCase().split(/\s+/).filter(Boolean).sort().join(" ");
+
+/**
+ * ชื่อในโบรกกับชื่อใน QVX เป็นคนเดียวกันไหม
+ * - ไม่สนลำดับคำ: Wisdom เรียง "นามสกุล ชื่อ" แต่ลูกค้ามักกรอก "ชื่อ นามสกุล"
+ * - ภาษาเดียวกันแต่ไม่ตรง = false (อาจเป็นคนเอาเลขบัญชีคนอื่นมาแจ้ง)
+ * - คนละภาษา (โบรกอังกฤษ ลูกค้ากรอกไทย) = null เทียบอัตโนมัติไม่ได้ ให้คนดูเอง ไม่ขึ้นว่าไม่ผ่าน
+ */
+export function compareNames(broker: string | null, customer: string | null): boolean | null {
+  if (!broker || !customer) return null;
+  if (nameWords(broker) === nameWords(customer)) return true;
+  return hasThai(broker) === hasThai(customer) ? false : null;
 }
