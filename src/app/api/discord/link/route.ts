@@ -13,9 +13,14 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const base = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
-  // หน้าเข้าสู่ระบบยังไม่รับพารามิเตอร์ว่าให้กลับมาที่ไหน จึงไม่ใส่ไปให้เปล่า ๆ
+  // ส่ง callbackUrl แบบเดียวกับที่หน้า /account ใช้ ลูกค้าจะได้กลับมาหน้า Discord
+  // เองหลังล็อกอิน ไม่ต้องไล่หาเมนูใหม่
   const session = await auth();
-  if (!session?.user?.id) return NextResponse.redirect(new URL("/login", base));
+  if (!session?.user?.id) {
+    const login = new URL("/login", base);
+    login.searchParams.set("callbackUrl", new URL("/account/discord", base).toString());
+    return NextResponse.redirect(login);
+  }
 
   if (!discordOAuthEnabled) {
     return NextResponse.redirect(new URL("/account/discord?discord=disabled", base));
