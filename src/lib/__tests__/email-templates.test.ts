@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { newsletterEmail, receiptEmail } from "@/lib/email-templates";
+import { accessGrantedEmail, newsletterEmail, receiptEmail } from "@/lib/email-templates";
 
 const URL = "https://example.test/unsubscribe?token=abc123";
 
@@ -50,5 +50,40 @@ describe("receiptEmail — ได้สิทธิ์โดยไม่ได�
     const m = receiptEmail({ ...base, amountTHB: 990 });
     expect(m.subject).toContain("ยืนยันการชำระเงิน");
     expect(m.html).toContain("ยอดชำระ");
+  });
+});
+
+/**
+ * สิทธิ์ Discord ต่างจาก TradingView กับ Telegram ตรงที่ลูกค้าต้องมากดเอง
+ * อีเมลฉบับนี้คือที่เดียวที่บอกเขาว่ามีของชิ้นนี้อยู่ — ถ้าหลุดไป ลูกค้าจะไม่ได้ใช้
+ * แล้วกลายเป็นคำถามที่ทีมงานต้องตอบทีละคน
+ */
+describe("accessGrantedEmail — บอกให้ครบว่าได้อะไรบ้าง", () => {
+  const base = { name: "ทดสอบ", tvUsername: "u1234567" };
+
+  it("มีลิงก์รับสิทธิ์ Discord ทั้งใน HTML และข้อความธรรมดา", () => {
+    const url = "https://quantvisionx.com/account/discord";
+    const mail = accessGrantedEmail({ ...base, discordUrl: url });
+    expect(mail.html).toContain(url);
+    expect(mail.text).toContain(url);
+  });
+
+  it("ระบบ Discord ยังไม่เปิด ต้องไม่ชวนไปกด — กดแล้วจะเจอหน้าที่ใช้ไม่ได้", () => {
+    const mail = accessGrantedEmail({ ...base, discordUrl: null });
+    expect(mail.html).not.toContain("/account/discord");
+    expect(mail.text).not.toContain("/account/discord");
+    expect(mail.html).not.toContain("Discord");
+  });
+
+  it("ยังบอกเรื่อง TradingView และ Telegram เหมือนเดิม", () => {
+    const tg = "https://t.me/+abcdef";
+    const mail = accessGrantedEmail({
+      ...base,
+      telegramInviteUrl: tg,
+      discordUrl: "https://quantvisionx.com/account/discord",
+    });
+    expect(mail.html).toContain("u1234567");
+    expect(mail.html).toContain(tg);
+    expect(mail.subject).toContain("u1234567");
   });
 });

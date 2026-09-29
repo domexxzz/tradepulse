@@ -4,6 +4,8 @@ import { accessGrantedEmail } from "@/lib/email-templates";
 import { ensureTelegramInvite } from "@/lib/lifecycle";
 import { getUserSubscription } from "@/lib/subscription";
 import { markTelegramInviteNotified } from "@/lib/telegram-invite";
+import { discordOAuthEnabled } from "@/lib/discord-oauth";
+import { site } from "@/config/site";
 
 /**
  * แจ้งลูกค้าว่าเพิ่มอินดิเคเตอร์ให้แล้ว พร้อมลิงก์เชิญกลุ่ม Telegram
@@ -42,6 +44,9 @@ export async function notifyAccessGranted(userId: string, tvUsername: string | n
     tvUsername: tvUsername ?? user.tradingViewUsername ?? "-",
     until: isActive ? sub?.currentPeriodEnd ?? null : null,
     telegramInviteUrl: tg?.inviteLink ?? null,
+    // ชวนไปรับยศ Discord เฉพาะตอนที่ระบบเปิดอยู่จริง
+    // ไม่งั้นลูกค้าจะกดไปเจอหน้าที่ยังใช้ไม่ได้ แล้วต้องทักมาถาม
+    discordUrl: discordOAuthEnabled && isActive ? `${site.url}/account/discord` : null,
   });
   const res = await sendEmail({ to: user.email, ...mail });
 

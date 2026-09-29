@@ -157,6 +157,8 @@ export function accessGrantedEmail(input: {
   tvUsername: string;
   until?: Date | null;
   telegramInviteUrl?: string | null;
+  /** หน้าเชื่อมต่อ Discord — ส่งมาเมื่อระบบ Discord เปิดใช้งานอยู่ */
+  discordUrl?: string | null;
 }): EmailContent {
   const until = input.until ? formatThaiDate(input.until) : null;
   const tg = input.telegramInviteUrl
@@ -164,6 +166,17 @@ export function accessGrantedEmail(input: {
        ${button(input.telegramInviteUrl, "เข้ากลุ่ม Telegram")}`
     : `<p style="margin:20px 0 0;">ลิงก์เข้ากลุ่ม Telegram ดูได้ในหน้าบัญชีของคุณ</p>
        ${button(`${site.url}/account`, "ไปที่หน้าบัญชี")}`;
+
+  /**
+   * สิทธิ์ Discord เป็นของที่ลูกค้า "ต้องมากดเอง" ต่างจาก TradingView กับ Telegram
+   * ที่เราส่งให้ถึงมือ ถ้าอีเมลฉบับนี้ไม่บอก ลูกค้าจะไม่มีทางรู้ว่ามีของชิ้นนี้อยู่
+   * แล้วจะกลายเป็นคำถามที่ทีมงานต้องตอบทีละคน — หรือแย่กว่านั้นคือไม่ถามแล้วไม่ได้ใช้
+   */
+  const dc = input.discordUrl
+    ? `<p style="margin:20px 0 0;">อีกหนึ่งสิทธิ์ที่มากับแพ็กเกจ — ห้องเฉพาะสมาชิกใน Discord
+       กดปุ่มเดียว ระบบพาเข้าเซิร์ฟเวอร์และให้ยศให้เอง ไม่ต้องกรอกอะไร</p>
+       ${button(input.discordUrl, "รับสิทธิ์ห้อง Discord")}`
+    : "";
 
   return {
     subject: `เพิ่มอินดิเคเตอร์ให้แล้ว · ${input.tvUsername} — ${site.name}`,
@@ -175,7 +188,8 @@ export function accessGrantedEmail(input: {
          ${until ? row("ใช้งานได้ถึง", until) : ""}
        </table>
        <p style="margin:20px 0 0;">เปิด TradingView แล้วดูที่ Indicators &rarr; Invite-only scripts จะเห็นอินดิเคเตอร์ของเราอยู่ในรายการ ถ้ายังไม่ขึ้นให้ล็อกเอาต์แล้วเข้าใหม่อีกครั้ง</p>
-       ${tg}`,
+       ${tg}
+       ${dc}`,
       `เพิ่มอินดิเคเตอร์ให้บัญชี ${input.tvUsername} แล้ว`
     ),
     text: `${hi(input.name)}
@@ -187,7 +201,9 @@ TradingView username: ${input.tvUsername}${until ? `
 เปิด TradingView -> Indicators -> Invite-only scripts
 ${input.telegramInviteUrl ? `
 เข้ากลุ่ม Telegram (ลิงก์ส่วนตัว ใช้ได้ครั้งเดียว): ${input.telegramInviteUrl}` : `
-ลิงก์กลุ่ม Telegram ดูได้ที่ ${site.url}/account`}`,
+ลิงก์กลุ่ม Telegram ดูได้ที่ ${site.url}/account`}${input.discordUrl ? `
+
+รับสิทธิ์ห้องเฉพาะสมาชิกใน Discord (กดปุ่มเดียว ระบบให้ยศเอง): ${input.discordUrl}` : ""}`,
   };
 }
 
