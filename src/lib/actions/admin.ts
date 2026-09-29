@@ -13,6 +13,7 @@ import { removeGroupMember, sendAdminAlert, telegramGroupManaged } from "@/lib/t
 import { revokeTradingViewAccess } from "@/lib/tradingview";
 import { notifyAccessGranted } from "@/lib/access-notify";
 import { sendTelegramInviteEmail } from "@/lib/telegram-invite";
+import { inviteMissedMembers } from "@/lib/lifecycle";
 
 export async function grantAccess(formData: FormData) {
   await requireAdmin();
@@ -105,6 +106,18 @@ export async function resendTelegramInvite(formData: FormData) {
   if (!userId) return;
 
   await sendTelegramInviteEmail(userId);
+  revalidatePath("/admin/telegram");
+}
+
+/**
+ * ส่งลิงก์กลุ่มให้ทุกคนที่สิทธิ์ยังใช้ได้แต่ยังไม่เคยได้ลิงก์ — รอบเดียวจบ
+ *
+ * รอบกวาดเดียวกันนี้วิ่งเองทุกวันตอน 08:00 (เวลาไทย) ปุ่มนี้ไว้สั่งเลยไม่ต้องรอ
+ * กดซ้ำได้ไม่เสียหาย คนที่ได้ลิงก์ไปแล้วถูกข้าม (ดู notifiedAt)
+ */
+export async function sendPendingTelegramInvites() {
+  await requireAdmin();
+  await inviteMissedMembers();
   revalidatePath("/admin/telegram");
 }
 

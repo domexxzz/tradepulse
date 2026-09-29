@@ -495,7 +495,8 @@ export async function runMembershipMaintenance(): Promise<MaintenanceResult> {
  * รอบนี้จึงไล่หาคนที่สิทธิ์ยังใช้งานได้แต่ notifiedAt ยังว่าง แล้วส่งให้
  * นับแค่ status PENDING — ที่เป็น ADDED คือเข้ากลุ่มไปแล้ว ไม่ต้องส่งอะไรอีก
  */
-async function inviteMissedMembers(): Promise<number> {
+/** เรียกจาก cron รายวัน และจากปุ่มในหน้า /admin/telegram เมื่ออยากส่งเลยไม่รอถึงรอบ */
+export async function inviteMissedMembers(): Promise<number> {
   const active = await prisma.subscription.findMany({
     where: { status: { in: ACTIVE_STATUSES }, currentPeriodEnd: { gte: new Date() } },
     select: { userId: true },

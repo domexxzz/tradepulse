@@ -1,5 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import { grantTelegram, revokeTelegram, unlinkTelegram, resendTelegramInvite } from "@/lib/actions/admin";
+import {
+  grantTelegram,
+  revokeTelegram,
+  unlinkTelegram,
+  resendTelegramInvite,
+  sendPendingTelegramInvites,
+} from "@/lib/actions/admin";
+import { ACTIVE_STATUSES } from "@/lib/subscription";
 import { telegramGroupManaged } from "@/lib/telegram";
 import { formatThaiDate } from "@/lib/date";
 
@@ -36,6 +43,22 @@ export default async function TelegramQueuePage() {
   // การผูกบัญชี Telegram อยู่บนตาราง User ไม่ใช่ตารางคิว จึงต้องดึงคนละ query
   // ถ้าดูจากตารางคิวอย่างเดียวจะมองไม่เห็นคนที่ผูกไว้แต่ไม่มีแถวคิว แล้วปลดไม่ได้เลย
   // (เจอของจริง 31 ส.ค. 2569 — บัญชีที่ถือ Telegram อยู่ไม่โผล่ในคิวสักแถว)
+  // กี่คนที่สิทธิ์ยังใช้ได้แต่ยังไม่เคยได้ลิงก์ทางอีเมล — ตัวเลขบนปุ่มส่งทั้งหมด
+  // ถ้าไม่โชว์ตัวเลข แอดมินจะไม่รู้ว่ามีใครค้างอยู่ ก็ไม่มีเหตุให้ไปกด
+  const activeUserIds = (
+    await prisma.subscription.findMany({
+      where: { status: { in: ACTIVE_STATUSES }, currentPeriodEnd: { gte: new Date() } },
+      select: { userId: true },
+      take: 500,
+    })
+  ).map((s) => s.userId);
+  const awaitingInvite =
+    activeUserIds.length === 0
+      ? 0
+      : await prisma.telegramGrant.count({
+          where: { userId: { in: activeUserIds }, status: "PENDING", notifiedAt: null },
+        });
+
   const linked = await prisma.user.findMany({
     where: { telegramUserId: { not: null } },
     orderBy: { createdAt: "desc" },
@@ -59,6 +82,28 @@ export default async function TelegramQueuePage() {
           </p>
         )}
       </div>
+
+      {/*
+        สมาชิกที่จ่ายเงินและได้รับอนุมัติแล้วควรได้ลิงก์เองโดยไม่ต้องรอใครกด
+        รอบกวาดรายวันทำให้อยู่แล้ว (08:00 เวลาไทย) ปุ่มนี้ไว้สั่งเลยไม่ต้องรอถึงรอบ
+      */}
+      {awaitingInvite > 0 && (
+        <form
+          action={sendPendingTelegramInvites}
+          className="card-surface flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-400/30 p-5"
+        >
+          <div>
+            <p className="font-semibold">ยังไม่ได้ลิงก์ทางอีเมล {awaitingInvite} ราย</p>
+            <p className="mt-1 text-sm text-muted">
+              ระบบจะส่งให้เองรอบถัดไป (ทุกวัน 08:00 เวลาไทย) กดปุ่มนี้ถ้าอยากส่งเลย —
+              คนที่ได้ลิงก์ไปแล้วถูกข้าม กดซ้ำได้ไม่เสียหาย
+            </p>
+          </div>
+          <button className="h-10 shrink-0 rounded-full bg-brand/15 px-5 text-sm font-medium text-brand hover:bg-brand/25">
+            ส่งลิงก์ให้ทุกคนที่ยังไม่ได้
+          </button>
+        </form>
+      )}
 
       {grants.length === 0 ? (
         <div className="card-surface rounded-xl p-6 text-sm text-muted">ยังไม่มีคำขอสิทธิ์ Telegram</div>
