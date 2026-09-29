@@ -304,3 +304,50 @@ export async function sendPhotoToUser(
     return { sent: false, reason: e instanceof Error ? e.message : "unknown" };
   }
 }
+
+export interface GroupPermissionCheck {
+  /** บอทอยู่ในกลุ่มนี้ไหม */
+  inGroup: boolean;
+  /** เป็นผู้ดูแลไหม */
+  admin: boolean;
+  /** ออกลิงก์เชิญได้ไหม — ไม่มีสิทธิ์นี้ = ลูกค้าไม่ได้ลิงก์เลย */
+  canInvite: boolean;
+  /** นำสมาชิกออกได้ไหม — ไม่มีสิทธิ์นี้ = คนหมดอายุไม่ถูกเตะออก */
+  canRemove: boolean;
+  /** ชื่อกลุ่มที่ตั้งค่าไว้จริง — เอาไว้ยืนยันด้วยตาว่าชี้ถูกห้อง */
+  title?: string;
+  error?: string;
+}
+
+/**
+ * ตรวจว่าบอท "ทำงานในกลุ่มนี้ได้จริงไหม" ไม่ใช่แค่ "โทเคนยังใช้ได้"
+ *
+ * บอทอยู่ในกลุ่มได้โดยไม่มีสิทธิ์อะไรเลย ซึ่งจะเงียบจนกว่าจะมีลูกค้าไม่ได้ลิงก์
+ * หรือคนหมดอายุไม่ถูกเตะออก — ตรวจล่วงหน้าได้ก็ควรตรวจ
+ * เป็นการอ่านอย่างเดียว ไม่มีผลข้างเคียง
+ */
+export async function checkGroupPermissions(): Promise<GroupPermissionCheck> {
+  const none: GroupPermissionCheck = { inGroup: false, admin: false, canInvite: false, canRemove: false };
+  if (!TOKEN || !CHAT_ID) return { ...none, error: "ยังไม่ได้ตั้ง TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID" };
+
+  try {
+    const me = await callApi<{ id: number }>("getMe", {});
+    const chat = await callApi<{ title?: string }>("getChat", { chat_id: CHAT_ID });
+    const member = await callApi<{ status: string; can_invite_users?: boolean; can_restrict_members?: boolean }>(
+      "getChatMember",
+      { chat_id: CHAT_ID, user_id: me.id },
+    );
+
+    const admin = member.status === "administrator" || member.status === "creator";
+    return {
+      inGroup: member.status !== "left" && member.status !== "kicked",
+      admin,
+      // เจ้าของกลุ่มมีสิทธิ์ทุกอย่างโดยไม่ต้องระบุเป็นรายข้อ
+      canInvite: member.status === "creator" || (admin && member.can_invite_users === true),
+      canRemove: member.status === "creator" || (admin && member.can_restrict_members === true),
+      title: chat.title,
+    };
+  } catch (e) {
+    return { ...none, error: e instanceof Error ? e.message : "unknown" };
+  }
+}

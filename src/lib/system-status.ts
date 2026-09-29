@@ -6,7 +6,7 @@
  * ถ้าไม่มีหน้าให้ดู แอดมินจะรู้ตัวอีกทีตอนลูกค้าทัก
  */
 import { bridgeUrls, tvAutoGrantEnabled } from "@/lib/tradingview";
-import { telegramEnabled, telegramGroupManaged } from "@/lib/telegram";
+import { checkGroupPermissions, telegramEnabled, telegramGroupManaged } from "@/lib/telegram";
 import { discordBotEnabled } from "@/lib/discord";
 import { emailEnabled, emailConfigStatus } from "@/lib/email";
 import { slipVerifyEnabled, slipAutoApprove } from "@/lib/slip-verify";
@@ -106,12 +106,39 @@ async function checkTelegram(): Promise<StatusRow> {
     if (!data.ok) return { name, health: "down", detail: `โทเคนใช้ไม่ได้: ${data.description ?? "?"}`, action: "ออกโทเคนใหม่ที่ @BotFather" };
 
     const auto = telegramGroupManaged && Boolean(process.env.TELEGRAM_WEBHOOK_SECRET);
+
+    /* โทเคนใช้ได้ ไม่ได้แปลว่าบอททำงานในกลุ่มได้ — บอทอยู่ในกลุ่มโดยไม่มีสิทธิ์อะไรเลยก็ได้
+       ซึ่งจะเงียบจนกว่าจะมีลูกค้าไม่ได้ลิงก์ หรือคนหมดอายุไม่ถูกเตะออก
+       โชว์ชื่อกลุ่มด้วย เพื่อให้ยืนยันด้วยตาได้ว่าชี้ถูกห้อง (เคยชี้ผิดห้องมาแล้ว) */
+    const perm = await checkGroupPermissions();
+    const missing = [
+      !perm.canInvite && "เชิญผ่านลิงก์",
+      !perm.canRemove && "แบน/นำสมาชิกออก",
+    ].filter(Boolean).join(" และ ");
+
+    if (!perm.inGroup) {
+      return {
+        name,
+        health: "down",
+        detail: `@${data.result.username} · ❌ บอทไม่ได้อยู่ในกลุ่มที่ตั้งค่าไว้ — ลูกค้าจะไม่ได้ลิงก์เลย`,
+        action: "เชิญบอทเข้ากลุ่ม แล้วตั้งเป็นผู้ดูแล",
+      };
+    }
+    if (missing) {
+      return {
+        name,
+        health: "down",
+        detail: `@${data.result.username} · กลุ่ม "${perm.title ?? "?"}" · ❌ บอทไม่มีสิทธิ์ ${missing}`,
+        action: "ตั้งบอทเป็นผู้ดูแลในกลุ่ม แล้วเปิดสิทธิ์ที่ขาด",
+      };
+    }
+
     return {
       name,
       health: auto ? "ok" : "warn",
       detail: auto
-        ? `@${data.result.username} · เชิญเข้ากลุ่มอัตโนมัติเปิดอยู่`
-        : `@${data.result.username} · ยังไม่ได้เปิดเชิญอัตโนมัติ`,
+        ? `@${data.result.username} · กลุ่ม "${perm.title ?? "?"}" · เชิญเข้ากลุ่มอัตโนมัติเปิดอยู่`
+        : `@${data.result.username} · กลุ่ม "${perm.title ?? "?"}" · ยังไม่ได้เปิดเชิญอัตโนมัติ`,
       action: auto ? undefined : "ตั้ง TELEGRAM_WEBHOOK_SECRET แล้วรัน scripts/telegram-webhook.mjs set",
     };
   } catch {

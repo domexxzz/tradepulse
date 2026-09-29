@@ -3,6 +3,7 @@ import { runMembershipMaintenance } from "@/lib/lifecycle";
 import { prisma } from "@/lib/prisma";
 import { checkStaleJobs } from "@/lib/heartbeat";
 import { emailConfigStatus } from "@/lib/email";
+import { checkGroupPermissions } from "@/lib/telegram";
 
 export const dynamic = "force-dynamic";
 /** กวาดสมาชิกหลายร้อยรายพร้อมยิงอีเมล/Discord ต้องให้เวลาพอ */
@@ -51,7 +52,18 @@ async function run(req: Request) {
 
     // ตั้งค่าอีเมลครบหรือยัง — ส่งกลับมาด้วยเพราะอีเมลส่งไม่ออกเงียบ ๆ เป็นปัญหา
     // ที่มองไม่เห็นจากข้างนอกเลย ต้องมีที่ให้ตรวจได้โดยไม่ต้องไล่อ่าน log
-    return NextResponse.json({ ok: true, ...result, rateLimitPurged: purged, staleJobs, email: emailConfigStatus() });
+    // สิทธิ์ของบอทในกลุ่ม — บอทอยู่ในกลุ่มโดยไม่มีสิทธิ์อะไรเลยก็ได้ ซึ่งจะเงียบ
+    // จนกว่าจะมีลูกค้าไม่ได้ลิงก์ ส่งกลับมาด้วยจะได้ตรวจได้โดยไม่ต้องเปิดหน้าเว็บ
+    const telegram = await checkGroupPermissions().catch(() => null);
+
+    return NextResponse.json({
+      ok: true,
+      ...result,
+      rateLimitPurged: purged,
+      staleJobs,
+      email: emailConfigStatus(),
+      telegram,
+    });
   } catch (e) {
     console.error("cron/expire failed:", e);
     return NextResponse.json(
