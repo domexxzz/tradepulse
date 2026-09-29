@@ -3,6 +3,7 @@ import { timingSafeEqual, createHash } from "crypto";
 import { z } from "zod";
 import { parseBrokerEmail, recordEmailEvent } from "@/lib/broker-events";
 import { sendAdminAlert } from "@/lib/telegram";
+import { autoApproveBrokerApplications } from "@/lib/broker-auto";
 import { BROKER_EVENT_TYPE as T } from "@/config/status";
 
 export const dynamic = "force-dynamic";
@@ -77,10 +78,29 @@ export async function POST(req: Request) {
     } catch {}
   }
 
+  /**
+   * หลักฐานใหม่เข้ามาแล้ว ลองอนุมัติคำขอที่รออยู่ทันที
+   *
+   * ทำตรงนี้แทนที่จะรอรอบรายวัน เพราะลูกค้าเพิ่งฝากเงินเสร็จและกำลังรอสิทธิ์อยู่
+   * การรอถึงเช้าเท่ากับให้เขานั่งรอทั้งคืนทั้งที่ข้อมูลครบแล้ว
+   *
+   * ครอบ catch ไว้ — ถ้าขั้นอนุมัติพัง ต้องไม่ทำให้การ "บันทึกอีเมล" ล้มตาม
+   * ไม่งั้นบอทจะคิดว่าส่งไม่สำเร็จแล้วส่งซ้ำวนไป
+   */
+  let autoApproved = 0;
+  if (result.created) {
+    try {
+      autoApproved = (await autoApproveBrokerApplications()).approved;
+    } catch (e) {
+      console.error("broker auto-approve failed:", e);
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     created: result.created,
     type: email.type,
     tradingAccount: email.tradingAccount,
+    autoApproved,
   });
 }

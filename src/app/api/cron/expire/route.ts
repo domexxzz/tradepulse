@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { checkStaleJobs } from "@/lib/heartbeat";
 import { emailConfigStatus } from "@/lib/email";
 import { checkGroupPermissions } from "@/lib/telegram";
+import { autoApproveBrokerApplications } from "@/lib/broker-auto";
 
 export const dynamic = "force-dynamic";
 /** กวาดสมาชิกหลายร้อยรายพร้อมยิงอีเมล/Discord ต้องให้เวลาพอ */
@@ -56,6 +57,13 @@ async function run(req: Request) {
     // จนกว่าจะมีลูกค้าไม่ได้ลิงก์ ส่งกลับมาด้วยจะได้ตรวจได้โดยไม่ต้องเปิดหน้าเว็บ
     const telegram = await checkGroupPermissions().catch(() => null);
 
+    // เก็บตกคำขอผ่านโบรก — หลักฐานอาจมาถึงก่อนที่ลูกค้าจะยื่นคำขอในเว็บ
+    // ตอนอีเมลเข้าจึงยังไม่มีใบให้อนุมัติ ต้องมีรอบไล่ซ้ำ
+    const broker = await autoApproveBrokerApplications().catch((e) => {
+      console.error("broker auto-approve failed:", e);
+      return { checked: 0, approved: 0, results: [] };
+    });
+
     return NextResponse.json({
       ok: true,
       ...result,
@@ -63,6 +71,7 @@ async function run(req: Request) {
       staleJobs,
       email: emailConfigStatus(),
       telegram,
+      brokerAutoApproved: broker.approved,
     });
   } catch (e) {
     console.error("cron/expire failed:", e);
