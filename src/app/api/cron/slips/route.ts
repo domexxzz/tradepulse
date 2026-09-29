@@ -130,7 +130,9 @@ async function recheckPending() {
   const orders = await prisma.slipOrder.findMany({
     where: { status: "SUBMITTED" },
     orderBy: { createdAt: "asc" },
-    take: 20,
+    // ทีละ 10 ใบพอ — ยิง AI ถี่เกินจะโดนจำกัดอัตราแล้วได้ "อ่านไม่ได้" ทั้งแถบ
+    // สั่งซ้ำได้เรื่อย ๆ ใบที่ผ่านแล้วจะไม่อยู่ในรายการนี้อีก
+    take: 10,
     select: {
       id: true,
       amountTHB: true,
@@ -142,7 +144,11 @@ async function recheckPending() {
   });
 
   const results = [];
-  for (const o of orders) {
+  for (const [index, o] of orders.entries()) {
+    // เว้นจังหวะระหว่างใบ — ผู้ให้บริการ AI จำกัดจำนวนครั้งต่อนาที
+    // ยิงรัวติดกันทำให้ใบหลัง ๆ โดนปฏิเสธทั้งที่ระบบไม่ได้ผิดอะไร
+    if (index > 0) await new Promise((r) => setTimeout(r, 3500));
+
     const who = o.user.name ?? o.user.email;
     if (!o.slipData) {
       results.push({ id: o.id, member: who, status: "NO_SLIP" });
