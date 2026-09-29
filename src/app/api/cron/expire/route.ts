@@ -72,6 +72,8 @@ async function run(req: Request) {
       email: emailConfigStatus(),
       telegram,
       brokerAutoApproved: broker.approved,
+      // บอกด้วยว่าใบที่ยังไม่ผ่านติดข้อไหน — "0" เฉย ๆ ไม่พอให้ใครไปแก้
+      brokerPending: broker.results.filter((r) => !r.approved),
     });
   } catch (e) {
     console.error("cron/expire failed:", e);
