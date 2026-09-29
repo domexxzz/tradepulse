@@ -8,7 +8,7 @@ const broker = BROKERS[DEFAULT_BROKER];
 
 export const metadata: Metadata = {
   title: `รับสิทธิ์ ${site.name} ผ่าน ${broker.name}`,
-  description: `เปิดบัญชีเทรดกับ ${broker.fullName} ผ่านลิงก์ของ ${site.name} แล้วรับสิทธิ์ใช้งานอินดิเคเตอร์ ห้องสัญญาณ Telegram และ Discord โดยไม่ต้องจ่ายค่าสมาชิก`,
+  description: `เปิดบัญชีผ่าน ${site.name} และรับสิทธิ์ใช้งานทุกอย่างของ ${site.name} Indicator ตามเงื่อนไขที่กำหนด โดยไม่เสียค่าสมาชิก — เปิดบัญชีกับ ${broker.fullName} ผ่านลิงก์ของ ${site.name}`,
 };
 
 /**
@@ -49,7 +49,8 @@ export default function WisdomPage() {
         รับสิทธิ์ {site.name} ผ่าน {broker.name}
       </h1>
       <p className="lede mt-4 max-w-2xl">
-        เปิดบัญชีเทรดกับ {broker.fullName} ผ่านลิงก์ของเรา แล้วได้สิทธิ์ใช้งานครบเท่าสมาชิกแบบชำระเงิน
+        เปิดบัญชีผ่าน {site.name} และรับสิทธิ์ใช้งานทุกอย่างของ {site.name} Indicator
+        ตามเงื่อนไขที่กำหนด โดยไม่เสียค่าสมาชิก
       </p>
 
       <div className="mt-8 flex flex-wrap gap-3">
