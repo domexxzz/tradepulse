@@ -70,6 +70,33 @@ export default function OpenAccountGuidePage() {
           <h2 className="font-display text-2xl font-bold">{part.title}</h2>
           <p className="mt-2 leading-relaxed text-muted">{part.desc}</p>
 
+          {/* หน้าคั่นจากคู่มือ — บอกล่วงหน้าว่าส่วนนี้มีกี่ขั้น ก่อนลงรายละเอียดทีละขั้น */}
+          {part.flow && (
+            <div className="mt-6">
+              <ol className="flex flex-wrap items-center gap-x-2 gap-y-2 text-sm">
+                {part.flow.steps.map((label, i) => (
+                  <li key={label} className="flex items-center gap-2">
+                    {i > 0 && <span className="text-muted">→</span>}
+                    <span className="rounded-full border border-border bg-surface-2 px-3 py-1.5">
+                      <span className="tnum mr-1.5 font-display font-bold text-up">{i + 1}</span>
+                      {label}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+              <figure className="mt-5 overflow-hidden rounded-2xl border border-border">
+                <Image
+                  src={part.flow.image.src}
+                  alt={part.flow.image.alt}
+                  width={part.flow.image.width}
+                  height={part.flow.image.height}
+                  sizes="(min-width: 1180px) 1140px, 100vw"
+                  className="h-auto w-full"
+                />
+              </figure>
+            </div>
+          )}
+
           <div className="mt-8 space-y-12">
             {part.steps.map((s) => (
               <article key={s.badge} id={`step-${s.badge}`} className="scroll-mt-24">
