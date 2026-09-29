@@ -40,6 +40,9 @@ export async function GET() {
         verifyStatus: true,
         reviewedAt: true,
         note: true,
+        refundedAt: true,
+        refundTHB: true,
+        refundNote: true,
         user: { select: { name: true, email: true, username: true, tradingViewUsername: true } },
       },
     }),
@@ -61,6 +64,7 @@ export async function GET() {
     "ช่องทาง", "รหัสรายการ", "วันที่", "ชื่อ", "อีเมล", "ชื่อผู้ใช้",
     "TradingView", "แพ็กเกจ", "จำนวนเงิน(บาท)", "สถานะ",
     "เลขอ้างอิงโอน", "ผลตรวจสลิป", "วันที่ตรวจ", "หมายเหตุ",
+    "คืนเงินแล้ว", "ยอดที่คืน", "หมายเหตุคืนเงิน",
   ];
 
   const rows = [
@@ -68,10 +72,11 @@ export async function GET() {
       "PromptPay", s.id, iso(s.createdAt), s.user.name, s.user.email, s.user.username,
       s.user.tradingViewUsername, s.planCode, s.amountTHB, s.status,
       s.transRef, s.verifyStatus, iso(s.reviewedAt), s.note,
+      iso(s.refundedAt), s.refundTHB, s.refundNote,
     ]),
     ...payments.map((p) => [
       p.provider, p.id, iso(p.createdAt), p.user.name, p.user.email, p.user.username,
-      p.user.tradingViewUsername, "", p.amountTHB, p.status, p.providerRef, "", "", "",
+      p.user.tradingViewUsername, "", p.amountTHB, p.status, p.providerRef, "", "", "", "", "", "",
     ]),
   ];
 

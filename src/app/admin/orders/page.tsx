@@ -3,7 +3,8 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { plans } from "@/config/plans";
 import { formatTHB } from "@/lib/utils";
-import { approveOrder, rejectOrder } from "@/lib/actions/payment";
+import { formatThaiDate } from "@/lib/date";
+import { approveOrder, rejectOrder, markOrderRefunded } from "@/lib/actions/payment";
 import { slipVerifyEnabled } from "@/lib/slip-verify";
 import { ShieldCheck, ShieldAlert, ShieldQuestion, Download } from "lucide-react";
 
@@ -82,6 +83,9 @@ export default async function OrdersPage({
         verifyStatus: true,
         verifyNote: true,
         note: true,
+        refundedAt: true,
+        refundTHB: true,
+        refundNote: true,
         createdAt: true,
         user: { select: { name: true, email: true } },
       },
@@ -179,6 +183,30 @@ export default async function OrdersPage({
                     <p className="mt-2 text-xs text-muted">{o.verifyNote}</p>
                   )}
                   {o.note && <p className="mt-1 text-xs text-down">เหตุผลที่ปฏิเสธ: {o.note}</p>}
+                  {o.refundedAt && (
+                    <p className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-400/10 px-2.5 py-1 text-xs text-amber-400">
+                      คืนเงินแล้ว {formatThaiDate(o.refundedAt)}
+                      {o.refundTHB ? ` · ${formatTHB(o.refundTHB)}` : ""}
+                      {o.refundNote ? ` · ${o.refundNote}` : ""}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex shrink-0 flex-col gap-2">
+                  {!o.refundedAt && (
+                    <form action={markOrderRefunded} className="flex flex-col gap-2">
+                      <input type="hidden" name="orderId" value={o.id} />
+                      <input
+                        name="refundTHB"
+                        inputMode="numeric"
+                        placeholder={`ยอดคืน (ว่าง = ${o.amountTHB})`}
+                        className="tnum w-40 rounded-lg border border-border bg-surface-2 px-2.5 py-1.5 text-xs outline-none placeholder:text-muted focus:border-amber-400/50"
+                      />
+                      <button className="rounded-full bg-amber-400/15 px-4 py-2 text-xs font-medium text-amber-400 hover:bg-amber-400/25">
+                        บันทึกว่าคืนเงินแล้ว
+                      </button>
+                    </form>
+                  )}
                 </div>
 
                 {o.status !== "APPROVED" && (

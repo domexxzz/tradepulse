@@ -258,6 +258,21 @@ model SlipOrder {
   verifiedAt   DateTime?
   note         String?
   reviewedAt   DateTime?
+  /**
+   * คืนเงินแล้วเมื่อไหร่ — แยกจาก status ตั้งใจ
+   *
+   * REJECTED แปลว่า "สลิปไม่ผ่านการตรวจ" ซึ่งลูกค้าเห็นข้อความว่าให้ติดต่อทีมงาน
+   * ใช้แทน "คืนเงินแล้ว" ไม่ได้ เพราะคนละเรื่องและทำให้ลูกค้าเข้าใจผิด
+   * อีกอย่างคืนเงินเกิดได้ทั้งตอน SUBMITTED และ APPROVED จึงต้องเป็นคนละแกนกับ status
+   *
+   * ไม่มีช่องนี้มาก่อน = คนที่คืนเงินไปแล้วยังค้างอยู่ในรายการรอดำเนินการตลอดไป
+   * แล้วรอบหน้าจะโอนคืนซ้ำ
+   */
+  refundedAt   DateTime?
+  /** ยอดที่คืนจริง อาจไม่เท่ายอดเต็มถ้าหักค่าธรรมเนียมโอน */
+  refundTHB    Int?
+  refundNote   String?
+  refundedById String?
   createdAt    DateTime  @default(now())
 
   @@index([status])

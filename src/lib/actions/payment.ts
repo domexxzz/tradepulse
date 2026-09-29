@@ -223,6 +223,44 @@ export async function approveOrder(formData: FormData) {
   revalidatePath("/admin");
 }
 
+/**
+ * บันทึกว่าคืนเงินให้ลูกค้ารายนี้แล้ว
+ *
+ * ไม่แตะ status เพราะ REJECTED หมายถึง "สลิปไม่ผ่านการตรวจ" คนละเรื่องกับคืนเงิน
+ * และคืนเงินเกิดได้ทั้งตอนที่ยังไม่อนุมัติและตอนอนุมัติไปแล้ว
+ *
+ * ไม่ยกเลิกสิทธิ์ให้อัตโนมัติ ถึงจะคืนเงินคนที่ APPROVED ไปแล้ว — การตัดสิทธิ์
+ * เป็นคนละการตัดสินใจ ทำเองได้ที่หน้าสมาชิก ถ้าทำอัตโนมัติแล้วแอดมินกดผิด
+ * ลูกค้าจะโดนตัดสิทธิ์ทันทีโดยไม่ได้ตั้งใจ
+ */
+export async function markOrderRefunded(formData: FormData) {
+  const session = await requireAdmin();
+  const id = String(formData.get("orderId") ?? "");
+  if (!id) return;
+
+  const order = await prisma.slipOrder.findUnique({
+    where: { id },
+    select: { amountTHB: true, refundedAt: true },
+  });
+  if (!order) return;
+  // กดซ้ำไม่ทับของเดิม — ไม่งั้นวันที่คืนเงินจริงหายไปกลายเป็นวันที่กดซ้ำ
+  if (order.refundedAt) return;
+
+  const typed = Number(formData.get("refundTHB"));
+  const amount = Number.isFinite(typed) && typed > 0 ? Math.round(typed) : order.amountTHB;
+
+  await prisma.slipOrder.update({
+    where: { id },
+    data: {
+      refundedAt: new Date(),
+      refundTHB: amount,
+      refundedById: session.user.id,
+      refundNote: String(formData.get("refundNote") ?? "").slice(0, 300) || null,
+    },
+  });
+  revalidatePath("/admin/orders");
+}
+
 export async function rejectOrder(formData: FormData) {
   await requireAdmin();
   const id = String(formData.get("orderId") ?? "");
