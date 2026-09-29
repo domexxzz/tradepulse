@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { grantTelegram, revokeTelegram, unlinkTelegram } from "@/lib/actions/admin";
+import { grantTelegram, revokeTelegram, unlinkTelegram, resendTelegramInvite } from "@/lib/actions/admin";
 import { telegramGroupManaged } from "@/lib/telegram";
 import { formatThaiDate } from "@/lib/date";
 
@@ -22,6 +22,7 @@ export default async function TelegramQueuePage() {
     take: 200,
     select: {
       id: true,
+      userId: true,
       status: true,
       note: true,
       inviteLink: true,
@@ -101,7 +102,17 @@ export default async function TelegramQueuePage() {
                     {formatThaiDate(g.invitedAt ?? g.createdAt)}
                   </td>
                   <td className="px-5 py-3">
-                    <div className="flex justify-end gap-2">
+                    <div className="flex flex-wrap justify-end gap-2">
+                      {/* ส่งลิงก์เดิมซ้ำทางอีเมล — สมาชิกที่ได้สิทธิ์ก่อนระบบส่งอีเมลอัตโนมัติ
+                          มีลิงก์รออยู่ในหน้าบัญชีแต่ไม่มีใครบอก และใช้ตอนลูกค้าทำอีเมลหายได้ */}
+                      {g.inviteLink && g.status !== "REMOVED" && (
+                        <form action={resendTelegramInvite}>
+                          <input type="hidden" name="userId" value={g.userId} />
+                          <button className="rounded-full bg-brand/15 px-3 py-1.5 text-xs font-medium text-brand hover:bg-brand/25">
+                            ส่งลิงก์ทางอีเมล
+                          </button>
+                        </form>
+                      )}
                       {g.status !== "ADDED" && (
                         <form action={grantTelegram}>
                           <input type="hidden" name="grantId" value={g.id} />

@@ -113,6 +113,42 @@ export function receiptEmail(input: {
 }
 
 /**
+ * ส่งลิงก์เข้ากลุ่ม Telegram อย่างเดียว
+ *
+ * แยกจาก accessGrantedEmail เพราะสมาชิกบางคนยังไม่ได้กรอก TradingView username
+ * ส่งอีเมล "เพิ่มอินดิเคเตอร์ให้แล้ว" ไปหาเขาจะเป็นการบอกสิ่งที่ยังไม่เกิด
+ * ตัวนี้พูดเรื่องกลุ่มอย่างเดียว ใช้ได้กับทุกคนที่มีสิทธิ์อยู่
+ */
+export function telegramInviteEmail(input: {
+  name?: string | null;
+  inviteUrl: string;
+  until?: Date | null;
+}): EmailContent {
+  const until = input.until ? formatThaiDate(input.until) : null;
+  return {
+    subject: `ลิงก์เข้ากลุ่มสัญญาณ Telegram — ${site.name}`,
+    html: shell(
+      `<p style="margin:0 0 12px;">${hi(input.name)}</p>
+       <p style="margin:0 0 20px;">นี่คือลิงก์เข้ากลุ่มสัญญาณ Telegram ของคุณ
+       เป็น<strong>ลิงก์ส่วนตัว ใช้ได้ครั้งเดียว</strong> กรุณาอย่าส่งต่อให้ผู้อื่น</p>
+       ${button(input.inviteUrl, "เข้ากลุ่ม Telegram")}
+       ${until ? `<p style="margin:20px 0 0;">สิทธิ์ของคุณใช้งานได้ถึง ${until}</p>` : ""}
+       <p style="margin:20px 0 0;">ถ้าลิงก์ใช้ไม่ได้ เปิดดูได้ที่หน้าบัญชีของคุณ</p>
+       ${button(`${site.url}/account`, "ไปที่หน้าบัญชี")}`,
+      "ลิงก์เข้ากลุ่มสัญญาณ Telegram ของคุณ"
+    ),
+    text: `${hi(input.name)}
+
+ลิงก์เข้ากลุ่มสัญญาณ Telegram (ลิงก์ส่วนตัว ใช้ได้ครั้งเดียว ห้ามส่งต่อ):
+${input.inviteUrl}${until ? `
+
+สิทธิ์ใช้งานได้ถึง ${until}` : ""}
+
+ถ้าลิงก์ใช้ไม่ได้ ดูได้ที่ ${site.url}/account`,
+  };
+}
+
+/**
  * แจ้งลูกค้าว่าเพิ่มสิทธิ์อินดิเคเตอร์บน TradingView ให้แล้ว
  * แนบลิงก์เชิญกลุ่ม Telegram มาด้วยถ้ามี (ลิงก์ส่วนตัว ใช้ได้ครั้งเดียว)
  */

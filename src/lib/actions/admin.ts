@@ -12,6 +12,9 @@ import {
 import { removeGroupMember, sendAdminAlert, telegramGroupManaged } from "@/lib/telegram";
 import { revokeTradingViewAccess } from "@/lib/tradingview";
 import { notifyAccessGranted } from "@/lib/access-notify";
+import { sendEmail } from "@/lib/email";
+import { telegramInviteEmail } from "@/lib/email-templates";
+import { getUserSubscription } from "@/lib/subscription";
 
 export async function grantAccess(formData: FormData) {
   await requireAdmin();
@@ -89,6 +92,41 @@ export async function grantTelegram(formData: FormData) {
  * นำออกจากกลุ่ม — พยายามเตะออกจริงก่อนถ้ารู้ว่าเป็นใคร
  * เตะไม่สำเร็จก็ยังบันทึกสถานะให้ พร้อมบอกเหตุผลไว้ในโน้ต ให้แอดมินไปทำมือต่อ
  */
+/**
+ * ส่งลิงก์เข้ากลุ่ม Telegram ให้สมาชิกทางอีเมลอีกครั้ง
+ *
+ * มีไว้เพราะสมาชิกที่ได้สิทธิ์ก่อนที่ระบบจะส่งอีเมลลิงก์ให้อัตโนมัติ
+ * มีลิงก์รออยู่ในหน้าบัญชีแต่ไม่มีใครบอก และใช้ซ้ำได้เวลาลูกค้าทำอีเมลหาย
+ *
+ * ไม่สร้างลิงก์ใหม่ถ้ามีอยู่แล้ว — ลิงก์เชิญใช้ได้ครั้งเดียว ออกใหม่ทุกครั้งที่กด
+ * จะทำให้ลิงก์เก่าที่ส่งไปแล้วใช้ไม่ได้ ลูกค้าที่เพิ่งได้อีเมลรอบก่อนจะกดไม่เข้า
+ */
+export async function resendTelegramInvite(formData: FormData) {
+  await requireAdmin();
+  const userId = String(formData.get("userId") ?? "");
+  if (!userId) return;
+
+  const [user, grant] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true } }),
+    prisma.telegramGrant.findFirst({
+      where: { userId, status: { in: ["PENDING", "ADDED"] } },
+      orderBy: { createdAt: "desc" },
+      select: { inviteLink: true },
+    }),
+  ]);
+  if (!user?.email || !grant?.inviteLink) return;
+
+  const { sub, isActive } = await getUserSubscription(userId);
+  const mail = telegramInviteEmail({
+    name: user.name,
+    inviteUrl: grant.inviteLink,
+    until: isActive ? sub?.currentPeriodEnd ?? null : null,
+  });
+  await sendEmail({ to: user.email, ...mail });
+
+  revalidatePath("/admin/telegram");
+}
+
 export async function revokeTelegram(formData: FormData) {
   await requireAdmin();
   const id = String(formData.get("grantId") ?? "");
