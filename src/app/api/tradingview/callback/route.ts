@@ -3,6 +3,7 @@ import { timingSafeEqual } from "crypto";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { sendAdminAlert, sendPhotoToUser } from "@/lib/telegram";
+import { notifyAccessGranted } from "@/lib/access-notify";
 
 export const dynamic = "force-dynamic";
 
@@ -103,6 +104,21 @@ TradingView: @${username}
         ? { status: "GRANTED", grantedAt: now, revokedAt: null, note: "ให้สิทธิ์อัตโนมัติโดยบอท" }
         : { status: "REVOKED", revokedAt: now, note: "ถอนสิทธิ์อัตโนมัติโดยบอท (หมดอายุ)" },
   });
+
+  // บอกลูกค้าว่าเพิ่มให้แล้ว พร้อมลิงก์เชิญกลุ่ม Telegram
+  //
+  // ทางนี้คือทางปกติที่สิทธิ์ถูกเปิด (บอททำเอง) แต่เดิมไม่มีการแจ้งเลย
+  // มีแค่ตอนแอดมินกดปุ่มในคิวด้วยมือ ลิงก์ Telegram เลยค้างอยู่ในหน้าบัญชี
+  // โดยที่ลูกค้าไม่รู้ว่ามี — เห็นได้จากสถานะ "ส่งลิงก์แล้ว ยังไม่ได้กดเข้า" ที่ค้างหลายราย
+  //
+  // ห้ามให้การแจ้งเตือนทำให้ callback ล้ม ไม่งั้นบอทจะคิดว่าส่งผลไม่สำเร็จแล้วยิงซ้ำ
+  if (action === "grant" && grant) {
+    try {
+      await notifyAccessGranted(grant.userId, username);
+    } catch (e) {
+      console.error("notify access granted failed:", e);
+    }
+  }
 
   // ส่งภาพหลักฐานให้ลูกค้า — เฉพาะตอนให้สิทธิ์สำเร็จและบอทแนบภาพมาจริง
   // ตอนถอนสิทธิ์ไม่ต้องส่ง ไม่มีอะไรให้ยืนยัน
