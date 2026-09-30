@@ -165,6 +165,12 @@ model AccessGrant {
   grantedAt           DateTime?
   revokedAt           DateTime?
   createdAt           DateTime      @default(now())
+  /**
+   * สั่งบอทไปครั้งล่าสุดเมื่อไหร่ (null = ยังไม่เคยสั่ง)
+   * ใช้เว้นจังหวะการสั่งซ้ำ — ถ้านับจาก createdAt อย่างเดียว งานที่รออยู่ในคิวบอท
+   * จะถูกสั่งซ้ำทุกรอบ reconcile เพราะ createdAt ไม่ขยับ
+   */
+  lastDispatchedAt    DateTime?
 
   // คิวแอดมินและ callback ของ TradingView กรองด้วยสองคอลัมน์นี้เป็นหลัก
   @@index([status])

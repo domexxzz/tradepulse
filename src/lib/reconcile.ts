@@ -21,6 +21,16 @@ import { ACTIVE_STATUSES } from "@/lib/subscription";
 /** ต้องค้างนานกว่านี้ถึงจะถือว่า "ไม่มีใครทำ" ไม่ใช่ "กำลังทำอยู่" */
 const GRACE_MINUTES = 10;
 
+/**
+ * สั่งบอทไปแล้วต้องรอนานกว่านี้ถึงสั่งซ้ำ
+ *
+ * บอททำได้ทีละคน ราว 90 วินาที คิวยาว 15 คนจึงกินเวลาเกิน 20 นาที
+ * ถ้าใช้ GRACE_MINUTES เท่ากับการสั่งครั้งแรก งานที่ยังนั่งรอคิวอยู่จะถูกสั่งซ้ำ
+ * ทุกรอบ cron แล้วบอทต้องทำคนเดิมซ้ำ 2-3 หน คนที่ต่อคิวอยู่ข้างหลังก็ได้ช้าลงไปอีก
+ * (เจอจริง 30 ก.ย. 69 — ชุด 15 คนถูกเพิ่มซ้ำรอบสองทั้งชุด)
+ */
+const REDISPATCH_MINUTES = 30;
+
 /** เพดานต่อรอบ — cron วิ่งถี่อยู่แล้ว ค่อย ๆ เก็บดีกว่าหมดเวลากลางทาง */
 const MAX_PER_RUN = 15;
 
@@ -43,10 +53,13 @@ export interface ReconcileResult {
  * จะถูกปลุกขึ้นมาให้สิทธิ์ใหม่เรื่อย ๆ
  */
 async function retryPendingGrants(cutoff: Date): Promise<number> {
+  const redispatchCutoff = new Date(Date.now() - REDISPATCH_MINUTES * 60_000);
   const stuck = await prisma.accessGrant.findMany({
     where: {
       status: "PENDING",
       createdAt: { lt: cutoff },
+      // ยังไม่เคยสั่ง = เอาเลย · เคยสั่งแล้ว = รอให้พ้นคิวก่อนค่อยสั่งซ้ำ
+      OR: [{ lastDispatchedAt: null }, { lastDispatchedAt: { lt: redispatchCutoff } }],
       user: {
         tradingViewUsername: { not: null },
         subscriptions: {
@@ -62,6 +75,11 @@ async function retryPendingGrants(cutoff: Date): Promise<number> {
   let done = 0;
   for (const grant of stuck) {
     try {
+      // จดก่อนยิง — ยิงแล้วพังก็ยังไม่ควรถล่มซ้ำทันทีในรอบหน้า
+      await prisma.accessGrant.update({
+        where: { id: grant.id },
+        data: { lastDispatchedAt: new Date() },
+      });
       await syncTradingViewGrant(grant.userId);
       done += 1;
     } catch (e) {
