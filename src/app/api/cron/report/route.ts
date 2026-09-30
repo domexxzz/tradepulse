@@ -15,9 +15,14 @@ export const dynamic = "force-dynamic";
  * ได้ข้อความแปลว่าระบบเฝ้ายังเดินอยู่จริง ไม่ได้แปลว่าไม่มีปัญหา
  * (เจอจริง 30 ก.ย. 69 — บริดจ์ตาย 13 ชม. คิวค้าง 15 ราย เงียบสนิทไม่มีใครรู้)
  *
- * ข้อความประกอบจากสถานะจริงในฐานข้อมูลเท่านั้น ไม่รับข้อความจากผู้เรียก
- * คนที่ถือ CRON_SECRET จึงสั่งให้ส่งได้ แต่สั่งให้ "พูดอะไรก็ได้" ไม่ได้
+ * ตัวเลขทั้งหมดมาจากฐานข้อมูลจริง ไม่รับจากผู้เรียก
+ *
+ * ส่ง note มาได้ (POST) เพื่อแนบบันทึกของคนทำงาน เช่น สรุปว่าวันนี้แก้อะไรไป
+ * แต่ต่อท้ายใต้หัวข้อที่เขียนชัดว่า "ส่งผ่าน API" เสมอ ห้ามให้ข้อความของคน
+ * ไปปนกับบรรทัดสถานะจนดูเหมือนระบบเป็นคนพูดเอง — ถ้า CRON_SECRET หลุด
+ * คนที่ได้ไปจะได้ไม่สามารถปลอมเป็นเสียงของระบบมาหลอกแอดมินในกลุ่มได้
  */
+const NOTE_MAX = 3500;
 function authorized(req: Request): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) return false;
@@ -66,6 +71,18 @@ async function run(req: Request) {
     `สมาชิกที่ใช้งานอยู่: ${activeSubs} ราย`,
     ...(noUsername > 0 ? ["", `ℹ️ อีก ${noUsername} รายยังไม่กรอกชื่อ TradingView — ต้องรอลูกค้า ระบบทำเองไม่ได้`] : []),
   ];
+
+  // บันทึกจากคน — ต่อท้ายใต้หัวข้อที่แยกชัด ไม่ปนกับบรรทัดสถานะด้านบน
+  let note = "";
+  if (req.method === "POST") {
+    const body = (await req.json().catch(() => null)) as { note?: unknown } | null;
+    if (typeof body?.note === "string" && body.note.trim()) {
+      note = body.note.trim().slice(0, NOTE_MAX);
+    }
+  }
+  if (note) {
+    lines.push("", "━━━━━━━━━━━━━━━", "📝 บันทึกจากผู้ดูแลระบบ (ส่งผ่าน API)", "", note);
+  }
 
   const result = await sendAdminAlert(lines.join("\n"));
   return NextResponse.json({
