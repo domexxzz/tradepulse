@@ -139,6 +139,7 @@ async function recheckPending() {
       createdAt: true,
       slipData: true,
       slipMime: true,
+      verifyStatus: true,
       user: { select: { name: true, email: true } },
     },
   });
@@ -176,7 +177,11 @@ async function recheckPending() {
     const approved = verify.status === "VERIFIED" && slipAutoApprove;
     if (approved) await approveOrderById(o.id, "บอทตรวจสลิปย้อนหลังแล้วอนุมัติ");
 
-    await sendAdminAlert(
+    // ตรวจซ้ำรันทุก 10 นาที ถ้าเตือนทุกใบทุกรอบ ใบที่ไม่ผ่านจริงจะเด้งไม่หยุด
+    // จนแอดมินเลิกอ่าน — เตือนเฉพาะตอนผลเปลี่ยน หรือตอนอนุมัติได้แล้วเท่านั้น
+    const changed = o.verifyStatus !== verify.status;
+    if (approved || changed) {
+      await sendAdminAlert(
       approved
         ? `✅ บอทตรวจย้อนหลังแล้วอนุมัติให้
 สมาชิก: ${who}
@@ -185,7 +190,8 @@ ${verify.note}`
         : `🧾 บอทตรวจย้อนหลังแล้วยังไม่ผ่าน
 สมาชิก: ${who} · ${formatTHB(o.amountTHB)}
 ผล: ${verify.status} — ${verify.note}`
-    ).catch(() => {});
+      ).catch(() => {});
+    }
 
     results.push({
       id: o.id,

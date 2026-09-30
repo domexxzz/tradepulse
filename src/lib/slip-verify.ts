@@ -48,7 +48,27 @@ export type SlipVerifyStatus =
   | "WRONG_ACCOUNT" // ยอดตรง แต่เงินไม่ได้เข้าบัญชีเรา
   | "STALE"      // ยอดตรง บัญชีตรง แต่เป็นสลิปที่โอนก่อนสร้างออเดอร์นี้
   | "FAILED"     // อ่านไม่ได้ / ผู้ให้บริการมีปัญหา
+  | "RETRY"      // ยังตอบไม่ได้ตอนนี้ แต่ลองใหม่แล้วมีโอกาสได้คำตอบ
   | "SKIPPED";   // ยังไม่ได้เปิดใช้งาน
+
+/**
+ * เหตุที่ "ยังตอบไม่ได้ตอนนี้" ไม่ใช่ "สลิปใช้ไม่ได้"
+ *
+ * slip_pending คือสลิปธนาคารกรุงเทพที่ธนาคารยังไม่อัปเดตข้อมูลเข้าระบบ
+ * เอกสาร EasySlip บอกให้รอแล้วลองใหม่ภายใน 5 นาที
+ * ของเดิมบันทึกเป็น FAILED ถาวร แอดมินเห็น "อ่านสลิปไม่ได้" แล้วต้องไปตรวจมือ
+ * ทั้งที่รออีกไม่กี่นาทีระบบก็ตอบได้เอง (เจอจริง 30 ก.ย. 69 ลูกค้าธนาคารกรุงเทพ)
+ */
+const RETRYABLE_MESSAGES = ["slip_pending", "rate_limit_exceeded", "RATE_LIMIT_EXCEEDED"];
+
+/** ข้อความจากผู้ให้บริการหรือจากเน็ต ที่แปลว่าควรลองใหม่ ไม่ใช่ตีตกสลิป */
+export function isRetryableSlipError(message: string | undefined, httpStatus?: number): boolean {
+  if (httpStatus !== undefined && (httpStatus === 429 || httpStatus >= 500)) return true;
+  if (!message) return false;
+  if (RETRYABLE_MESSAGES.includes(message)) return true;
+  // fetch หมดเวลา / เน็ตสะดุด — ไม่เกี่ยวกับตัวสลิปเลย
+  return /timeout|aborted|ECONNRESET|ETIMEDOUT|fetch failed|network/i.test(message);
+}
 
 export interface SlipVerifyResult {
   status: SlipVerifyStatus;
@@ -185,7 +205,17 @@ export async function verifySlip(input: {
       | null;
 
     if (!res.ok || !json?.data) {
-      return { status: "FAILED", note: `อ่านสลิปไม่สำเร็จ: ${json?.message ?? `HTTP ${res.status}`}` };
+      const msg = json?.message ?? `HTTP ${res.status}`;
+      if (isRetryableSlipError(json?.message, res.status)) {
+        return {
+          status: "RETRY",
+          note:
+            json?.message === "slip_pending"
+              ? "ธนาคารกรุงเทพยังไม่อัปเดตข้อมูลสลิป — ระบบจะตรวจซ้ำให้เองใน 10 นาที"
+              : `ผู้ให้บริการตรวจสลิปยังตอบไม่ได้ (${msg}) — ระบบจะตรวจซ้ำให้เอง`,
+        };
+      }
+      return { status: "FAILED", note: `อ่านสลิปไม่สำเร็จ: ${msg}` };
     }
 
     const amount = pickAmount(json.data);
@@ -247,6 +277,11 @@ export async function verifySlip(input: {
 
     return { status: "VERIFIED", note: "ยอดตรง บัญชีผู้รับตรง และเป็นสลิปของออเดอร์นี้", transRef, amount };
   } catch (e) {
-    return { status: "FAILED", note: e instanceof Error ? e.message : "ติดต่อผู้ให้บริการตรวจสลิปไม่ได้" };
+    const msg = e instanceof Error ? e.message : "ติดต่อผู้ให้บริการตรวจสลิปไม่ได้";
+    // ต่อไม่ติด/หมดเวลา = ปัญหาของเรา ไม่ใช่ของสลิป ต้องลองใหม่ ไม่ใช่ตีตก
+    if (isRetryableSlipError(msg)) {
+      return { status: "RETRY", note: `ติดต่อผู้ให้บริการตรวจสลิปไม่ได้ (${msg}) — ระบบจะตรวจซ้ำให้เอง` };
+    }
+    return { status: "FAILED", note: msg };
   }
 }

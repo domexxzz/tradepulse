@@ -1,0 +1,38 @@
+# ตรวจสลิปที่ค้างซ้ำอัตโนมัติ
+#
+# ทำไมต้องมี: ผลตรวจบางอย่างไม่ใช่ "สลิปใช้ไม่ได้" แต่เป็น "ยังตอบไม่ได้ตอนนี้"
+# ที่เจอบ่อยสุดคือ slip_pending ของธนาคารกรุงเทพ — ธนาคารยังไม่อัปเดตข้อมูลเข้าระบบ
+# เอกสาร EasySlip บอกให้รอแล้วลองใหม่ภายใน 5 นาที
+# ของเดิมมี recheck อยู่แล้วแต่ไม่มีอะไรสั่ง สลิปพวกนี้เลยค้างเป็น "อ่านไม่ได้" ตลอดไป
+# จนกว่าจะมีคนไปกดเอง (เจอจริง 30 ก.ย. 69 ค้างพร้อมกันหลายใบ)
+#
+# ต้องตั้ง repo secret: CRON_SECRET (ค่าเดียวกับบน Vercel) — ตั้งไว้แล้ว
+name: slip-recheck
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {} # กดรันเองได้จากหน้า Actions
+
+jobs:
+  recheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: ตรวจสลิปที่ค้างซ้ำ
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          code=$(curl -s -o out.txt -w "%{http_code}" -m 180 \
+            -X POST \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -H "Content-Type: application/json" \
+            -d '{"recheck":true}' \
+            "https://quantvisionx.com/api/cron/slips")
+          echo "HTTP ${code}"
+          cat out.txt || true
+          echo ""
+          # 400 = ยังไม่ได้เปิดระบบตรวจสลิป ไม่ใช่ความผิดพลาดที่ต้องปลุกคน
+          if [ "${code}" != "200" ] && [ "${code}" != "400" ]; then
+            echo "ตรวจสลิปซ้ำไม่สำเร็จ — endpoint ตอบ ${code}"
+            exit 1
+          fi

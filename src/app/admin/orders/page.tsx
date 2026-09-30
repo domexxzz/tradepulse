@@ -42,6 +42,9 @@ function VerifyBadge({ status, note }: { status: string | null; note: string | n
     WRONG_ACCOUNT: { cls: "text-down border-down/30 bg-down/10", icon: ShieldAlert, text: "ผิดบัญชี" },
     STALE: { cls: "text-down border-down/30 bg-down/10", icon: ShieldAlert, text: "สลิปเก่า" },
     FAILED: { cls: "text-muted border-border bg-surface-2", icon: ShieldQuestion, text: "อ่านสลิปไม่ได้" },
+    // ไม่ใช่ความผิดของสลิป — ธนาคารยังไม่อัปเดต หรือผู้ให้บริการยังตอบไม่ได้
+    // แยกสีจาก FAILED เพื่อไม่ให้แอดมินเสียเวลาไปตรวจมือทั้งที่ระบบตรวจซ้ำให้เองอยู่
+    RETRY: { cls: "text-amber-400 border-amber-400/30 bg-amber-400/10", icon: ShieldQuestion, text: "รอตรวจซ้ำอัตโนมัติ" },
   };
   const v = map[status] ?? map.FAILED;
 

@@ -61,6 +61,8 @@ export const SLIP_VERIFY_STATUS = {
   WRONG_ACCOUNT: "WRONG_ACCOUNT",
   STALE: "STALE",
   FAILED: "FAILED",
+  /** ยังตอบไม่ได้ตอนนี้ (ธนาคารยังไม่อัปเดต / ผู้ให้บริการล่ม) — ตรวจซ้ำแล้วมีโอกาสผ่าน */
+  RETRY: "RETRY",
   SKIPPED: "SKIPPED",
 } as const;
 export type SlipVerifyStatus = (typeof SLIP_VERIFY_STATUS)[keyof typeof SLIP_VERIFY_STATUS];
