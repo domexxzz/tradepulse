@@ -244,6 +244,34 @@ export function expiringSoonEmail(input: {
   };
 }
 
+/**
+ * ทวงคนที่จ่ายเงินแล้วแต่ยังไม่ได้กรอก TradingView username
+ *
+ * ไม่กรอก = บอทไม่รู้จะเพิ่มสิทธิ์ให้ใคร ลูกค้าจ่ายเงินแล้วแต่ไม่ได้ของ
+ * และเป็นขั้นตอนเดียวในระบบที่ทำแทนลูกค้าไม่ได้เลย
+ * (30 ก.ย. 69 มีค้างอยู่ 5 คน บางคนจ่ายมาตั้งแต่ต้นเดือน — ไม่เคยมีอะไรไปทวงเขาเลย)
+ */
+export function missingTradingViewEmail(input: {
+  name?: string | null;
+  planName: string;
+  until: Date;
+}): EmailContent {
+  const until = formatThaiDate(input.until);
+  return {
+    subject: `อีกขั้นเดียวก็ได้อินดิเคเตอร์แล้ว — ${site.name}`,
+    html: shell(
+      `<p style="margin:0 0 12px;">${hi(input.name)}</p>
+       <p style="margin:0 0 20px;">แพ็กเกจ <b>${input.planName}</b> ของคุณเปิดใช้งานแล้ว (ถึง ${until}) แต่ยังขาดอีกขั้นเดียวครับ</p>
+       <p style="margin:0 0 8px;">เราต้องรู้ <b>ชื่อผู้ใช้ TradingView</b> ของคุณ ถึงจะเพิ่มอินดิเคเตอร์เข้าบัญชีคุณได้ — เป็นขั้นตอนเดียวที่เราทำแทนคุณไม่ได้</p>
+       <p style="margin:0 0 8px;">กรอกเสร็จ ระบบเพิ่มให้เองภายใน 1–3 นาที ไม่ต้องรอใครอนุมัติ</p>
+       ${button(`${site.url}/account/tradingview`, "กรอกชื่อ TradingView")}
+       <p style="margin:20px 0 0;font-size:13px;color:#6b7280;">หาชื่อผู้ใช้ไม่เจอ? เปิด TradingView แล้วกดรูปโปรไฟล์มุมขวาบน ชื่อที่ขึ้นใต้รูปคือชื่อผู้ใช้ของคุณ</p>`,
+      "ยังขาดชื่อผู้ใช้ TradingView อีกขั้นเดียว"
+    ),
+    text: `${hi(input.name)}\n\nแพ็กเกจ ${input.planName} เปิดใช้งานแล้ว (ถึง ${until}) แต่ยังขาดชื่อผู้ใช้ TradingView\nกรอกที่ ${site.url}/account/tradingview แล้วระบบจะเพิ่มอินดิเคเตอร์ให้เองภายใน 1-3 นาที`,
+  };
+}
+
 /** แจ้งเมื่อหมดอายุและระบบปิดสิทธิ์แล้ว */
 export function expiredEmail(input: { name?: string | null; planName: string }): EmailContent {
   return {

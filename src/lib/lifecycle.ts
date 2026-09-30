@@ -13,7 +13,7 @@ import { isSubscriptionActive, ACTIVE_STATUSES, getUserSubscription } from "@/li
 import { recordPayment, ensureAccessGrant, ensureTelegramGrant, ensureDiscordRole } from "@/lib/fulfillment";
 import { grantTradingViewAccess, revokeTradingViewAccess, tvAutoGrantEnabled } from "@/lib/tradingview";
 import { sendEmail } from "@/lib/email";
-import { receiptEmail, expiringSoonEmail, expiredEmail } from "@/lib/email-templates";
+import { receiptEmail, expiringSoonEmail, expiredEmail, missingTradingViewEmail } from "@/lib/email-templates";
 import {
   sendAdminAlert,
   telegramGroupManaged,
@@ -468,6 +468,8 @@ async function remindExpiring(sub: Subscription): Promise<boolean> {
 export interface MaintenanceResult {
   expired: number;
   reminded: number;
+  /** ทวงคนที่จ่ายแล้วแต่ยังไม่กรอก TradingView username ไปกี่ราย */
+  tvReminded: number;
   /** ส่งลิงก์กลุ่ม Telegram ให้คนที่ตกหล่นไปกี่ราย */
   invited: number;
   /** ควรได้ลิงก์แต่ส่งไม่สำเร็จกี่ราย — ต้องมีคนไปดู ไม่ใช่ปล่อยให้ค้าง */
@@ -524,12 +526,14 @@ export async function runMembershipMaintenance(): Promise<MaintenanceResult> {
   }
 
   const invite = await inviteMissedMembers();
+  const tvReminded = await remindMissingTradingView();
 
-  if (due.length > 0 || reminded > 0 || invite.sent > 0 || invite.stuck.length > 0) {
+  if (due.length > 0 || reminded > 0 || invite.sent > 0 || invite.stuck.length > 0 || tvReminded > 0) {
     await sendAdminAlert(
       `🕐 งานประจำวันสมาชิก
 ปิดสิทธิ์ (หมดอายุ): ${due.length} ราย
 เตือนใกล้หมดอายุ: ${reminded} ราย
+ทวงให้กรอกชื่อ TradingView: ${tvReminded} ราย
 ส่งลิงก์กลุ่มที่ตกหล่น: ${invite.sent} ราย` +
         (invite.stuck.length > 0
           ? `\n⚠️ ส่งลิงก์ไม่สำเร็จ ${invite.stuck.length} ราย (${describeReasons(invite.reasons)})\nดูที่ /admin/telegram`
@@ -541,11 +545,72 @@ export async function runMembershipMaintenance(): Promise<MaintenanceResult> {
   return {
     expired: due.length,
     reminded,
+    tvReminded,
     invited: invite.sent,
     stuck: invite.stuck.length,
     reasons: invite.reasons,
     checkedAt: now.toISOString(),
   };
+}
+
+/** ทวงครั้งแรกหลังเปิดใช้งาน 1 วัน แล้วย้ำทุก 3 วัน สูงสุด 4 ครั้ง */
+const TV_REMIND_FIRST_HOURS = 24;
+const TV_REMIND_EVERY_DAYS = 3;
+const TV_REMIND_MAX = 4;
+
+/**
+ * ทวงคนที่จ่ายเงินแล้วแต่ยังไม่ได้กรอก TradingView username
+ *
+ * เป็นขั้นตอนเดียวในระบบที่ทำแทนลูกค้าไม่ได้ — ไม่กรอกคือจ่ายเงินแล้วไม่ได้ของ
+ * ของเดิมไม่มีอะไรไปทวงเลย มีแต่บรรทัดเดียวกลางอีเมลใบเสร็จ คนเลยหลุดค้างเป็นเดือน
+ * (30 ก.ย. 69 ค้างอยู่ 5 คน ต้องให้คนไปไล่ทวงทาง LINE ทีละคน)
+ *
+ * หยุดทวงเมื่อครบ TV_REMIND_MAX ครั้ง — เลยจากนั้นถือว่าต้องใช้คนคุยแล้ว
+ * ทวงต่อมีแต่จะโดนกดสแปม แล้วอีเมลอื่นของเราจะพลอยเข้า junk ไปด้วย
+ */
+export async function remindMissingTradingView(now = new Date()): Promise<number> {
+  const firstDue = new Date(now.getTime() - TV_REMIND_FIRST_HOURS * 60 * 60 * 1000);
+  const nextDue = new Date(now.getTime() - TV_REMIND_EVERY_DAYS * 24 * 60 * 60 * 1000);
+
+  const subs = await prisma.subscription.findMany({
+    where: {
+      status: { in: ACTIVE_STATUSES },
+      currentPeriodEnd: { gt: now },
+      // เปิดใช้งานมาอย่างน้อย 1 วัน — เพิ่งจ่ายเสร็จยังไม่ต้องทวง เขากำลังทำอยู่
+      createdAt: { lt: firstDue },
+      user: {
+        tradingViewUsername: null,
+        email: { not: null },
+        tvRemindCount: { lt: TV_REMIND_MAX },
+        OR: [{ tvRemindedAt: null }, { tvRemindedAt: { lt: nextDue } }],
+      },
+    },
+    include: { user: { select: { id: true, email: true, name: true } } },
+    take: 200,
+  });
+
+  let sent = 0;
+  for (const sub of subs) {
+    if (!sub.user.email || !sub.currentPeriodEnd) continue;
+    try {
+      const mail = missingTradingViewEmail({
+        name: sub.user.name,
+        planName: planName(sub.planCode),
+        until: sub.currentPeriodEnd,
+      });
+      const res = await sendEmail({ to: sub.user.email, ...mail });
+      // ส่งไม่ออกเพราะระบบอีเมลยังไม่พร้อม — อย่าเพิ่งนับว่าทวงแล้ว
+      if (!res.ok) continue;
+      await prisma.user.update({
+        where: { id: sub.user.id },
+        data: { tvRemindedAt: now, tvRemindCount: { increment: 1 } },
+      });
+      sent += 1;
+    } catch (e) {
+      console.error("tv username reminder failed for", sub.user.id, e);
+    }
+  }
+  return sent;
 }
 
 /**
