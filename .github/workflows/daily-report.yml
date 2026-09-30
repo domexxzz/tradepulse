@@ -1,0 +1,34 @@
+# รายงานสภาพระบบเข้า Telegram วันละครั้ง
+#
+# ต่างจาก bridge-health ตรงที่ "ส่งทุกครั้ง" ไม่ใช่ส่งเฉพาะตอนมีเรื่อง
+# แจ้งเตือนแบบมีเรื่องค่อยส่งทำให้ความเงียบมีสองความหมายที่แยกไม่ออก
+# คือปกติดี กับ ตัวเฝ้าเองก็พังไปแล้ว — ได้รายงานทุกเช้าแปลว่าระบบเฝ้ายังเดินอยู่จริง
+# (30 ก.ย. 69 บริดจ์ตาย 13 ชม. คิวค้าง 15 ราย เงียบสนิทเพราะไม่มีใครส่งอะไรเลย)
+#
+# ต้องตั้ง repo secret: CRON_SECRET (ค่าเดียวกับบน Vercel) — ตั้งไว้แล้ว
+name: daily-report
+
+on:
+  schedule:
+    # 02:00 UTC = 09:00 น. เวลาไทย — เช้าพอให้เห็นก่อนเริ่มวัน
+    - cron: "0 2 * * *"
+  workflow_dispatch: {} # กดรันเองได้จากหน้า Actions
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: ส่งรายงานสภาพระบบ
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          code=$(curl -s -o out.txt -w "%{http_code}" -m 60 \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "https://quantvisionx.com/api/cron/report")
+          echo "HTTP ${code}"
+          cat out.txt || true
+          echo ""
+          if [ "${code}" != "200" ]; then
+            echo "รายงานไม่ออก — endpoint ตอบ ${code}"
+            exit 1
+          fi
