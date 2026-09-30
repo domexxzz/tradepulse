@@ -218,6 +218,10 @@ export async function syncTradingViewGrant(userId: string, daysOverride?: number
         where: { id: grant.id },
         data: {
           tradingViewUsername: user.tradingViewUsername,
+          // จดว่าสั่งไปแล้ว ไม่งั้น reconcile รอบหน้าเห็นเป็น "ยังไม่เคยสั่ง" แล้วสั่งซ้ำ
+          // ทั้งที่งานยังนั่งรอในคิวบอทอยู่ — บอทต้องทำคนเดิมสองหน คิวคนอื่นยาวขึ้นฟรี ๆ
+          // สั่งไม่สำเร็จไม่ต้องจด จะได้ให้ reconcile ลองใหม่เร็ว ๆ
+          lastDispatchedAt: new Date(),
           ...(res.queued
             ? { note: "ส่งคำสั่งให้บอทแล้ว รอผลยืนยัน" }
             : { status: "GRANTED", grantedAt: new Date(), revokedAt: null, note: "ให้สิทธิ์อัตโนมัติโดยบอท" }),
