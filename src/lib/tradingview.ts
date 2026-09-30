@@ -66,6 +66,29 @@ export async function bridgeUrls(now = Date.now()): Promise<Record<BridgeRole, s
   return urls;
 }
 
+/**
+ * คิวค้างในบอทตอนนี้กี่งาน — คืน null เมื่อถามไม่ได้ (บอทเงียบหรือกำลังทำงาน)
+ *
+ * มีไว้ให้ reconcile รู้ว่า "สั่งไปแล้ว" ยังเป็นจริงอยู่ไหม คิวของบอทอยู่ในหน่วยความจำ
+ * บอทรีสตาร์ตเมื่อไหร่คิวหายหมด แต่ฝั่งเรายังจำว่าสั่งไปแล้วเลยไม่สั่งซ้ำ
+ * งานที่หายไปกับคิวจะค้างจนพ้นเวลากันสั่งซ้ำ ซึ่งลูกค้าต้องรอฟรี ๆ
+ */
+export async function bridgeQueueDepth(): Promise<number | null> {
+  const { primary } = await bridgeUrls();
+  if (!primary) return null;
+  try {
+    const res = await fetch(`${primary}/health`, {
+      signal: AbortSignal.timeout(8_000),
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { queue?: unknown };
+    return typeof data.queue === "number" ? data.queue : null;
+  } catch {
+    return null;
+  }
+}
+
 /** รายชื่อบริดจ์ตามลำดับที่จะลอง (หลักก่อน แล้วค่อยสำรอง) */
 async function bridgeTargets(): Promise<string[]> {
   const { primary, backup } = await bridgeUrls();

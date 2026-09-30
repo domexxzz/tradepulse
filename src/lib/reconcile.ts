@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { syncTradingViewGrant, ensureTelegramInvite } from "@/lib/lifecycle";
-import { revokeTradingViewAccess, tvAutoGrantEnabled } from "@/lib/tradingview";
+import { revokeTradingViewAccess, tvAutoGrantEnabled, bridgeQueueDepth } from "@/lib/tradingview";
 import { telegramGroupManaged } from "@/lib/telegram";
 import { ACTIVE_STATUSES } from "@/lib/subscription";
 
@@ -53,13 +53,18 @@ export interface ReconcileResult {
  * จะถูกปลุกขึ้นมาให้สิทธิ์ใหม่เรื่อย ๆ
  */
 async function retryPendingGrants(cutoff: Date): Promise<number> {
+  // บอทตอบว่าคิวว่าง = งานที่เราคิดว่า "สั่งไปแล้ว" หายไปกับการรีสตาร์ตของบอท
+  // กรณีนั้นไม่ต้องรอเวลากันสั่งซ้ำ เพราะไม่มีอะไรรออยู่ให้ชน
+  const queue = await bridgeQueueDepth();
   const redispatchCutoff = new Date(Date.now() - REDISPATCH_MINUTES * 60_000);
+  const notInFlight =
+    queue === 0 ? {} : { OR: [{ lastDispatchedAt: null }, { lastDispatchedAt: { lt: redispatchCutoff } }] };
+
   const stuck = await prisma.accessGrant.findMany({
     where: {
       status: "PENDING",
       createdAt: { lt: cutoff },
-      // ยังไม่เคยสั่ง = เอาเลย · เคยสั่งแล้ว = รอให้พ้นคิวก่อนค่อยสั่งซ้ำ
-      OR: [{ lastDispatchedAt: null }, { lastDispatchedAt: { lt: redispatchCutoff } }],
+      ...notInFlight,
       user: {
         tradingViewUsername: { not: null },
         subscriptions: {
