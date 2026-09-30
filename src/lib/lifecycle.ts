@@ -470,6 +470,8 @@ export interface MaintenanceResult {
   reminded: number;
   /** ทวงคนที่จ่ายแล้วแต่ยังไม่กรอก TradingView username ไปกี่ราย */
   tvReminded: number;
+  /** ยังไม่กรอกทั้งหมดกี่ราย — "ทวง 0" อาจแปลว่ายังไม่ถึงรอบทวง ไม่ใช่ไม่มีใครค้าง */
+  tvPending: number;
   /** ส่งลิงก์กลุ่ม Telegram ให้คนที่ตกหล่นไปกี่ราย */
   invited: number;
   /** ควรได้ลิงก์แต่ส่งไม่สำเร็จกี่ราย — ต้องมีคนไปดู ไม่ใช่ปล่อยให้ค้าง */
@@ -526,14 +528,14 @@ export async function runMembershipMaintenance(): Promise<MaintenanceResult> {
   }
 
   const invite = await inviteMissedMembers();
-  const tvReminded = await remindMissingTradingView();
+  const tv = await remindMissingTradingView();
 
-  if (due.length > 0 || reminded > 0 || invite.sent > 0 || invite.stuck.length > 0 || tvReminded > 0) {
+  if (due.length > 0 || reminded > 0 || invite.sent > 0 || invite.stuck.length > 0 || tv.sent > 0 || tv.pending > 0) {
     await sendAdminAlert(
       `🕐 งานประจำวันสมาชิก
 ปิดสิทธิ์ (หมดอายุ): ${due.length} ราย
 เตือนใกล้หมดอายุ: ${reminded} ราย
-ทวงให้กรอกชื่อ TradingView: ${tvReminded} ราย
+ยังไม่กรอกชื่อ TradingView: ${tv.pending} ราย (ทวงรอบนี้ ${tv.sent})
 ส่งลิงก์กลุ่มที่ตกหล่น: ${invite.sent} ราย` +
         (invite.stuck.length > 0
           ? `\n⚠️ ส่งลิงก์ไม่สำเร็จ ${invite.stuck.length} ราย (${describeReasons(invite.reasons)})\nดูที่ /admin/telegram`
@@ -545,7 +547,8 @@ export async function runMembershipMaintenance(): Promise<MaintenanceResult> {
   return {
     expired: due.length,
     reminded,
-    tvReminded,
+    tvReminded: tv.sent,
+    tvPending: tv.pending,
     invited: invite.sent,
     stuck: invite.stuck.length,
     reasons: invite.reasons,
@@ -568,9 +571,22 @@ const TV_REMIND_MAX = 4;
  * หยุดทวงเมื่อครบ TV_REMIND_MAX ครั้ง — เลยจากนั้นถือว่าต้องใช้คนคุยแล้ว
  * ทวงต่อมีแต่จะโดนกดสแปม แล้วอีเมลอื่นของเราจะพลอยเข้า junk ไปด้วย
  */
-export async function remindMissingTradingView(now = new Date()): Promise<number> {
+export async function remindMissingTradingView(
+  now = new Date()
+): Promise<{ sent: number; pending: number }> {
   const firstDue = new Date(now.getTime() - TV_REMIND_FIRST_HOURS * 60 * 60 * 1000);
   const nextDue = new Date(now.getTime() - TV_REMIND_EVERY_DAYS * 24 * 60 * 60 * 1000);
+
+  // ยังไม่กรอกทั้งหมดกี่คน — ไม่สนเงื่อนไขเว้นจังหวะ
+  // แยกจากจำนวนที่ทวงรอบนี้ เพราะ "ทวง 0" มีสองความหมาย คือไม่มีใครค้าง
+  // กับ มีคนค้างแต่ยังไม่ถึงรอบทวง ถ้าไม่แยกจะอ่านผิดว่าระบบทวงพัง
+  const pending = await prisma.subscription.count({
+    where: {
+      status: { in: ACTIVE_STATUSES },
+      currentPeriodEnd: { gt: now },
+      user: { tradingViewUsername: null },
+    },
+  });
 
   const subs = await prisma.subscription.findMany({
     where: {
@@ -610,7 +626,7 @@ export async function remindMissingTradingView(now = new Date()): Promise<number
       console.error("tv username reminder failed for", sub.user.id, e);
     }
   }
-  return sent;
+  return { sent, pending };
 }
 
 /**

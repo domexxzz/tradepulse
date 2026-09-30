@@ -10,12 +10,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
  */
 
 const findMany = vi.fn();
+const count = vi.fn();
 const update = vi.fn();
 const sendEmail = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    subscription: { findMany: (...a: unknown[]) => findMany(...a) },
+    subscription: { findMany: (...a: unknown[]) => findMany(...a), count: (...a: unknown[]) => count(...a) },
     user: { update: (...a: unknown[]) => update(...a) },
   },
 }));
@@ -34,6 +35,8 @@ const sub = (over: Record<string, unknown> = {}) => ({
 
 beforeEach(() => {
   findMany.mockReset();
+  count.mockReset();
+  count.mockResolvedValue(0);
   update.mockReset();
   sendEmail.mockReset();
   sendEmail.mockResolvedValue({ ok: true });
@@ -42,9 +45,9 @@ beforeEach(() => {
 describe("remindMissingTradingView", () => {
   it("ส่งอีเมลแล้วนับครั้งที่ทวงเพิ่ม", async () => {
     findMany.mockResolvedValue([sub()]);
-    const n = await remindMissingTradingView(NOW);
+    const r = await remindMissingTradingView(NOW);
 
-    expect(n).toBe(1);
+    expect(r.sent).toBe(1);
     expect(sendEmail).toHaveBeenCalledOnce();
     expect(sendEmail.mock.calls[0][0].to).toBe("a@b.test");
     expect(update).toHaveBeenCalledWith({
@@ -65,8 +68,8 @@ describe("remindMissingTradingView", () => {
     findMany.mockResolvedValue([sub()]);
     sendEmail.mockResolvedValue({ ok: false, reason: "no api key" });
 
-    const n = await remindMissingTradingView(NOW);
-    expect(n).toBe(0);
+    const r = await remindMissingTradingView(NOW);
+    expect(r.sent).toBe(0);
     expect(update).not.toHaveBeenCalled();
   });
 
@@ -77,7 +80,7 @@ describe("remindMissingTradingView", () => {
     ]);
     sendEmail.mockRejectedValueOnce(new Error("พัง")).mockResolvedValue({ ok: true });
 
-    expect(await remindMissingTradingView(NOW)).toBe(1);
+    expect((await remindMissingTradingView(NOW)).sent).toBe(1);
   });
 
   it("เงื่อนไขค้นหากันสแปม — ทวงครบแล้วไม่เอาอีก และเว้นจังหวะจากครั้งล่าสุด", async () => {
@@ -92,6 +95,15 @@ describe("remindMissingTradingView", () => {
     expect(where.user.OR[0]).toEqual({ tvRemindedAt: null });
     const gap = NOW.getTime() - where.user.OR[1].tvRemindedAt.lt.getTime();
     expect(gap).toBe(3 * 24 * 60 * 60 * 1000);
+  });
+
+  it("นับคนที่ยังไม่กรอกแยกจากคนที่ทวงรอบนี้ — ทวง 0 ไม่ได้แปลว่าไม่มีใครค้าง", async () => {
+    findMany.mockResolvedValue([]);
+    count.mockResolvedValue(5);
+
+    const r = await remindMissingTradingView(NOW);
+    expect(r.sent).toBe(0);
+    expect(r.pending).toBe(5);
   });
 
   it("เพิ่งจ่ายเสร็จยังไม่ทวง — ให้เวลาเขาทำเองก่อน 1 วัน", async () => {
