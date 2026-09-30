@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth, signOut } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { syncTradingViewGrant } from "@/lib/lifecycle";
+import { revokeTradingViewAccess } from "@/lib/tradingview";
 import { hasActiveSubscription } from "@/lib/subscription";
 import { sendAdminAlert } from "@/lib/telegram";
 
@@ -29,6 +30,20 @@ export async function updateTradingView(
   const parsed = tvSchema.safeParse(String(formData.get("tvUsername") ?? "").trim());
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "ไม่ถูกต้อง" };
 
+  /**
+   * ชื่อเดิม — ต้องอ่านก่อนเขียนทับ เพราะถ้าเคยให้สิทธิ์ชื่อนั้นไปแล้วต้องถอนคืน
+   *
+   * ของเดิมเขียนทับเฉย ๆ ชื่อที่พิมพ์ผิดจึงค้างอยู่บนสคริปต์ TradingView ตลอดไป
+   * แปลว่าบัญชีคนอื่น (ที่บังเอิญชื่อตรงกับที่พิมพ์ผิด) ได้ใช้อินดิเคเตอร์ฟรี
+   * และเราก็ไม่มีทางรู้เลยว่าเกิดขึ้นกี่ครั้งแล้ว
+   * (30 ก.ย. 69 ลูกค้าแจ้งผ่านมินว่ากรอกผิด ขอเปลี่ยนชื่อใหม่ — เจอรูนี้ตอนไปตรวจ)
+   */
+  const before = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { tradingViewUsername: true },
+  });
+  const previous = before?.tradingViewUsername ?? null;
+
   await prisma.user.update({
     where: { id: session.user.id },
     data: { tradingViewUsername: parsed.data },
@@ -37,6 +52,27 @@ export async function updateTradingView(
     where: { userId: session.user.id, status: "PENDING" },
     data: { tradingViewUsername: parsed.data },
   });
+
+  // เปลี่ยนชื่อ = ถอนของเก่าออกก่อน ไม่งั้นชื่อที่พิมพ์ผิดได้ใช้ฟรีตลอดไป
+  // ถอนไม่สำเร็จไม่ควรทำให้การบันทึกล้ม แต่ต้องมีคนรู้ จึงเตือนแอดมินไว้
+  const changed = previous !== null && previous !== parsed.data;
+  if (changed) {
+    try {
+      const res = await revokeTradingViewAccess(previous);
+      if (!res.ok && !res.skipped) {
+        await sendAdminAlert(
+          `⚠️ ถอนสิทธิ์ชื่อเก่าไม่สำเร็จ — ชื่อนี้ยังใช้อินดิเคเตอร์ได้อยู่
+สมาชิก: ${session.user.email ?? session.user.id}
+ชื่อเก่า: ${previous}
+ชื่อใหม่: ${parsed.data}
+สาเหตุ: ${res.reason ?? "ไม่ทราบ"}
+ต้องไปกดลบ ${previous} เองที่ /admin/access-queue`
+        ).catch(() => {});
+      }
+    } catch (e) {
+      console.error("revoke previous tv username failed:", e);
+    }
+  }
 
   // กรอก username ทีหลังตอนจ่ายเงินไปแล้ว — ให้บอทลองเพิ่มสิทธิ์ทันที ไม่ต้องรอแอดมิน
   const isActive = await hasActiveSubscription(session.user.id);
