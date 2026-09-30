@@ -64,8 +64,10 @@ async function run(req: Request) {
   }
 
   // ตัวหลักล่ม — เตือนแอดมิน พร้อมบอกว่าเว็บยิงไปโฮสต์ไหน และต้องกู้เครื่องไหน
+  const silent = health.primary?.silentMinutes;
   const lines = [
     `🔴 บริดจ์ TradingView ตัวหลัก (${PRIMARY_NAME}) ติดต่อไม่ได้`,
+    ...(silent ? [`เงียบติดต่อกันมาแล้ว ${silent} นาที`] : []),
     `เว็บยิงไปที่: ${hostOf(health.primary?.url)}`,
     "",
     "ผลกระทบ: ถ้ามีลูกค้าซื้อตอนนี้ บอทจะเพิ่มสิทธิ์ให้ไม่ได้",
@@ -82,6 +84,8 @@ async function run(req: Request) {
       "",
       "ต้องทำ (อย่างใดอย่างหนึ่ง):",
       `1) เช็ก${PRIMARY_NAME} — เปิดเครื่องและ login ไว้ไหม (botkeeper เปิดเองตอน login แล้วปลุกบริดจ์ + อัปเดต TV_BOT_URL ให้)`,
+      `   ถ้าเครื่องเปิดอยู่แต่บริดจ์ไม่ขึ้น ให้ดู C:\\BotTV\\keeper.log — ถ้าวน "bridge down -> starting"`,
+      `   แปลว่า Chrome ค้างล็อกโปรไฟล์ไว้ ให้ปิด chrome.exe + chromedriver.exe ทิ้ง แล้ว keeper จะปลุกเอง`,
       `2) ปลุก${BACKUP_NAME} แล้วเปิดบริดจ์ (ดู docs/TRADINGVIEW.md หัวข้อคอมเบส)`,
       "",
       "เว็บสลับไปตัวที่กลับมาก่อนให้เอง — ไม่ต้องแก้ค่าอะไร"

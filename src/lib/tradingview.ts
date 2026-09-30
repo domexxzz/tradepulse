@@ -86,21 +86,48 @@ async function bridgeTargets(): Promise<string[]> {
  * (เจอจริง 30 ก.ย. 69 — เตือนว่าบริดจ์ล่มทั้งที่กำลังเพิ่มสิทธิ์ให้ลูกค้าอยู่)
  *
  * botkeeper บนเครื่องนั้นรายงานตัวเข้ามาทุกนาทีอยู่แล้ว (ตาราง BridgeEndpoint)
- * ถ้าเพิ่งรายงานมา แปลว่าเครื่องยังเปิดและ keeper ยังเดินอยู่ — นับว่ายังไม่ตาย
+ * ถ้าเพิ่งรายงานมา แปลว่าเครื่องยังเปิดและ keeper ยังเดินอยู่
+ *
+ * ⚠️ แต่ "keeper ยังเดิน" ไม่เท่ากับ "บริดจ์ยังเดิน" — lastSeenAt เขียนโดย keeper
+ * ไม่ใช่ตัวบริดจ์ (ดู /api/tradingview/register) และหน้าที่ของ keeper คือรอดแล้ว
+ * ปลุกบริดจ์ ดังนั้นตอนบริดจ์ตาย keeper ยิ่งต้องยังอยู่ ถ้าเชื่อ lastSeenAt อย่างเดียว
+ * บริดจ์ที่ตายสนิทจะดู "ยังไม่ตาย" ตลอดกาล
+ * (เจอจริง 30 ก.ย. 69 — บริดจ์ตาย 13 ชม. คิวค้าง 15 ราย ไม่มีแจ้งเตือนสักครั้ง
+ *  ส่วน keeper ก็วน "bridge down -> starting" อยู่เงียบ ๆ เพราะ Chrome ค้างล็อกโปรไฟล์)
+ *
+ * จึงจำกัดเพดานไว้ด้วย: เงียบได้ แต่เงียบติดกันนานเกินเวลาที่งานหนึ่งชิ้นใช้จริง
+ * (90 วินาที/คน คิวยาวสุดที่เคยเจอ ~15 คน) ให้ถือว่าตาย ไม่ว่า keeper จะรายงานดีแค่ไหน
  */
 const BRIDGE_BUSY_GRACE_MS = 4 * 60_000;
+const BRIDGE_MAX_SILENCE_MS = 30 * 60_000;
 
 export async function checkBridgeHealth(now = Date.now()): Promise<{
-  primary: { url: string; up: boolean; busy?: boolean } | null;
-  backup: { url: string; up: boolean; busy?: boolean } | null;
+  primary: { url: string; up: boolean; busy?: boolean; silentMinutes?: number } | null;
+  backup: { url: string; up: boolean; busy?: boolean; silentMinutes?: number } | null;
 }> {
   const seen = new Map<string, Date>();
+  const silentSince = new Map<string, Date | null>();
   try {
     const rows = await prisma.bridgeEndpoint.findMany();
-    for (const r of rows) seen.set(r.role, r.lastSeenAt);
+    for (const r of rows) {
+      seen.set(r.role, r.lastSeenAt);
+      silentSince.set(r.role, r.unreachableSince);
+    }
   } catch (e) {
     console.error("checkBridgeHealth: read lastSeenAt failed", e);
   }
+
+  /** จดว่าเงียบมาตั้งแต่เมื่อไหร่ / ตอบได้แล้ว — ล้มก็ไม่เป็นไร แค่เสียความแม่นรอบเดียว */
+  const mark = async (role: BridgeRole, reachable: boolean) => {
+    try {
+      await prisma.bridgeEndpoint.update({
+        where: { role },
+        data: { unreachableSince: reachable ? null : (silentSince.get(role) ?? new Date(now)) },
+      });
+    } catch (e) {
+      console.error("checkBridgeHealth: mark failed", e);
+    }
+  };
 
   const ping = async (role: BridgeRole, url?: string) => {
     if (!url) return null;
@@ -109,9 +136,20 @@ export async function checkBridgeHealth(now = Date.now()): Promise<{
         signal: AbortSignal.timeout(10_000),
         cache: "no-store",
       });
-      if (res.ok) return { url, up: true };
+      if (res.ok) {
+        await mark(role, true);
+        return { url, up: true };
+      }
     } catch {
       // ตกมาที่การเช็กว่าเพิ่งรายงานตัวมาหรือเปล่า
+    }
+
+    await mark(role, false);
+
+    // เงียบติดกันนานเกินกว่าที่งานจริงใช้ = ตาย ไม่ต้องสนว่า keeper รายงานดีแค่ไหน
+    const since = silentSince.get(role);
+    if (since && now - since.getTime() > BRIDGE_MAX_SILENCE_MS) {
+      return { url, up: false, silentMinutes: Math.round((now - since.getTime()) / 60_000) };
     }
 
     const last = seen.get(role);

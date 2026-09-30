@@ -474,7 +474,16 @@ model BridgeEndpoint {
    */
   role       String   @id
   url        String
+  /**
+   * botkeeper รายงานเข้ามา = "เครื่องยังเปิดและ keeper ยังเดิน"
+   * ไม่ได้แปลว่าตัวบริดจ์ยังเดิน — ดู unreachableSince ประกอบเสมอ
+   */
   lastSeenAt DateTime
+  /**
+   * /health ตอบไม่ได้ต่อเนื่องมาตั้งแต่เมื่อไหร่ (null = ตอบได้ครั้งล่าสุด)
+   * มีไว้แยก "เงียบเพราะกำลังทำงาน" ออกจาก "ตายแล้วแต่ keeper ยังอยู่"
+   */
+  unreachableSince DateTime?
   updatedAt  DateTime @updatedAt
 }
 

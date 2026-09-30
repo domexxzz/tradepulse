@@ -56,6 +56,24 @@ describe("bridge-health", () => {
     expect(sent()).not.toContain("ต้องทำ");
   });
 
+  it("เงียบนานจนถือว่าตาย — บอกด้วยว่าเงียบมากี่นาที และวิธีแก้ Chrome ค้างล็อก", async () => {
+    health.mockResolvedValue({
+      primary: { url: PRIMARY, up: false, silentMinutes: 780 },
+      backup: { url: BACKUP, up: false },
+    });
+    await call();
+    const msg = sent();
+    expect(msg).toContain("เงียบติดต่อกันมาแล้ว 780 นาที");
+    expect(msg).toContain("keeper.log");
+    expect(msg).toContain("chromedriver.exe");
+  });
+
+  it("ล่มแบบไม่รู้ว่าเงียบมานานเท่าไหร่ — ไม่ขึ้นบรรทัดจำนวนนาทีเปล่า ๆ", async () => {
+    health.mockResolvedValue({ primary: { url: PRIMARY, up: false }, backup: { url: BACKUP, up: false } });
+    await call();
+    expect(sent()).not.toContain("เงียบติดต่อกันมาแล้ว");
+  });
+
   it("URL ในค่า env เพี้ยน ก็ยังส่งเตือนได้ ไม่ล้มทั้ง cron", async () => {
     health.mockResolvedValue({ primary: { url: "not a url", up: false }, backup: null });
     const res = await call();
