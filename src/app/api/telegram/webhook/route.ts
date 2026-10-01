@@ -45,7 +45,27 @@ function authorized(req: Request): boolean {
 /** ตอบ 200 เสมอเมื่อยืนยันตัวตนผ่าน ไม่งั้น Telegram จะยิงซ้ำไม่เลิก */
 const ok = (handled: string) => NextResponse.json({ ok: true, handled });
 
+/**
+ * Telegram ยิงอัปเดตเรียงทีละตัว และจะยิงตัวเดิมซ้ำจนกว่าจะได้ 2xx
+ * ตอบ 500 ครั้งเดียวจึงไม่ใช่ "เสียหนึ่งรายการ" แต่คือ "คิวตันทั้งก้อน"
+ * คนที่ต่อแถวอยู่ข้างหลังไม่ได้เข้ากลุ่มสักคนจนกว่าจะมีคนมาแก้
+ *
+ * ด่านนี้จึงรับทุกข้อผิดพลาดที่หลุดมา บันทึกไว้ เตือนแอดมิน แล้วตอบ 200
+ * ยอมเสียเหตุการณ์เดียวดีกว่าปล่อยให้ท่อตัน — คนที่ตกหล่นยังมีงานกวาด
+ * (inviteMissedMembers) กับรายงานประจำวันคอยจับอยู่แล้ว
+ */
 export async function POST(req: Request) {
+  try {
+    return await handleUpdate(req);
+  } catch (e) {
+    const why = e instanceof Error ? e.message : String(e);
+    console.error("telegram webhook ล้ม:", why);
+    await sendAdminAlert(`⚠️ webhook Telegram ล้ม 1 เหตุการณ์\nสาเหตุ: ${why}`).catch(() => {});
+    return ok("ล้มแต่รับไว้แล้ว");
+  }
+}
+
+async function handleUpdate(req: Request) {
   if (!authorized(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
@@ -142,7 +162,32 @@ export async function POST(req: Request) {
   });
   if (taken) return deny("บัญชี Telegram นี้ถูกใช้กับสมาชิกรายอื่นแล้ว");
 
-  await approveJoinRequest(telegramUserId);
+  /**
+   * Telegram ปฏิเสธคำขอได้หลายเหตุ และเกือบทั้งหมดแก้เองไม่ได้
+   *   - คำขอหมดอายุ/ถูกถอน (คิวค้างนานแล้วเพิ่งได้ประมวลผล)
+   *   - คนนั้นอยู่ในกลุ่มอยู่แล้ว
+   *
+   * ห้ามปล่อยให้โยนทะลุออกไป เพราะ route นี้จะตอบ 500 แล้ว Telegram จะยิง
+   * ตัวเดิมซ้ำไม่เลิก คิวทั้งก้อนตันอยู่ที่รายการเดียว คนที่เหลือไม่ได้เข้าสักคน
+   * (เจอจริง 1 ต.ค. 69 — คำขอค้าง 25 ราย ตันอยู่ที่ 23 เพราะใบเดียวพัง)
+   */
+  const alreadyIn = /already.*participant|USER_ALREADY_PARTICIPANT/i;
+  try {
+    await approveJoinRequest(telegramUserId);
+  } catch (e) {
+    const why = e instanceof Error ? e.message : String(e);
+    if (!alreadyIn.test(why)) {
+      await prisma.telegramGrant
+        .update({ where: { id: grant.id }, data: { note: `อนุมัติไม่สำเร็จ: ${why}` } })
+        .catch(() => {});
+      await sendAdminAlert(
+        `⚠️ อนุมัติเข้ากลุ่มไม่สำเร็จ\nสมาชิก: ${grant.user.name ?? grant.user.email}\nTelegram: ${displayName}\nสาเหตุ: ${why}\nออกลิงก์ใหม่ให้ได้ที่ /admin/telegram`
+      ).catch(() => {});
+      // ตอบ ok เพื่อให้ Telegram เลิกยิงซ้ำ ไม่งั้นคิวตันทั้งก้อน
+      return ok("อนุมัติไม่สำเร็จ");
+    }
+    // อยู่ในกลุ่มอยู่แล้ว = ปลายทางถูกต้องแล้ว บันทึกต่อได้เลย
+  }
 
   await prisma.$transaction([
     prisma.user.update({
