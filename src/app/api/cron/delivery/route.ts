@@ -213,18 +213,20 @@ async function setTradingViewUsername(input: unknown) {
   if (!user) return NextResponse.json({ error: `ไม่พบสมาชิกอีเมล ${email}` }, { status: 404 });
 
   const previous = user.tradingViewUsername;
-  if (previous === username) {
-    return NextResponse.json({ ok: true, member: user.name ?? user.email, unchanged: true, username });
-  }
+  // ชื่อตรงอยู่แล้วก็ยังต้องสั่งต่อ เพราะเป้าหมายคือ "บอทเพิ่มชื่อนี้ให้แล้วจริง"
+  // ไม่ใช่แค่ "ชื่อในฐานข้อมูลถูก" — สองอย่างนี้หลุดจากกันได้ และเคยหลุดมาแล้ว
+  const sameName = previous === username;
 
-  await prisma.user.update({ where: { id: user.id }, data: { tradingViewUsername: username } });
+  if (!sameName) {
+    await prisma.user.update({ where: { id: user.id }, data: { tradingViewUsername: username } });
+  }
   await prisma.accessGrant.updateMany({
     where: { userId: user.id, status: "PENDING" },
     data: { tradingViewUsername: username },
   });
 
   let revoked: string | null = null;
-  if (previous) {
+  if (previous && !sameName) {
     const res = await revokeTradingViewAccess(previous).catch((e) => ({
       ok: false,
       reason: e instanceof Error ? e.message : "ไม่ทราบ",
