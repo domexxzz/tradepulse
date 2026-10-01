@@ -229,7 +229,9 @@ async function setTradingViewUsername(input: unknown) {
       ok: false,
       reason: e instanceof Error ? e.message : "ไม่ทราบ",
     }));
-    revoked = res.ok ? "สำเร็จ" : `ไม่สำเร็จ: ${"reason" in res ? res.reason : "ไม่ทราบ"}`;
+    // ok = บอทรับงานเข้าคิวแล้ว ไม่ใช่ถอนสำเร็จ — ผลจริงตามมาทาง callback ทีหลัง
+    // อย่าเขียนว่า "สำเร็จ" เด็ดขาด เคยทำให้เข้าใจผิดว่าถอนเรียบร้อยแล้วทั้งที่ล้มเหลว
+    revoked = res.ok ? "ส่งคำสั่งถอนให้บอทแล้ว (รอผลจริง)" : `สั่งไม่ได้: ${"reason" in res ? res.reason : "ไม่ทราบ"}`;
     if (!res.ok) {
       await sendAdminAlert(
         `⚠️ ถอนชื่อเก่าออกจาก TradingView ไม่สำเร็จ\nสมาชิก: ${user.name ?? user.email}\nชื่อเก่า: ${previous}\nชื่อใหม่: ${username}\nต้องไปกดลบ ${previous} เองที่ /admin/access-queue`
@@ -237,7 +239,26 @@ async function setTradingViewUsername(input: unknown) {
     }
   }
 
+  /**
+   * ปลดคิวให้กลับมารอ ก่อนสั่งบอทเพิ่มชื่อใหม่
+   *
+   * syncTradingViewGrant จะไม่ทำอะไรเลยถ้าไม่เจอคิวสถานะ PENDING/PENDING_REVOKE/REVOKED
+   * คนที่เคยได้อินดิเคเตอร์แล้วจะเป็น GRANTED การเปลี่ยนชื่อจึงเงียบสนิท — ถอนชื่อเก่า
+   * ออกไปแต่ไม่เคยเพิ่มชื่อใหม่ ลูกค้าเหลือศูนย์ (เจอจริงกับเคสแรกที่ใช้คำสั่งนี้)
+   * ตั้งกลับเป็น PENDING ตรงกับความจริงด้วย เพราะสิทธิ์ภายใต้ชื่อใหม่ยังไม่มี
+   */
+  await prisma.accessGrant.updateMany({
+    where: { userId: user.id, status: "GRANTED" },
+    data: { status: "PENDING", tradingViewUsername: username, note: `เปลี่ยนชื่อจาก ${previous ?? "-"} เป็น ${username}` },
+  });
+
   await syncTradingViewGrant(user.id);
+
+  const after = await prisma.accessGrant.findFirst({
+    where: { userId: user.id },
+    orderBy: { createdAt: "desc" },
+    select: { status: true, note: true },
+  });
 
   return NextResponse.json({
     ok: true,
@@ -246,5 +267,6 @@ async function setTradingViewUsername(input: unknown) {
     previous,
     username,
     revokedPrevious: revoked,
+    grantNow: after,
   });
 }
