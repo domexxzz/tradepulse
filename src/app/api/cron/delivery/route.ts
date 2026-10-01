@@ -4,7 +4,9 @@ import { ACTIVE_STATUSES } from "@/lib/subscription";
 import { formatThaiDate } from "@/lib/date";
 import { ensureTelegramInvite } from "@/lib/lifecycle";
 import { sendTelegramInviteEmailWithReason } from "@/lib/telegram-invite";
-import { revokeInviteLink, currentChatId } from "@/lib/telegram";
+import { revokeInviteLink, currentChatId, sendAdminAlert } from "@/lib/telegram";
+import { revokeTradingViewAccess } from "@/lib/tradingview";
+import { syncTradingViewGrant } from "@/lib/lifecycle";
 
 export const dynamic = "force-dynamic";
 
@@ -120,12 +122,14 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   if (!authorized(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  let body: { invite?: unknown };
+  let body: { invite?: unknown; setTradingView?: unknown };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "bad json" }, { status: 400 });
   }
+
+  if (body.setTradingView) return setTradingViewUsername(body.setTradingView);
 
   const email = typeof body.invite === "string" ? body.invite.trim().toLowerCase() : "";
   if (!email) return NextResponse.json({ error: "ต้องระบุ invite เป็นอีเมลของสมาชิก" }, { status: 400 });
@@ -178,5 +182,69 @@ export async function POST(req: Request) {
     before: grant ? { status: grant.status, hadLink: Boolean(grant.inviteLink), chatId: grant.chatId } : null,
     result,
     now: { status: after?.status, hasLink: Boolean(after?.inviteLink), chatId: after?.chatId, currentChatId },
+  });
+}
+
+/**
+ * เปลี่ยนชื่อ TradingView แทนลูกค้า — ใช้เมื่อลูกค้าแจ้งผ่านแอดมินว่ากรอกผิด
+ *
+ * หน้าเว็บให้ลูกค้าแก้เองได้อยู่แล้ว แต่หลายคนทักแอดมินแทนเพราะเข้าหน้าบัญชีไม่เป็น
+ * ของเดิมไม่มีทางทำให้เลย ต้องรอลูกค้าทำเอง ซึ่งบางคนไม่ทำสักที
+ * (1 ต.ค. 69 ขอมา 2 รายในวันเดียว)
+ *
+ * ถอนชื่อเก่าออกจากสคริปต์ก่อนเสมอ ไม่งั้นบัญชีที่พิมพ์ผิดได้ใช้อินดิเคเตอร์ฟรีต่อไป
+ */
+async function setTradingViewUsername(input: unknown) {
+  const d = input as { email?: unknown; username?: unknown };
+  const email = typeof d.email === "string" ? d.email.trim().toLowerCase() : "";
+  const username = typeof d.username === "string" ? d.username.trim() : "";
+  if (!email || !username) {
+    return NextResponse.json({ error: "ต้องระบุ setTradingView เป็น { email, username }" }, { status: 400 });
+  }
+  // กฎเดียวกับฟอร์มที่ลูกค้ากรอกเอง (src/lib/actions/account.ts)
+  if (!/^[a-zA-Z0-9_]{3,40}$/.test(username)) {
+    return NextResponse.json({ error: "username ใช้ได้เฉพาะ a-z, 0-9 และ _ ยาว 3-40 ตัว" }, { status: 400 });
+  }
+
+  const user = await prisma.user.findFirst({
+    where: { email: { equals: email, mode: "insensitive" } },
+    select: { id: true, email: true, name: true, tradingViewUsername: true },
+  });
+  if (!user) return NextResponse.json({ error: `ไม่พบสมาชิกอีเมล ${email}` }, { status: 404 });
+
+  const previous = user.tradingViewUsername;
+  if (previous === username) {
+    return NextResponse.json({ ok: true, member: user.name ?? user.email, unchanged: true, username });
+  }
+
+  await prisma.user.update({ where: { id: user.id }, data: { tradingViewUsername: username } });
+  await prisma.accessGrant.updateMany({
+    where: { userId: user.id, status: "PENDING" },
+    data: { tradingViewUsername: username },
+  });
+
+  let revoked: string | null = null;
+  if (previous) {
+    const res = await revokeTradingViewAccess(previous).catch((e) => ({
+      ok: false,
+      reason: e instanceof Error ? e.message : "ไม่ทราบ",
+    }));
+    revoked = res.ok ? "สำเร็จ" : `ไม่สำเร็จ: ${"reason" in res ? res.reason : "ไม่ทราบ"}`;
+    if (!res.ok) {
+      await sendAdminAlert(
+        `⚠️ ถอนชื่อเก่าออกจาก TradingView ไม่สำเร็จ\nสมาชิก: ${user.name ?? user.email}\nชื่อเก่า: ${previous}\nชื่อใหม่: ${username}\nต้องไปกดลบ ${previous} เองที่ /admin/access-queue`
+      ).catch(() => {});
+    }
+  }
+
+  await syncTradingViewGrant(user.id);
+
+  return NextResponse.json({
+    ok: true,
+    member: user.name ?? user.email,
+    email: user.email,
+    previous,
+    username,
+    revokedPrevious: revoked,
   });
 }
