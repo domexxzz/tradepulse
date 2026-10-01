@@ -4,6 +4,7 @@ import { sendAdminAlert } from "@/lib/telegram";
 import { checkBridgeHealth } from "@/lib/tradingview";
 import { checkStaleJobs } from "@/lib/heartbeat";
 import { usersAwaitingInviteEmail } from "@/lib/telegram-invite";
+import { ACTIVE_STATUSES } from "@/lib/subscription";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +52,27 @@ async function run(req: Request) {
       prisma.subscription.count({ where: { status: "ACTIVE" } }),
     ]);
 
+  /**
+   * ชื่อ TradingView ซ้ำกันระหว่างสมาชิก — ต้องมีคนไปถามว่าของใครจริง
+   *
+   * ลูกค้าบางคนก๊อปชื่อคนอื่นมากรอก หรือพิมพ์ผิดจนไปชนของคนที่มีอยู่แล้ว
+   * ผลคือคนหนึ่งได้อินดิเคเตอร์ อีกคนจ่ายเงินแล้วไม่ได้ของ และระบบมองไม่เห็น
+   * เพราะทั้งคู่ขึ้นว่า "เพิ่มแล้ว" (เจอจริง u6612347 ใช้ร่วมกันสองคน ค้างหลายวัน)
+   */
+  const named = await prisma.user.findMany({
+    where: {
+      tradingViewUsername: { not: null },
+      subscriptions: { some: { status: { in: ACTIVE_STATUSES }, currentPeriodEnd: { gt: new Date() } } },
+    },
+    select: { email: true, tradingViewUsername: true },
+  });
+  const byName = new Map<string, string[]>();
+  for (const u of named) {
+    const key = (u.tradingViewUsername ?? "").toLowerCase();
+    byName.set(key, [...(byName.get(key) ?? []), u.email ?? "?"]);
+  }
+  const dupes = [...byName.entries()].filter(([, who]) => who.length > 1);
+
   // คิวที่บอททำเองไม่ได้ (ลูกค้ายังไม่กรอก username) ไม่ใช่ความผิดของระบบ — แยกนับ
   const grantsStuck = grantsPending - noUsername;
   const primaryUp = health.primary?.up ?? false;
@@ -67,6 +89,8 @@ async function run(req: Request) {
     `${mark(brokerPending > 0)} คำขอผ่านโบรกรอ: ${brokerPending} ราย`,
     `${mark(awaitingInvite.length > 0)} รอส่งลิงก์ Telegram: ${awaitingInvite.length} ราย`,
     `${mark(stale.length > 0)} งานเบื้องหลังที่หยุดไป: ${stale.length > 0 ? stale.map((s) => s.name).join(", ") : "ไม่มี"}`,
+    `${mark(dupes.length > 0)} ชื่อ TradingView ซ้ำกัน: ${dupes.length} รายการ`,
+    ...dupes.map(([name, who]) => `   • ${name} — ${who.join(" / ")}`),
     "",
     `สมาชิกที่ใช้งานอยู่: ${activeSubs} ราย`,
     ...(noUsername > 0 ? ["", `ℹ️ อีก ${noUsername} รายยังไม่กรอกชื่อ TradingView — ต้องรอลูกค้า ระบบทำเองไม่ได้`] : []),
@@ -88,7 +112,7 @@ async function run(req: Request) {
   return NextResponse.json({
     ok: result.sent,
     ...result,
-    summary: { primaryUp, grantsStuck, noUsername, slipsPending, brokerPending, awaitingInvite: awaitingInvite.length, stale: stale.length, activeSubs },
+    summary: { primaryUp, grantsStuck, noUsername, slipsPending, brokerPending, awaitingInvite: awaitingInvite.length, stale: stale.length, activeSubs, duplicateUsernames: dupes.length },
   });
 }
 
