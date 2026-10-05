@@ -63,12 +63,19 @@ export interface ReconcileResult {
  * จะถูกปลุกขึ้นมาให้สิทธิ์ใหม่เรื่อย ๆ
  */
 async function retryPendingGrants(cutoff: Date): Promise<number> {
-  // บอทตอบว่าคิวว่าง = งานที่เราคิดว่า "สั่งไปแล้ว" หายไปกับการรีสตาร์ตของบอท
-  // กรณีนั้นไม่ต้องรอเวลากันสั่งซ้ำ เพราะไม่มีอะไรรออยู่ให้ชน
   const queue = await bridgeQueueDepth();
   const redispatchCutoff = new Date(Date.now() - REDISPATCH_MINUTES * 60_000);
-  const notInFlight =
-    queue === 0 ? {} : { OR: [{ lastDispatchedAt: null }, { lastDispatchedAt: { lt: redispatchCutoff } }] };
+  const backoff = { OR: [{ lastDispatchedAt: null }, { lastDispatchedAt: { lt: redispatchCutoff } }] };
+
+  /**
+   * บอทตอบว่าคิวว่าง = งานที่เราคิดว่า "สั่งไปแล้ว" หายไปกับการรีสตาร์ตของบอท
+   * ข้ามเวลารอได้ แต่ **เฉพาะงานที่ยังไม่เคยล้มเหลว**
+   *
+   * ของเดิมข้ามให้ทุกงานเมื่อคิวว่าง ซึ่งบอทว่างเกือบตลอดเวลา ตัวกันจึงไม่เคยทำงาน
+   * งานที่ล้มเหลวซ้ำ ๆ เลยถูกสั่งใหม่ทุกรอบ cron พร้อมเด้งเตือนแอดมินทุกครั้ง
+   * (เจอจริง 5 ต.ค. 69 — @Kiadthawee วนทุก 5 นาทีทั้งที่ใส่ตัวกันไปแล้ว)
+   */
+  const notInFlight = queue === 0 ? { OR: [{ failCount: 0 }, backoff] } : backoff;
 
   const stuck = await prisma.accessGrant.findMany({
     where: {

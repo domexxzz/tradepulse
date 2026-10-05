@@ -73,6 +73,17 @@ async function run(req: Request) {
   }
   const dupes = [...byName.entries()].filter(([, who]) => who.length > 1);
 
+  /**
+   * งานที่บอททำให้ไม่สำเร็จซ้ำ ๆ — ระบบเลิกลองเองแล้ว ต้องมีคนไปแก้ต้นเหตุ
+   * ส่วนใหญ่คือลูกค้ากรอกชื่อ TradingView ที่ไม่มีอยู่จริง (ระบบส่งอีเมลให้เขาแล้ว)
+   */
+  const givenUp = await prisma.accessGrant.findMany({
+    where: { status: "PENDING", failCount: { gte: 3 } },
+    orderBy: { failCount: "desc" },
+    take: 10,
+    select: { failCount: true, lastFailReason: true, tradingViewUsername: true, user: { select: { email: true } } },
+  });
+
   // คิวที่บอททำเองไม่ได้ (ลูกค้ายังไม่กรอก username) ไม่ใช่ความผิดของระบบ — แยกนับ
   const grantsStuck = grantsPending - noUsername;
   const primaryUp = health.primary?.up ?? false;
@@ -90,6 +101,8 @@ async function run(req: Request) {
     `${mark(awaitingInvite.length > 0)} รอส่งลิงก์ Telegram: ${awaitingInvite.length} ราย`,
     `${mark(stale.length > 0)} งานเบื้องหลังที่หยุดไป: ${stale.length > 0 ? stale.map((s) => s.name).join(", ") : "ไม่มี"}`,
     `${mark(dupes.length > 0)} ชื่อ TradingView ซ้ำกัน: ${dupes.length} รายการ`,
+    `${mark(givenUp.length > 0)} งานที่ระบบเลิกลองเอง: ${givenUp.length} ราย`,
+    ...givenUp.map((g) => `   • @${g.tradingViewUsername ?? "-"} (${g.user.email ?? "-"}) พลาด ${g.failCount} ครั้ง — ${g.lastFailReason ?? "-"}`),
     ...dupes.map(([name, who]) => `   • ${name} — ${who.join(" / ")}`),
     "",
     `สมาชิกที่ใช้งานอยู่: ${activeSubs} ราย`,
@@ -112,7 +125,7 @@ async function run(req: Request) {
   return NextResponse.json({
     ok: result.sent,
     ...result,
-    summary: { primaryUp, grantsStuck, noUsername, slipsPending, brokerPending, awaitingInvite: awaitingInvite.length, stale: stale.length, activeSubs, duplicateUsernames: dupes.length },
+    summary: { primaryUp, grantsStuck, noUsername, slipsPending, brokerPending, awaitingInvite: awaitingInvite.length, stale: stale.length, activeSubs, duplicateUsernames: dupes.length, givenUp: givenUp.length },
   });
 }
 
