@@ -211,6 +211,17 @@ export async function syncTradingViewGrant(userId: string, daysOverride?: number
           ? Math.max(1, daysUntil(sub.currentPeriodEnd))
           : DEFAULT_GRANT_DAYS;
 
+    /**
+     * จดเวลาที่สั่งก่อนยิงเสมอ ไม่ใช่เฉพาะตอนสำเร็จ
+     *
+     * ของเดิมจดเฉพาะตอนสำเร็จ งานที่ล้มเหลวจึงไม่มีเวลาให้เทียบ reconcile เลยสั่งซ้ำ
+     * ทุกรอบ cron (ทุก 5-10 นาที) ถ้างานนั้นไม่มีวันสำเร็จก็วนไม่จบ พร้อมเด้งเตือน
+     * แอดมินทุกรอบจนไม่มีใครอ่านแจ้งเตือนอีก (เจอจริง 5 ต.ค. 69 กับ @Kiadthawee)
+     */
+    await prisma.accessGrant
+      .update({ where: { id: grant.id }, data: { lastDispatchedAt: new Date() } })
+      .catch(() => {});
+
     const res = await grantTradingViewAccess(user.tradingViewUsername, days);
 
     if (res.ok) {
@@ -222,15 +233,22 @@ export async function syncTradingViewGrant(userId: string, daysOverride?: number
           // ทั้งที่งานยังนั่งรอในคิวบอทอยู่ — บอทต้องทำคนเดิมสองหน คิวคนอื่นยาวขึ้นฟรี ๆ
           // สั่งไม่สำเร็จไม่ต้องจด จะได้ให้ reconcile ลองใหม่เร็ว ๆ
           lastDispatchedAt: new Date(),
+          failCount: 0,
+          lastFailReason: null,
           ...(res.queued
             ? { note: "ส่งคำสั่งให้บอทแล้ว รอผลยืนยัน" }
             : { status: "GRANTED", grantedAt: new Date(), revokedAt: null, note: "ให้สิทธิ์อัตโนมัติโดยบอท" }),
         },
       });
     } else if (!res.skipped) {
+      // นับครั้งที่ล้มเหลวติดกัน — ใช้หยุดวนซ้ำงานที่ลองอีกกี่ครั้งก็ไม่สำเร็จ
       await prisma.accessGrant.update({
         where: { id: grant.id },
-        data: { note: `บอทให้สิทธิ์ไม่สำเร็จ: ${res.reason ?? "ไม่ทราบสาเหตุ"}` },
+        data: {
+          note: `บอทให้สิทธิ์ไม่สำเร็จ: ${res.reason ?? "ไม่ทราบสาเหตุ"}`,
+          failCount: { increment: 1 },
+          lastFailReason: res.reason ?? "ไม่ทราบสาเหตุ",
+        },
       });
     }
   } catch (e) {

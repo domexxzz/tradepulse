@@ -31,6 +31,16 @@ const GRACE_MINUTES = 10;
  */
 const REDISPATCH_MINUTES = 30;
 
+/**
+ * ล้มเหลวติดกันเกินนี้ = เลิกลองเอง ต้องให้คนมาดู
+ *
+ * บางงานลองอีกกี่ครั้งก็ไม่สำเร็จ ที่เจอบ่อยสุดคือลูกค้ากรอกชื่อ TradingView
+ * ที่ไม่มีอยู่จริง บอทจะตอบ "ไม่พบ username" ทุกครั้งไม่ว่าจะลองกี่หน
+ * ปล่อยให้วนต่อ = เปลืองคิวบอทที่ทำได้ทีละคน และเด้งเตือนแอดมินจนเลิกอ่าน
+ * (เจอจริง 5 ต.ค. 69 — @Kiadthawee วนทุก 5 นาทีพร้อมเตือน 2 ข้อความต่อรอบ)
+ */
+const MAX_FAILS = 5;
+
 /** เพดานต่อรอบ — cron วิ่งถี่อยู่แล้ว ค่อย ๆ เก็บดีกว่าหมดเวลากลางทาง */
 const MAX_PER_RUN = 15;
 
@@ -64,6 +74,8 @@ async function retryPendingGrants(cutoff: Date): Promise<number> {
     where: {
       status: "PENDING",
       createdAt: { lt: cutoff },
+      // ล้มเหลวติดกันหลายครั้งแล้ว = ไม่หยิบมาวนอีก รอคนมาแก้ต้นเหตุ
+      failCount: { lt: MAX_FAILS },
       ...notInFlight,
       user: {
         tradingViewUsername: { not: null },

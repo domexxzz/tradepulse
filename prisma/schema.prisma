@@ -178,6 +178,13 @@ model AccessGrant {
    * จะถูกสั่งซ้ำทุกรอบ reconcile เพราะ createdAt ไม่ขยับ
    */
   lastDispatchedAt    DateTime?
+  /**
+   * บอททำให้ไม่สำเร็จติดกันกี่ครั้ง และเหตุผลล่าสุดคืออะไร
+   * ใช้หยุดวนซ้ำงานที่ลองอีกกี่ครั้งก็ไม่สำเร็จ (เช่น username ไม่มีอยู่จริงบน TradingView)
+   * และใช้กันไม่ให้เตือนแอดมินซ้ำด้วยเหตุผลเดิมทุกรอบ
+   */
+  failCount           Int           @default(0)
+  lastFailReason      String?
 
   // คิวแอดมินและ callback ของ TradingView กรองด้วยสองคอลัมน์นี้เป็นหลัก
   @@index([status])

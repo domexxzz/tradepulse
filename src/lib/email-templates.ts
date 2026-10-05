@@ -272,6 +272,32 @@ export function missingTradingViewEmail(input: {
   };
 }
 
+/**
+ * ชื่อ TradingView ที่ลูกค้ากรอกไม่มีอยู่จริง — มีแต่ลูกค้าเท่านั้นที่แก้ได้
+ *
+ * บอทจะตอบ "ไม่พบ username" ทุกครั้งไม่ว่าลองกี่หน แอดมินทำแทนไม่ได้เพราะ
+ * ไม่รู้ว่าชื่อจริงของเขาคืออะไร ต้องให้เจ้าตัวไปเช็กแล้วกรอกใหม่
+ * (5 ต.ค. 69 เจอ @Kiadthawee วนซ้ำทุก 5 นาทีโดยไม่มีใครบอกลูกค้าเลย)
+ */
+export function tradingViewNotFoundEmail(input: {
+  name?: string | null;
+  username: string;
+}): EmailContent {
+  return {
+    subject: `ชื่อ TradingView ที่กรอกไว้ใช้ไม่ได้ — ${site.name}`,
+    html: shell(
+      `<p style="margin:0 0 12px;">${hi(input.name)}</p>
+       <p style="margin:0 0 20px;">เราพยายามเพิ่มอินดิเคเตอร์ให้บัญชี <b>${escapeHtml(input.username)}</b> แล้ว แต่ TradingView แจ้งว่า<b>ไม่พบชื่อผู้ใช้นี้</b></p>
+       <p style="margin:0 0 8px;">ส่วนใหญ่เกิดจากพิมพ์ตกหล่น หรือกรอกเป็นชื่อที่แสดงบนโปรไฟล์แทนชื่อผู้ใช้จริง</p>
+       <p style="margin:0 0 8px;"><b>วิธีหาชื่อผู้ใช้ที่ถูกต้อง</b> — เปิด TradingView กดรูปโปรไฟล์มุมขวาบน ชื่อที่ขึ้นใต้รูปคือชื่อผู้ใช้ของคุณ</p>
+       ${button(`${site.url}/account/tradingview`, "แก้ชื่อ TradingView")}
+       <p style="margin:20px 0 0;font-size:13px;color:#6b7280;">แก้แล้วระบบจะเพิ่มอินดิเคเตอร์ให้เองภายใน 1–3 นาที สิทธิ์และวันหมดอายุของคุณไม่ได้หายไปไหน</p>`,
+      "ชื่อ TradingView ที่กรอกไว้ใช้ไม่ได้"
+    ),
+    text: `${hi(input.name)}\n\nTradingView แจ้งว่าไม่พบชื่อผู้ใช้ ${input.username}\nกรอกใหม่ที่ ${site.url}/account/tradingview แล้วระบบจะเพิ่มให้เองภายใน 1-3 นาที`,
+  };
+}
+
 /** แจ้งเมื่อหมดอายุและระบบปิดสิทธิ์แล้ว */
 export function expiredEmail(input: { name?: string | null; planName: string }): EmailContent {
   return {

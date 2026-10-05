@@ -4,6 +4,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { sendAdminAlert, sendPhotoToUser } from "@/lib/telegram";
 import { notifyAccessGranted } from "@/lib/access-notify";
+import { sendEmail } from "@/lib/email";
+import { tradingViewNotFoundEmail } from "@/lib/email-templates";
 
 export const dynamic = "force-dynamic";
 
@@ -83,18 +85,55 @@ export async function POST(req: Request) {
   const now = new Date();
 
   if (!ok) {
+    const reason = error ?? "ไม่ทราบสาเหตุ";
+    /**
+     * ชื่อที่ลูกค้ากรอกไม่มีอยู่จริงบน TradingView — ลองอีกกี่ครั้งก็ไม่สำเร็จ
+     * เป็นเรื่องที่มีแต่ลูกค้าเท่านั้นที่แก้ได้ แอดมินทำแทนไม่ได้
+     */
+    const noSuchUser = /ไม่พบ\s*username|not\s*found|ไม่มีผู้ใช้/i.test(reason);
+
+    const before = await prisma.accessGrant.findUnique({
+      where: { id: grant.id },
+      select: { failCount: true, lastFailReason: true },
+    });
+    const fails = (before?.failCount ?? 0) + 1;
+
     await prisma.accessGrant.update({
       where: { id: grant.id },
-      data: { note: `บอททำงานไม่สำเร็จ: ${error ?? "ไม่ทราบสาเหตุ"}` },
+      data: {
+        note: `บอททำงานไม่สำเร็จ: ${reason}`,
+        failCount: fails,
+        lastFailReason: reason,
+      },
     });
-    await sendAdminAlert(
-      `⚠️ บอท TradingView ${action === "grant" ? "ให้สิทธิ์" : "ถอนสิทธิ์"}ไม่สำเร็จ
+
+    /**
+     * เตือนเฉพาะครั้งแรก หรือเมื่อเหตุผลเปลี่ยน
+     *
+     * ของเดิมเตือนทุกครั้งที่ callback ตอบว่าไม่สำเร็จ พอ reconcile สั่งซ้ำทุก 5 นาที
+     * แอดมินจึงได้ข้อความเดิมไม่หยุดจนเลิกอ่าน ซึ่งอันตรายกว่าไม่มีแจ้งเตือน
+     */
+    const sameAsBefore = before?.lastFailReason === reason && (before?.failCount ?? 0) > 0;
+    if (!sameAsBefore) {
+      await sendAdminAlert(
+        `⚠️ บอท TradingView ${action === "grant" ? "ให้สิทธิ์" : "ถอนสิทธิ์"}ไม่สำเร็จ
 สมาชิก: ${user.name ?? user.email}
 TradingView: @${username}
-สาเหตุ: ${error ?? "ไม่ทราบ"}
-ต้องทำมือที่ /admin/access-queue`
-    );
-    return NextResponse.json({ ok: true, handled: "failure" });
+สาเหตุ: ${reason}` +
+          (noSuchUser
+            ? `\n\nชื่อนี้ไม่มีอยู่จริงบน TradingView — ส่งอีเมลให้ลูกค้าไปแก้เองแล้ว
+ระบบจะเลิกลองซ้ำหลังพลาดครบ 5 ครั้ง เพื่อไม่ให้กินคิวบอท`
+            : `\nต้องทำมือที่ /admin/access-queue`)
+      );
+    }
+
+    // บอกลูกค้าตรง ๆ ว่าชื่อที่กรอกใช้ไม่ได้ เพราะมีแต่เขาที่แก้ได้
+    if (noSuchUser && fails === 1 && user.email) {
+      const mail = tradingViewNotFoundEmail({ name: user.name, username });
+      await sendEmail({ to: user.email, ...mail }).catch(() => {});
+    }
+
+    return NextResponse.json({ ok: true, handled: "failure", failCount: fails });
   }
 
   await prisma.accessGrant.update({
