@@ -48,9 +48,16 @@ export async function updateTradingView(
     where: { id: session.user.id },
     data: { tradingViewUsername: parsed.data },
   });
+  /**
+   * ชื่อใหม่ = เริ่มนับความล้มเหลวใหม่
+   *
+   * ระบบเลิกลองซ้ำเมื่อพลาดครบเพดาน ซึ่งถูกต้องเมื่อชื่อยังเป็นชื่อเดิม แต่ถ้าลูกค้า
+   * แก้ชื่อให้ถูกแล้ว โควตาที่ถูกใช้ไปกับชื่อผิดต้องไม่ติดตามมา ไม่งั้นลูกค้าแก้ถูกแล้ว
+   * แต่ระบบยังไม่ลองให้อีกเลย กลายเป็นจ่ายเงินแล้วไม่ได้ของแบบที่ไม่มีใครรู้
+   */
   await prisma.accessGrant.updateMany({
     where: { userId: session.user.id, status: "PENDING" },
-    data: { tradingViewUsername: parsed.data },
+    data: { tradingViewUsername: parsed.data, failCount: 0, lastFailReason: null },
   });
 
   // เปลี่ยนชื่อ = ถอนของเก่าออกก่อน ไม่งั้นชื่อที่พิมพ์ผิดได้ใช้ฟรีตลอดไป

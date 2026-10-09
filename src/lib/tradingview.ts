@@ -191,6 +191,14 @@ export interface TvResult {
   skipped?: boolean;
   /** true = บอทรับงานเข้าคิวแล้ว ผลจริงจะตามมาทาง callback */
   queued?: boolean;
+  /**
+   * true = ไม่มีบริดจ์ตัวไหนตอบเลย (ท่อขาด) ไม่ใช่คำตัดสินของบอท
+   *
+   * ต้องแยกจากความล้มเหลวจริง เพราะใช้ตัดสินใจคนละอย่าง: ท่อขาดคือลองใหม่ทีหลัง
+   * แล้วจะได้ ส่วน "บอทบอกว่าไม่พบ username" คือลองอีกกี่ครั้งก็ได้ผลเดิม
+   * ถ้านับรวมกัน งานของลูกค้าที่ชื่อถูกต้องจะถูกตัดทิ้งเพราะบอทไม่ว่างตอนนั้น
+   */
+  unreachable?: boolean;
   reason?: string;
 }
 
@@ -234,7 +242,7 @@ async function callBot(path: "grant" | "revoke", body: Record<string, unknown>):
     const res = await callOne(url, path, body);
     if (res) return res;
   }
-  return { ok: false, reason: "ติดต่อบอทไม่ได้ทั้งตัวหลักและตัวสำรอง" };
+  return { ok: false, unreachable: true, reason: "ติดต่อบอทไม่ได้ทั้งตัวหลักและตัวสำรอง" };
 }
 
 /** เพิ่ม username เข้าสคริปต์ (days = จำนวนวันที่ให้สิทธิ์ ไม่ส่งไปคือไม่จำกัด) */
