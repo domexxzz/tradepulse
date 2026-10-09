@@ -184,6 +184,15 @@ async function notifyActivation(input: ActivateInput, until: Date) {
  *
  * ไม่สำเร็จก็ปล่อยให้คิวค้างไว้ให้แอดมินกดเอง — ห้าม throw
  */
+/**
+ * สถานะคิวที่ยัง "มีชีวิต" คือยังรอให้บอททำอะไรสักอย่าง
+ *
+ * ต้องใช้รายการเดียวกันทุกที่ที่หยิบคิวมาทำงาน (สั่งงาน / ไล่งานค้าง / รับผลกลับ)
+ * ถ้าแต่ละที่กรองไม่เหมือนกัน จะหยิบคนละแถวของลูกค้าคนเดียวกัน แล้วตัวนับความล้มเหลว
+ * กับเวลารอจะไปอยู่คนละแถวกับแถวที่ถูกสั่งงานจริง ตัวกันทั้งหมดจึงไม่มีผล
+ */
+export const ACTIVE_GRANT_STATUSES = ["PENDING", "PENDING_REVOKE", "REVOKED"] as const;
+
 export async function syncTradingViewGrant(userId: string, daysOverride?: number): Promise<void> {
   if (!tvAutoGrantEnabled) return;
 
@@ -195,7 +204,7 @@ export async function syncTradingViewGrant(userId: string, daysOverride?: number
     if (!user?.tradingViewUsername) return; // ยังไม่กรอก username — คิวรออยู่แล้ว
 
     const grant = await prisma.accessGrant.findFirst({
-      where: { userId, status: { in: ["PENDING", "PENDING_REVOKE", "REVOKED"] } },
+      where: { userId, status: { in: [...ACTIVE_GRANT_STATUSES] } },
       orderBy: { createdAt: "desc" },
     });
     if (!grant) return;
@@ -225,19 +234,38 @@ export async function syncTradingViewGrant(userId: string, daysOverride?: number
     const res = await grantTradingViewAccess(user.tradingViewUsername, days);
 
     if (res.ok) {
+      /**
+       * "บอทรับงานเข้าคิว" ไม่ใช่ "บอททำสำเร็จ" — ห้ามล้างตัวนับความล้มเหลวตรงนี้
+       *
+       * ของเดิมล้าง failCount/lastFailReason ทุกครั้งที่บอทตอบรับงาน ซึ่งบอทตอบรับ
+       * เสมอ (Selenium ใช้เวลาเป็นนาที จึงรับเข้าคิวก่อนแล้วค่อยยิงผลกลับ) ผลคือ:
+       *   · ตัวนับถูกรีเซ็ตเป็น 0 ก่อนรู้ผล เพดาน MAX_FAILS จึงไม่มีวันถึง
+       *   · lastFailReason ถูกล้างเป็น null callback เลยเห็นเป็น "เหตุผลเปลี่ยน" ทุกครั้ง
+       *     แล้วเตือนแอดมินซ้ำไม่หยุด
+       *   · reconcile เห็น failCount=0 แล้วข้ามเวลารอ สั่งซ้ำทุกรอบ cron
+       * (เจอจริง 10 ต.ค. 69 — @Kiadthawee และ @Tradingview201915 วนทุก 15 นาที
+       *  ทั้งที่ใส่ทั้งตัวนับและเวลารอไปแล้ว เพราะบรรทัดนี้ล้างทิ้งก่อนเสมอ)
+       *
+       * ล้างได้เฉพาะตอนสำเร็จจริงเท่านั้น คือตอนบอทตอบผลสำเร็จทันที (ไม่เข้าคิว)
+       * หรือตอน callback ยิงผลสำเร็จกลับมา
+       */
       await prisma.accessGrant.update({
         where: { id: grant.id },
         data: {
           tradingViewUsername: user.tradingViewUsername,
           // จดว่าสั่งไปแล้ว ไม่งั้น reconcile รอบหน้าเห็นเป็น "ยังไม่เคยสั่ง" แล้วสั่งซ้ำ
           // ทั้งที่งานยังนั่งรอในคิวบอทอยู่ — บอทต้องทำคนเดิมสองหน คิวคนอื่นยาวขึ้นฟรี ๆ
-          // สั่งไม่สำเร็จไม่ต้องจด จะได้ให้ reconcile ลองใหม่เร็ว ๆ
           lastDispatchedAt: new Date(),
-          failCount: 0,
-          lastFailReason: null,
           ...(res.queued
             ? { note: "ส่งคำสั่งให้บอทแล้ว รอผลยืนยัน" }
-            : { status: "GRANTED", grantedAt: new Date(), revokedAt: null, note: "ให้สิทธิ์อัตโนมัติโดยบอท" }),
+            : {
+                status: "GRANTED",
+                grantedAt: new Date(),
+                revokedAt: null,
+                note: "ให้สิทธิ์อัตโนมัติโดยบอท",
+                failCount: 0,
+                lastFailReason: null,
+              }),
         },
       });
     } else if (!res.skipped) {

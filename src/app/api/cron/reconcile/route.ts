@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { runReconcile } from "@/lib/reconcile";
-import { sendAdminAlert } from "@/lib/telegram";
+import { runReconcile, inspectReconcile } from "@/lib/reconcile";
+import { sendAdminAlertThrottled } from "@/lib/alert-throttle";
 
 export const dynamic = "force-dynamic";
 /** ไล่ได้หลายคิวต่อรอบ แต่ละคิวคุยกับบริดจ์จริง ต้องเผื่อเวลา */
@@ -28,6 +28,16 @@ async function run(req: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
+  /**
+   * โหมดตรวจอย่างเดียว — ดูว่ารอบนี้ "จะ" ทำอะไรบ้าง โดยไม่สั่งบอทและไม่เตือนใคร
+   *
+   * มีไว้เพราะเวลาไล่บั๊กเรื่องสั่งซ้ำ วิธีเดียวที่เคยทำได้คือรันของจริงแล้วดูผล
+   * ซึ่งแปลว่าต้องยิงงานเข้าคิวบอทและเด้งเตือนแอดมินเพิ่มทุกครั้งที่อยากตรวจสอบ
+   */
+  if (new URL(req.url).searchParams.get("dry") === "1") {
+    return NextResponse.json({ ok: true, dryRun: true, ...(await inspectReconcile()) });
+  }
+
   try {
     const result = await runReconcile();
     const acted = result.grantsRetried + result.revokesRetried + result.invitesCreated;
@@ -39,7 +49,12 @@ async function run(req: Request) {
       if (result.revokesRetried) lines.push(`· สั่งบอทถอนสิทธิ์ซ้ำ ${result.revokesRetried} คิว`);
       if (result.invitesCreated) lines.push(`· สร้างลิงก์เชิญ Telegram ย้อนหลัง ${result.invitesCreated} คน`);
       lines.push("", "ผลจริงจะตามมาทาง callback อีก 1-3 นาที");
-      await sendAdminAlert(lines.join("\n")).catch((e) =>
+      /**
+       * การไล่งานค้างได้สำเร็จคือการทำงานปกติ ไม่ใช่เหตุการณ์ — เตือนทุกรอบคือ noise
+       * ปล่อยผ่านตัวกันกลาง: เนื้อเดิมจะออกได้วันละไม่เกิน 4 ครั้ง แต่ถ้าจำนวนคิว
+       * เปลี่ยน (มีคนใหม่ค้าง) เนื้อเปลี่ยน ก็จะเด้งทันทีไม่ต้องรอ
+       */
+      await sendAdminAlertThrottled("reconcile-retry", lines.join("\n")).catch((e) =>
         console.error("reconcile alert failed:", e)
       );
     }

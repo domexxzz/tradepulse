@@ -32,6 +32,17 @@ const GRACE_MINUTES = 10;
 const REDISPATCH_MINUTES = 30;
 
 /**
+ * บอทตอบว่าคิวว่าง = งานที่เราคิดว่า "สั่งไปแล้ว" หายไปกับการรีสตาร์ตของบอท
+ * รอสั้นลงได้ แต่ยังต้องรอ — ห้ามข้ามเวลารอทิ้งไปเลย
+ *
+ * ของเดิมเขียนเป็นทางลัด "คิวว่าง = ข้ามเวลารอ" ซึ่งบอทว่างเกือบตลอดเวลา
+ * เท่ากับไม่มีเวลารออยู่จริง งานที่ไม่มีวันสำเร็จจึงถูกสั่งซ้ำทุกรอบ cron
+ * เงื่อนไขที่เป็น "เร็วขึ้น" ปลอดภัยกว่าเงื่อนไขที่เป็น "ข้ามทิ้ง" เสมอ
+ * เพราะอย่างแย่ที่สุดก็ยังมีเพดานกั้นอยู่
+ */
+const IDLE_REDISPATCH_MINUTES = 10;
+
+/**
  * ล้มเหลวติดกันเกินนี้ = เลิกลองเอง ต้องให้คนมาดู
  *
  * บางงานลองอีกกี่ครั้งก็ไม่สำเร็จ ที่เจอบ่อยสุดคือลูกค้ากรอกชื่อ TradingView
@@ -64,18 +75,11 @@ export interface ReconcileResult {
  */
 async function retryPendingGrants(cutoff: Date): Promise<number> {
   const queue = await bridgeQueueDepth();
-  const redispatchCutoff = new Date(Date.now() - REDISPATCH_MINUTES * 60_000);
-  const backoff = { OR: [{ lastDispatchedAt: null }, { lastDispatchedAt: { lt: redispatchCutoff } }] };
-
-  /**
-   * บอทตอบว่าคิวว่าง = งานที่เราคิดว่า "สั่งไปแล้ว" หายไปกับการรีสตาร์ตของบอท
-   * ข้ามเวลารอได้ แต่ **เฉพาะงานที่ยังไม่เคยล้มเหลว**
-   *
-   * ของเดิมข้ามให้ทุกงานเมื่อคิวว่าง ซึ่งบอทว่างเกือบตลอดเวลา ตัวกันจึงไม่เคยทำงาน
-   * งานที่ล้มเหลวซ้ำ ๆ เลยถูกสั่งใหม่ทุกรอบ cron พร้อมเด้งเตือนแอดมินทุกครั้ง
-   * (เจอจริง 5 ต.ค. 69 — @Kiadthawee วนทุก 5 นาทีทั้งที่ใส่ตัวกันไปแล้ว)
-   */
-  const notInFlight = queue === 0 ? { OR: [{ failCount: 0 }, backoff] } : backoff;
+  const waitMinutes = queue === 0 ? IDLE_REDISPATCH_MINUTES : REDISPATCH_MINUTES;
+  const redispatchCutoff = new Date(Date.now() - waitMinutes * 60_000);
+  const notInFlight = {
+    OR: [{ lastDispatchedAt: null }, { lastDispatchedAt: { lt: redispatchCutoff } }],
+  };
 
   const stuck = await prisma.accessGrant.findMany({
     where: {
@@ -224,4 +228,71 @@ export async function runReconcile(): Promise<ReconcileResult> {
   ]);
 
   return { grantsRetried, revokesRetried, invitesCreated, waitingForUsername };
+}
+
+/**
+ * ตรวจว่ารอบนี้ "จะ" หยิบใครไปสั่งซ้ำบ้าง โดยไม่แตะอะไรเลย
+ *
+ * ไล่บั๊กเรื่องสั่งซ้ำมาสองรอบแล้วพบว่าปัญหาเดียวกันทุกครั้ง: มองไม่เห็นว่าทำไม
+ * แถวนั้นถึงยังโดนหยิบ ต้องเดาจากข้อความที่เด้งเข้ากลุ่ม แล้วรันของจริงเพื่อทดสอบ
+ * ซึ่งเท่ากับสแปมแอดมินเพิ่มทุกครั้งที่อยากรู้ ตัวนี้ตอบคำถามนั้นตรง ๆ โดยไม่ส่งอะไร
+ */
+export async function inspectReconcile() {
+  const cutoff = new Date(Date.now() - GRACE_MINUTES * 60_000);
+  const queue = await bridgeQueueDepth();
+  const waitMinutes = queue === 0 ? IDLE_REDISPATCH_MINUTES : REDISPATCH_MINUTES;
+  const now = Date.now();
+
+  const candidates = await prisma.accessGrant.findMany({
+    where: {
+      status: "PENDING",
+      createdAt: { lt: cutoff },
+      user: {
+        tradingViewUsername: { not: null },
+        subscriptions: {
+          some: { status: { in: ACTIVE_STATUSES }, currentPeriodEnd: { gt: new Date() } },
+        },
+      },
+    },
+    select: {
+      id: true,
+      createdAt: true,
+      failCount: true,
+      lastFailReason: true,
+      lastDispatchedAt: true,
+      user: { select: { email: true, tradingViewUsername: true } },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+
+  const rows = candidates.map((g) => {
+    const minutesSince = g.lastDispatchedAt ? (now - g.lastDispatchedAt.getTime()) / 60_000 : null;
+    const reason =
+      g.failCount >= MAX_FAILS
+        ? `ข้าม — ล้มเหลวครบ ${MAX_FAILS} ครั้ง ระบบเลิกลองแล้ว รอคนแก้ต้นเหตุ`
+        : minutesSince !== null && minutesSince < waitMinutes
+          ? `ข้าม — เพิ่งสั่งไป ${Math.round(minutesSince)} นาที (ต้องรอ ${waitMinutes} นาที)`
+          : "จะสั่งซ้ำรอบนี้";
+    return {
+      tradingView: g.user.tradingViewUsername,
+      email: g.user.email,
+      failCount: g.failCount,
+      lastFailReason: g.lastFailReason,
+      minutesSinceDispatch: minutesSince === null ? null : Math.round(minutesSince),
+      verdict: reason,
+    };
+  });
+
+  // ลูกค้าคนเดียวมีคิวค้างหลายแถว = แต่ละส่วนของระบบอาจหยิบคนละแถว ต้องรู้ไว้
+  const perUser = new Map<string, number>();
+  for (const g of candidates) perUser.set(g.user.email ?? "?", (perUser.get(g.user.email ?? "?") ?? 0) + 1);
+  const duplicateQueues = [...perUser.entries()].filter(([, n]) => n > 1).map(([email, n]) => ({ email, rows: n }));
+
+  return {
+    bridgeQueue: queue,
+    waitMinutes,
+    willDispatch: rows.filter((r) => r.verdict === "จะสั่งซ้ำรอบนี้").length,
+    duplicateQueues,
+    grants: rows,
+  };
 }

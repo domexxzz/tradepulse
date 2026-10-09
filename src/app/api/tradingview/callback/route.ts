@@ -6,6 +6,8 @@ import { sendAdminAlert, sendPhotoToUser } from "@/lib/telegram";
 import { notifyAccessGranted } from "@/lib/access-notify";
 import { sendEmail } from "@/lib/email";
 import { tradingViewNotFoundEmail } from "@/lib/email-templates";
+import { ACTIVE_GRANT_STATUSES } from "@/lib/lifecycle";
+import { sendAdminAlertThrottled } from "@/lib/alert-throttle";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +30,26 @@ const schema = z.object({
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 /** เทียบ secret แบบไม่รั่วเวลา (กันการเดาทีละตัวอักษรจากเวลาตอบกลับ) */
+/**
+ * หาคิวของ username นี้ โดยยึดแถวเดียวกับที่ syncTradingViewGrant สั่งงานไป
+ *
+ * ลองเฉพาะสถานะที่ยังรอผลก่อน ไม่เจอค่อยถอยไปค้นทุกสถานะ — การถอยนั้นจำเป็น
+ * เพราะผลอาจมาช้ากว่าที่แอดมินกดปิดคิวด้วยมือ ถ้าตอบ 404 บอทจะคิดว่าส่งไม่ถึง
+ * แล้วยิงซ้ำไม่เลิก
+ */
+async function findGrantForCallback(username: string, statuses: readonly string[] | null) {
+  return prisma.accessGrant.findFirst({
+    where: {
+      user: { tradingViewUsername: { equals: username, mode: "insensitive" } },
+      ...(statuses ? { status: { in: [...statuses] } } : {}),
+    },
+    orderBy: { createdAt: "desc" },
+    include: {
+      user: { select: { id: true, name: true, email: true, telegramUserId: true } },
+    },
+  });
+}
+
 function secretMatches(given: string): boolean {
   const expected = process.env.TV_BOT_SECRET;
   if (!expected) return false;
@@ -64,16 +86,14 @@ export async function POST(req: Request) {
 
   // หาคิวสิทธิ์จาก username โดยตรง (ผ่าน relation) — กัน username ซ้ำหลายบัญชี
   // ถ้าค้นจาก user ก่อนแล้วเผอิญเจอบัญชีที่ไม่มีคิว จะพลาดเป็น 404 ทั้งที่อีกบัญชีมีคิวอยู่
-  // จึงค้นที่ accessGrant ที่ผูกกับ user ซึ่ง tradingViewUsername ตรง แล้วเลือกคิวล่าสุด
-  const grant = await prisma.accessGrant.findFirst({
-    where: {
-      user: { tradingViewUsername: { equals: username, mode: "insensitive" } },
-    },
-    orderBy: { createdAt: "desc" },
-    include: {
-      user: { select: { id: true, name: true, email: true, telegramUserId: true } },
-    },
-  });
+  // จึงค้นที่ accessGrant ที่ผูกกับ user ซึ่ง tradingViewUsername ตรง
+  //
+  // **ต้องเลือกแถวเดียวกับที่ syncTradingViewGrant สั่งงานไป** ไม่งั้นผลลัพธ์จะไปลง
+  // คนละแถวกับที่ตัวนับและเวลารออ่านอยู่ แล้วตัวกันทั้งหมดจะไม่มีผลเลย
+  // ของเดิมไม่กรองสถานะ จึงหยิบแถว GRANTED เก่าได้ถ้ามันใหม่กว่าแถว PENDING ที่สั่งไป
+  const grant =
+    (await findGrantForCallback(username, ACTIVE_GRANT_STATUSES)) ??
+    (await findGrantForCallback(username, null));
   if (!grant) {
     return NextResponse.json(
       { error: "ไม่พบคิวสิทธิ์ของ username นี้" },
@@ -108,24 +128,23 @@ export async function POST(req: Request) {
     });
 
     /**
-     * เตือนเฉพาะครั้งแรก หรือเมื่อเหตุผลเปลี่ยน
+     * กันเตือนซ้ำด้วยตัวกลางตัวเดียว (ดู src/lib/alert-throttle.ts)
      *
-     * ของเดิมเตือนทุกครั้งที่ callback ตอบว่าไม่สำเร็จ พอ reconcile สั่งซ้ำทุก 5 นาที
-     * แอดมินจึงได้ข้อความเดิมไม่หยุดจนเลิกอ่าน ซึ่งอันตรายกว่าไม่มีแจ้งเตือน
+     * ของเดิมเทียบ lastFailReason กับค่าก่อนหน้าเอง ซึ่งพังเพราะ syncTradingViewGrant
+     * ล้างค่านั้นทิ้งก่อนสั่งงานทุกครั้ง ตัวกันจึงเห็นเป็น "เหตุผลเปลี่ยน" ตลอด
+     * บทเรียน: อย่ามีตัวกันหลายตัวที่อ่านคนละค่า ให้ตัดสินจากข้อความที่จะส่งจริงที่เดียว
      */
-    const sameAsBefore = before?.lastFailReason === reason && (before?.failCount ?? 0) > 0;
-    if (!sameAsBefore) {
-      await sendAdminAlert(
-        `⚠️ บอท TradingView ${action === "grant" ? "ให้สิทธิ์" : "ถอนสิทธิ์"}ไม่สำเร็จ
+    await sendAdminAlertThrottled(
+      `tv-${action}-fail:${grant.id}`,
+      `⚠️ บอท TradingView ${action === "grant" ? "ให้สิทธิ์" : "ถอนสิทธิ์"}ไม่สำเร็จ
 สมาชิก: ${user.name ?? user.email}
 TradingView: @${username}
 สาเหตุ: ${reason}` +
-          (noSuchUser
-            ? `\n\nชื่อนี้ไม่มีอยู่จริงบน TradingView — ส่งอีเมลให้ลูกค้าไปแก้เองแล้ว
+        (noSuchUser
+          ? `\n\nชื่อนี้ไม่มีอยู่จริงบน TradingView — ส่งอีเมลให้ลูกค้าไปแก้เองแล้ว
 ระบบจะเลิกลองซ้ำหลังพลาดครบ 5 ครั้ง เพื่อไม่ให้กินคิวบอท`
-            : `\nต้องทำมือที่ /admin/access-queue`)
-      );
-    }
+          : `\nต้องทำมือที่ /admin/access-queue`),
+    ).catch((e) => console.error("callback alert failed:", e));
 
     // บอกลูกค้าตรง ๆ ว่าชื่อที่กรอกใช้ไม่ได้ เพราะมีแต่เขาที่แก้ได้
     if (noSuchUser && fails === 1 && user.email) {
@@ -140,8 +159,22 @@ TradingView: @${username}
     where: { id: grant.id },
     data:
       action === "grant"
-        ? { status: "GRANTED", grantedAt: now, revokedAt: null, note: "ให้สิทธิ์อัตโนมัติโดยบอท" }
-        : { status: "REVOKED", revokedAt: now, note: "ถอนสิทธิ์อัตโนมัติโดยบอท (หมดอายุ)" },
+        // สำเร็จจริงแล้วเท่านั้นถึงล้างตัวนับความล้มเหลว — ตอนบอทแค่รับงานเข้าคิวห้ามล้าง
+        ? {
+            status: "GRANTED",
+            grantedAt: now,
+            revokedAt: null,
+            note: "ให้สิทธิ์อัตโนมัติโดยบอท",
+            failCount: 0,
+            lastFailReason: null,
+          }
+        : {
+            status: "REVOKED",
+            revokedAt: now,
+            note: "ถอนสิทธิ์อัตโนมัติโดยบอท (หมดอายุ)",
+            failCount: 0,
+            lastFailReason: null,
+          },
   });
 
   // บอกลูกค้าว่าเพิ่มให้แล้ว พร้อมลิงก์เชิญกลุ่ม Telegram
