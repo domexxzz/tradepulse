@@ -14,22 +14,6 @@ jobs:
   verify:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: qvx
-          POSTGRES_PASSWORD: devpass
-          # ชื่อต้องมีคำว่า test ไม่งั้น uat/guard.ts จะปฏิเสธไม่ยอมรัน
-          POSTGRES_DB: qvx_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     env:
       DATABASE_URL: postgresql://qvx:devpass@127.0.0.1:5432/qvx_test?schema=public
       DIRECT_URL: postgresql://qvx:devpass@127.0.0.1:5432/qvx_test?schema=public
@@ -76,6 +60,36 @@ jobs:
             exit 1
           fi
           echo "สคริปต์ PowerShell มี BOM ครบ"
+
+      # ใช้ Postgres ที่ติดมากับ runner แล้ว ไม่ยกเป็น service container
+      #
+      # ของเดิมใช้ image postgres:16 จาก Docker Hub ซึ่งจำกัดจำนวน pull ต่อ IP
+      # สำหรับคนไม่ล็อกอิน และ runner ของ GitHub ใช้ IP ร่วมกันทั้งโลก พอโควตาหมด
+      # งาน verify เริ่มไม่ได้เลย แล้ว deploy ที่ needs: verify ก็ไม่ได้รันตามไปด้วย
+      # เท่ากับโควตาของคนอื่นกลายเป็นตัวกั้น production ของเรา
+      # (เจอจริง 10 ต.ค. 69 — ตัวแก้บั๊กแจ้งเตือนค้างอยู่ 2 รอบเพราะเรื่องนี้)
+      #
+      # ของที่ติดมากับ runner ไม่ต้องดึงจากที่ไหน จึงไม่มีโควตาให้หมด
+      # ยังเผื่อทาง apt ไว้ เผื่อ image ของ runner เปลี่ยนในอนาคต
+      - name: ยก Postgres ขึ้นมา
+        run: |
+          set -euo pipefail
+          if ! command -v pg_ctlcluster >/dev/null 2>&1; then
+            echo "runner ไม่มี Postgres ติดมา — ติดตั้งจาก apt"
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql
+          fi
+          sudo systemctl start postgresql
+          for _ in $(seq 1 30); do
+            pg_isready -h 127.0.0.1 -p 5432 >/dev/null 2>&1 && break
+            sleep 1
+          done
+          pg_isready -h 127.0.0.1 -p 5432
+          sudo -u postgres psql -v ON_ERROR_STOP=1 -c \
+            "CREATE USER qvx WITH PASSWORD 'devpass' SUPERUSER;"
+          # ชื่อต้องมีคำว่า test ไม่งั้น uat/guard.ts จะปฏิเสธไม่ยอมรัน
+          sudo -u postgres createdb -O qvx qvx_test
+          echo "Postgres พร้อม: $(psql "postgresql://qvx:devpass@127.0.0.1:5432/qvx_test" -tAc 'select version()')"
 
       - uses: actions/setup-node@v4
         with:
