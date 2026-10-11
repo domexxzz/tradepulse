@@ -7,7 +7,8 @@ import { BROKERS, DEFAULT_BROKER, BROKER_RENEWAL_WINDOW_DAYS } from "@/config/br
 import { BROKER_APPLICATION_STATUS as S } from "@/config/status";
 import { formatThaiDate } from "@/lib/date";
 import { BrokerApplicationForm } from "@/components/account/BrokerApplicationForm";
-import { Clock, CheckCircle2, XCircle, ExternalLink } from "lucide-react";
+import { manualPdf } from "@/config/downloads";
+import { Clock, CheckCircle2, XCircle, ExternalLink, Download } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -140,6 +141,15 @@ export default async function AccountWisdomPage() {
                   ดูคู่มือเปิดบัญชี
                 </Link>
               )}
+              <a
+                href={manualPdf("open-account").href}
+                download={manualPdf("open-account").fileName}
+                target="_blank"
+                rel="noopener"
+                className="inline-flex h-10 items-center gap-1.5 rounded-full border border-border px-5 text-sm hover:bg-surface-2"
+              >
+                <Download className="h-3.5 w-3.5" /> คู่มือ PDF
+              </a>
             </div>
           </div>
 

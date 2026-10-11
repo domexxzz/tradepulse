@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { site, hasLineContact, hasDiscord, discordInviteUrl } from "@/config/site";
+import { MANUAL_PDFS } from "@/config/downloads";
 
 export function Footer() {
   const year = new Date().getFullYear();
@@ -38,6 +39,13 @@ export function Footer() {
                 คู่มือเรียนรู้ทีละขั้น
               </Link>
             </li>
+            {MANUAL_PDFS.map((m) => (
+              <li key={m.id}>
+                <a href={m.href} download={m.fileName} target="_blank" rel="noopener" className="hover:text-foreground">
+                  ดาวน์โหลด{m.title} (PDF)
+                </a>
+              </li>
+            ))}
           </ul>
         </nav>
 

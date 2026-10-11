@@ -5,6 +5,8 @@ import { AlertTriangle, ArrowLeft, ArrowRight, Info } from "lucide-react";
 import { site } from "@/config/site";
 import { OPEN_ACCOUNT_PARTS, OPEN_ACCOUNT_NOTES, OPEN_ACCOUNT_DISCLAIMER } from "@/config/open-account";
 import { JsonLd } from "@/components/seo/JsonLd";
+import { ManualPdfLink } from "@/components/common/ManualDownloads";
+import { manualPdf } from "@/config/downloads";
 
 const title = "คู่มือเปิดบัญชี ฝาก–ถอนเงิน กับโบรก Wisdom";
 const description =
@@ -51,6 +53,10 @@ export default function OpenAccountGuidePage() {
 
       <h1 className="mt-4 font-display text-3xl font-bold sm:text-4xl">{title}</h1>
       <p className="mt-4 max-w-3xl leading-relaxed text-muted">{description}</p>
+
+      <div className="mt-6 max-w-md">
+        <ManualPdfLink pdf={manualPdf("open-account")} />
+      </div>
 
       {/* สารบัญลัด — คู่มือยาว 14 ขั้น ต้องกระโดดไปขั้นที่ค้างได้ */}
       <nav aria-label="ไปยังขั้นตอน" className="mt-8 flex flex-wrap gap-2">

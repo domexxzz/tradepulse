@@ -4,6 +4,7 @@ import { BookOpen, ArrowRight, FileText } from "lucide-react";
 import { site } from "@/config/site";
 import { MANUAL_CHAPTERS } from "@/config/manual";
 import { JsonLd } from "@/components/seo/JsonLd";
+import { ManualDownloads } from "@/components/common/ManualDownloads";
 
 const title = "คู่มือเรียนรู้ QVX ทีละขั้น";
 const description =
@@ -52,6 +53,9 @@ export default function ManualIndexPage() {
       <p className="mt-2 text-sm text-muted">
         อ่านจบหน้าแล้วกดไปหน้าถัดไปได้เลย · {MANUAL_CHAPTERS.length} บท · มีภาพประกอบทุกบท
       </p>
+
+      {/* บนสุดตั้งใจ — ลูกค้าที่กดเมนู "คู่มือ" ส่วนใหญ่มาหาไฟล์ PDF */}
+      <ManualDownloads className="mt-8" />
 
       <ol className="mt-10 space-y-3">
         {MANUAL_CHAPTERS.map((c, i) => (
