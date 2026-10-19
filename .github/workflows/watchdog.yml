@@ -1,0 +1,102 @@
+# เฝ้าเว็บ + ฐานข้อมูล + webhook Telegram จากนอกระบบ แล้วเตือนเข้าห้องแอดมินทาง Telegram เอง
+#
+# ทำไมต้องมี (ต.ค. 2569):
+#   - 15-19 ต.ค. ฐานข้อมูล (Neon) ล็อก เว็บล่มเกือบ 4 วัน สำรองรายคืนก็ล้มทุกคืน แต่ไม่มีใครรู้
+#     เพราะแจ้งเตือนทุกตัวเดิมวิ่งผ่านเว็บ เว็บล่มเลยเงียบหมด ลูกค้ามาบอกเอง
+#   - webhook Telegram ตอบ 401 (รหัสยืนยันไม่ตรงกับ Vercel) อยู่หลายวัน คำขอเข้ากลุ่ม/ผูกบัญชีไม่เข้าเว็บ
+# ตัวนี้รันบน GitHub ไม่พึ่งเว็บ ไม่พึ่งเครื่องที่บ้าน และยิง Telegram ตรงด้วย token ของบอทเอง
+#
+# repo secrets: TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_CHAT_ID, TELEGRAM_ADMIN_TOPIC_ID (ค่าเดียวกับบน Vercel)
+# เตือนตอนเพิ่งพัง, ยังพังอยู่ทุก 3 ชม., และตอนกลับมาปกติ — ดูจากผลรอบก่อนของ workflow นี้เอง
+# GitHub cron เป็น best-effort อาจช้ากว่ากำหนด แต่ยังดีกว่าไม่รู้เลยหลายวัน
+name: watchdog
+
+on:
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+  workflow_dispatch:
+    inputs:
+      test:
+        description: "ส่งข้อความทดสอบเข้าห้องแอดมิน (เช็คว่าช่องเตือนใช้ได้)"
+        type: boolean
+        default: false
+
+permissions:
+  actions: read
+
+concurrency:
+  group: watchdog
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TG_CHAT: ${{ secrets.TELEGRAM_ADMIN_CHAT_ID }}
+      TG_TOPIC: ${{ secrets.TELEGRAM_ADMIN_TOPIC_ID }}
+      GH_TOKEN: ${{ github.token }}
+      SITE: https://quantvisionx.com
+    steps:
+      - name: เช็คเว็บ ฐานข้อมูล และ webhook Telegram
+        # shell ปกติของ GitHub คือ bash -eo pipefail: คำสั่งไหนพังสคริปต์หยุดทันที — ทุกจุดที่พังได้จึงมี || กันไว้
+        run: |
+          send() {
+            if [ -z "$TG_TOKEN" ] || [ -z "$TG_CHAT" ]; then echo "::warning::ไม่ได้ตั้ง secret ของ Telegram — ส่งเตือนไม่ได้"; return 0; fi
+            args=(-s -m 20 -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage"
+              --data-urlencode "chat_id=${TG_CHAT}" --data-urlencode "text=$1" -d disable_web_page_preview=true)
+            [ -n "$TG_TOPIC" ] && args+=(--data-urlencode "message_thread_id=${TG_TOPIC}")
+            echo "Telegram ok: $(curl "${args[@]}" | jq -r '.ok')"
+          }
+          run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+          if [ "${{ inputs.test }}" = "true" ]; then
+            send "🧪 ทดสอบตัวเฝ้าระบบ (watchdog) — ถ้าเห็นข้อความนี้ แปลว่าเว็บล่มเมื่อไหร่ห้องนี้จะได้รับเตือน"
+          fi
+
+          problems=""
+
+          # 1) เว็บ + ฐานข้อมูล — /api/health ถามฐานข้อมูลจริง (หน้าแรกเป็น static ยังตอบ 200 ตอนฐานล่ม)
+          code=$(curl -s -o health.json -w "%{http_code}" -m 30 "$SITE/api/health") || true
+          if [ "$code" != "200" ]; then
+            sleep 20  # กันสะดุดชั่วคราว / cold start
+            code=$(curl -s -o health.json -w "%{http_code}" -m 30 "$SITE/api/health") || true
+          fi
+          echo "health: HTTP ${code} $(cat health.json 2>/dev/null)"
+          if [ "$code" != "200" ]; then
+            problems="${problems}• เว็บ/ฐานข้อมูลใช้ไม่ได้ (/api/health ตอบ HTTP ${code:-000})"$'\n'
+          fi
+
+          # 2) webhook Telegram — error ภายใน 30 นาที และยังมีคิวค้าง = ยังส่งไม่เข้าเว็บอยู่จริง
+          if [ -n "$TG_TOKEN" ]; then
+            info=$(curl -s -m 20 "https://api.telegram.org/bot${TG_TOKEN}/getWebhookInfo") || info="{}"
+            pending=$(echo "$info" | jq -r '.result.pending_update_count // 0')
+            errdate=$(echo "$info" | jq -r '.result.last_error_date // 0')
+            errmsg=$(echo "$info" | jq -r '.result.last_error_message // ""')
+            echo "webhook: pending=${pending} last_error=${errdate} ${errmsg}"
+            if [ "$errdate" -gt $(( $(date +%s) - 1800 )) ] && [ "$pending" -gt 0 ]; then
+              problems="${problems}• webhook Telegram ส่งไม่เข้าเว็บ: ${errmsg} (ค้าง ${pending} รายการ)"$'\n'
+            fi
+          fi
+
+          # ผลรอบก่อนของ workflow นี้ (รอบที่จบแล้วล่าสุด) — ใช้ตัดสินว่าจะเตือนไหม ไม่ให้เด้งทุก 15 นาที
+          prev=$(gh run list -R "$GITHUB_REPOSITORY" --workflow watchdog.yml --status completed --limit 1 \
+            --json conclusion -q '.[0].conclusion' 2>/dev/null) || prev=""
+          hour=$(TZ=Asia/Bangkok date +%-H); minute=$(TZ=Asia/Bangkok date +%-M)
+          echo "previous run: ${prev:-none}"
+
+          if [ -n "$problems" ]; then
+            printf "%s" "$problems"
+            if [ "$prev" != "failure" ]; then
+              send "🚨 QVX ระบบมีปัญหา"$'\n'"${problems}"$'\n'"เช็คจาก GitHub: ${run_url}"
+            elif [ $(( hour % 3 )) -eq 0 ] && [ "$minute" -lt 15 ]; then
+              send "⏳ QVX ยังมีปัญหาอยู่"$'\n'"${problems}"$'\n'"${run_url}"
+            fi
+            exit 1
+          fi
+
+          echo "ปกติดี"
+          if [ "$prev" = "failure" ]; then
+            send "✅ QVX กลับมาปกติแล้ว — เว็บ ฐานข้อมูล และ webhook Telegram ใช้ได้"
+          fi
