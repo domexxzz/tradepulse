@@ -64,7 +64,9 @@ if (action === "set") {
     // จะส่งภาพหลักฐานสิทธิ์หรือแจ้งเตือนใกล้หมดอายุหาสมาชิกไม่ได้เลย
     // webhook กรองเองอยู่แล้วว่ารับเฉพาะ /start จากแชทส่วนตัว
     allowed_updates: ["chat_join_request", "message"],
-    drop_pending_updates: true,
+    // ห้ามทิ้งคิว: ในคิวคือคำขอเข้ากลุ่ม/การผูกบัญชีของลูกค้าที่รออยู่ (Telegram เก็บไว้ 24 ชม.)
+    // 19 ต.ค. 69 webhook ตอบ 401 เพราะรหัสไม่ตรง ตั้งใหม่แบบเก็บคิวไว้ คิวค้าง 7 รายการเข้าเว็บครบ
+    drop_pending_updates: false,
   });
   console.log(r.ok ? `✅ ตั้ง webhook แล้ว: ${url}` : `❌ ล้มเหลว: ${r.description}`);
 } else if (action === "delete") {
