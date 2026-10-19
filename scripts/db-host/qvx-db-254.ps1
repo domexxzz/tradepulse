@@ -5,6 +5,7 @@
 #   powershell -NoProfile -ExecutionPolicy Bypass -File C:\QVXDB\qvx-db-254.ps1 -Phase setup
 #   ... -Phase restore                  กู้ไฟล์ .dump ใหม่สุดใน C:\QVXDB (หรือ -Dump <ไฟล์>)
 #   ... -Phase cloud -Dump <ไฟล์>        เน็ตเป็น CGNAT: กู้ไฟล์สำรองขึ้น Supabase แทน แล้วเตรียมค่าไปใส่ Vercel
+#   ... -Phase merge [-Apply]           เติมข้อมูลหลังไฟล์สำรองจาก Neon เข้า Supabase (เทียบสามทางกับฐานในเครื่อง)
 #   ... -Phase backup                   ให้สำรองรายคืน (QVXDatabaseBackup) ดึงจาก Supabase แทน Neon + ลองสำรองทันที
 #   ... -Phase portmap [-CheckOnly]      เปิดพอร์ต 55432 ที่เราเตอร์ผ่าน UPnP + เช็ค CGNAT (ไม่ต้องล็อกอินเราเตอร์)
 #   ... -Phase ddns -Domain <ชื่อ>       ตั้ง DuckDNS อัปเดตทุก 5 นาที (IP เน็ตบ้านเปลี่ยนได้)
@@ -18,10 +19,11 @@
 #
 # ข้อความเป็นภาษาอังกฤษล้วนตั้งใจ — คอนโซลภาษาไทยของ Windows เป็น cp874
 param(
-  [ValidateSet('setup', 'restore', 'cloud', 'backup', 'portmap', 'ddns', 'url')][string]$Phase = 'setup',
+  [ValidateSet('setup', 'restore', 'cloud', 'merge', 'backup', 'portmap', 'ddns', 'url')][string]$Phase = 'setup',
   [string]$Dump,
   [switch]$CheckOnly,
   [switch]$NoTask,
+  [switch]$Apply,     # -Phase merge: ทำจริง (ไม่ใส่ = นับอย่างเดียวแล้ว rollback)
   [switch]$AnyHost,   # ทดสอบเท่านั้น: ไม่บังคับว่า URL ต้องเป็น host/พอร์ตของ Supabase
   [string]$Domain,
   [string]$PublicHost,
@@ -434,6 +436,169 @@ alter default privileges for role postgres in schema public revoke all on functi
   ''
   if ($ok) { 'CLOUD RESTORE OK' } else { 'CLOUD RESTORE HAS DIFFERENCES - send this screen to Claude' }
   "Next: notepad $out   -> copy the two values into Vercel, then delete the file"
+  return
+}
+
+# ---- เติมข้อมูลที่ขาดจาก Neon เข้า Supabase (ต.ค. 2569) ----
+# Supabase กู้จากไฟล์สำรอง 15 ต.ค. 08:39 · Neon (อัปเกรดชั่วคราว) ยังมีข้อมูลหลังจากนั้นจนถึงตอนล็อก
+# เทียบสามทาง: base = ฐาน qvx ในเครื่องนี้ (กู้จากไฟล์สำรองเดียวกัน ไม่มีอะไรเขียนลงไปอีก) · neon · supabase (ใช้งานจริง)
+#   แถวใหม่ใน Neon (ไม่มีทั้งใน base และ supabase)        → เพิ่ม
+#   แถวที่ Neon แก้ แต่ supabase ยังเหมือน base            → แก้ตาม Neon
+#   แก้ทั้งสองฝั่ง → เก็บของ supabase · ถูกลบฝั่งใดฝั่งหนึ่ง → ไม่ฟื้น  (นับให้เห็นในรายงาน)
+#   แถวใหม่ที่ค่า unique ชนกับของใน supabase (เช่น ลูกค้าสมัครใหม่ด้วยอีเมลเดิม) → หยุด ไม่ทำอะไร
+# ทำในทรานแซกชันเดียว: ไม่ใส่ -Apply = นับแล้ว rollback · -Apply = สำรอง supabase ก่อน แล้วทำจริง
+# ตารางสถานะชั่วคราว (RateLimit, BridgeEndpoint, token ต่าง ๆ, _prisma_migrations) ไม่แตะ — ของ supabase ใหม่กว่า
+$MergeTables = 'User', 'Account', 'Plan', 'Subscription', 'AccessGrant', 'Payment', 'Review', 'Signal', 'TelegramGrant',
+  'SlipOrder', 'Subscriber', 'BrokerApplication', 'BrokerEvent', 'AiConversation', 'AiMessage', 'AiUsage'
+
+function Invoke-PsqlFile([string]$conn, [string]$pass, [string]$file) {
+  $ErrorActionPreference = 'Continue'
+  $env:PGPASSWORD = $pass
+  $r = & "$PgBin\psql.exe" -X -q -t -A -F '|' -v ON_ERROR_STOP=1 -d $conn -f $file 2>&1
+  $code = $LASTEXITCODE
+  $env:PGPASSWORD = $null
+  if ($code -ne 0) { throw (Hide (($r | Out-String).Trim())) }
+  return @($r | Where-Object { $_ -isnot [Management.Automation.ErrorRecord] -and "$_".Trim() -ne '' } | ForEach-Object { "$_" })
+}
+function Get-MergeSchema([string]$conn, [string]$pass) {
+  $list = ($MergeTables | ForEach-Object { "'$_'" }) -join ','
+  $cols = @{}
+  foreach ($row in @(Q $conn $pass "select table_name, string_agg(format('%I', column_name), ',' order by ordinal_position) from information_schema.columns where table_schema = 'public' and table_name in ($list) group by table_name")) {
+    $t, $c = $row -split '\|', 2; $cols[$t] = $c
+  }
+  $missing = @($MergeTables | Where-Object { -not $cols.ContainsKey($_) })
+  if ($missing.Count) { throw "Supabase has no table: $($missing -join ', ')" }
+  # ลำดับเพิ่มแถว: ตารางแม่ก่อนลูก (foreign key)
+  $edges = @(Q $conn $pass "select c.relname, p.relname from pg_constraint k join pg_class c on c.oid = k.conrelid join pg_class p on p.oid = k.confrelid join pg_namespace n on n.oid = c.relnamespace where k.contype = 'f' and n.nspname = 'public'")
+  $parents = @{}; foreach ($t in $MergeTables) { $parents[$t] = @() }
+  foreach ($e in $edges) { $c, $p = $e -split '\|'; if ($parents.ContainsKey($c) -and $p -ne $c -and $MergeTables -contains $p) { $parents[$c] += $p } }
+  $order = New-Object Collections.Generic.List[string]
+  while ($order.Count -lt $MergeTables.Count) {
+    $next = @($MergeTables | Where-Object { -not $order.Contains($_) -and -not @($parents[$_] | Where-Object { -not $order.Contains($_) }).Count })
+    if (-not $next.Count) { throw 'Foreign keys form a cycle - cannot order the inserts' }
+    $order.AddRange([string[]]$next)
+  }
+  $uniques = @{}
+  foreach ($row in @(Q $conn $pass "select t.relname, string_agg(format('%I', a.attname), ',' order by k.ord) from pg_index x join pg_class t on t.oid = x.indrelid join pg_namespace ns on ns.oid = t.relnamespace cross join lateral unnest(x.indkey) with ordinality k(attnum, ord) join pg_attribute a on a.attrelid = t.oid and a.attnum = k.attnum where ns.nspname = 'public' and x.indisunique and not x.indisprimary group by t.relname, x.indexrelid")) {
+    $t, $c = $row -split '\|', 2
+    if (-not $uniques.ContainsKey($t)) { $uniques[$t] = @() }
+    $uniques[$t] += $c
+  }
+  return [pscustomobject]@{ Cols = $cols; Order = $order.ToArray(); Uniques = $uniques }
+}
+function Export-Tables([string]$conn, [string]$pass, $schema, [string]$prefix, [string]$dir) {
+  $sql = foreach ($t in $MergeTables) {
+    $file = (Join-Path $dir "$prefix$t.csv") -replace '\\', '/'
+    "\copy (select $($schema.Cols[$t]) from public.`"$t`") to '$file' with (format csv)"
+  }
+  $f = Join-Path $dir "export-$prefix.sql"
+  [IO.File]::WriteAllLines($f, [string[]]$sql)
+  [void](Invoke-PsqlFile $conn $pass $f)
+}
+function New-MergeSql($schema, [string]$dir, [bool]$apply) {
+  $q = { param($t) "public.`"$t`"" }
+  $lines = New-Object Collections.Generic.List[string]
+  $lines.Add('begin;')
+  foreach ($t in $MergeTables) {
+    foreach ($p in 'n', 'b') {
+      $file = (Join-Path $dir "$p$t.csv") -replace '\\', '/'
+      $lines.Add("create temp table `"${p}_$t`" (like $(& $q $t));")
+      $lines.Add("\copy `"${p}_$t`" ($($schema.Cols[$t])) from '$file' with (format csv)")
+    }
+  }
+  foreach ($t in $MergeTables) {
+    $n = "`"n_$t`""; $b = "`"b_$t`""; $p = & $q $t
+    $isNew = "not exists (select 1 from $p p where p.id = n.id) and not exists (select 1 from $b b where b.id = n.id)"
+    # ตารางที่ไม่มี unique key: $null | ForEach-Object ยังวนหนึ่งรอบ จึงต้องกรองทิ้งก่อน
+    $clash = @($schema.Uniques[$t] | Where-Object { $_ } | ForEach-Object {
+        $cs = $_ -split ','
+        $pc = ($cs | ForEach-Object { "p.$_" }) -join ', '; $nc = ($cs | ForEach-Object { "n.$_" }) -join ', '
+        "(select count(*) from $n n where $isNew and exists (select 1 from $p p where p.id <> n.id and ($pc) = ($nc)))"
+      })
+    $clashExpr = if ($clash.Count) { $clash -join ' + ' } else { '0' }
+    $newest = if ($schema.Cols[$t] -match '"createdAt"') { "(select coalesce(to_char(max(""createdAt"") + interval '7 hours', 'YYYY-MM-DD HH24:MI'), '-') from $n)" } else { "'-'" }
+    $lines.Add("select 'R', '$t'," +
+      " (select count(*) from $n n where $isNew)," +
+      " (select count(*) from $n n join $b b on b.id = n.id join $p p on p.id = n.id where to_jsonb(n) <> to_jsonb(b) and to_jsonb(p) = to_jsonb(b))," +
+      " (select count(*) from $n n join $b b on b.id = n.id join $p p on p.id = n.id where to_jsonb(n) <> to_jsonb(b) and to_jsonb(p) <> to_jsonb(b) and to_jsonb(p) <> to_jsonb(n))," +
+      " (select count(*) from $b b where not exists (select 1 from $n n where n.id = b.id))," +
+      " (select count(*) from $n n where not exists (select 1 from $p p where p.id = n.id) and exists (select 1 from $b b where b.id = n.id))," +
+      " $clashExpr, $newest;")
+  }
+  if ($apply) {
+    foreach ($t in $schema.Order) {
+      $cols = $schema.Cols[$t]; $n = "`"n_$t`""; $b = "`"b_$t`""; $p = & $q $t
+      $ncols = ($cols -split ',' | ForEach-Object { "n.$_" }) -join ', '
+      $lines.Add("insert into $p ($cols) select $ncols from $n n where not exists (select 1 from $p p where p.id = n.id) and not exists (select 1 from $b b where b.id = n.id);")
+    }
+    foreach ($t in $schema.Order) {
+      $n = "`"n_$t`""; $b = "`"b_$t`""; $p = & $q $t
+      $set = (($schema.Cols[$t] -split ',') | Where-Object { $_ -ne 'id' -and $_ -ne '"id"' } | ForEach-Object { "$_ = n.$_" }) -join ', '
+      if ($set) { $lines.Add("update $p as p set $set from $n n join $b b on b.id = n.id where p.id = n.id and to_jsonb(n) <> to_jsonb(b) and to_jsonb(p) = to_jsonb(b);") }
+    }
+    foreach ($t in $MergeTables) {
+      $lines.Add("select 'C', '$t', (select count(*) from `"n_$t`" n where not exists (select 1 from public.`"$t`" p where p.id = n.id) and not exists (select 1 from `"b_$t`" b where b.id = n.id)), (select count(*) from public.`"$t`");")
+    }
+    $lines.Add('commit;')
+  } else { $lines.Add('rollback;') }
+  $f = Join-Path $dir 'merge.sql'
+  [IO.File]::WriteAllLines($f, [string[]]$lines)
+  return $f
+}
+
+if ($Phase -eq 'merge') {
+  $neon = Read-Secret 'Neon connection string (Neon console > Connect)'
+  $supa = Read-Secret 'Supabase Session pooler URL (port 5432 - the DIRECT_URL)'
+  $secrets.Add($neon); $secrets.Add($supa)
+  $neon = $neon.Trim('"'); $supa = ($supa.Trim('"') -split '\?')[0]
+  if ($neon -notmatch '^postgres(?:ql)?://[^:/@]+:[^@]+@([^:/@?]+)' -or (-not $AnyHost -and $matches[1] -notlike '*.neon.tech')) { throw 'Neon URL is not postgresql://user:password@...neon.tech/...' }
+  Assert-SupabaseUrl 'Session pooler' $supa '5432'
+  $app = Get-AppPassword
+  $base = "host=127.0.0.1 port=$port dbname=qvx user=qvx_app sslmode=disable"
+  'Neon login: ' + (One $neon '' 'select current_user')
+  'Supabase login: ' + (One $supa '' 'select current_user')
+  'Base (this PC, restored 15 Oct backup) login: ' + (One $base $app 'select current_user')
+
+  $schema = Get-MergeSchema $supa ''
+  $dir = Join-Path $root 'merge'
+  # ไฟล์ CSV ในนี้คือข้อมูลลูกค้า อยู่แค่ระหว่างรัน — finally ลบทิ้งเสมอ
+  New-Item -ItemType Directory -Force $dir | Out-Null
+  try {
+    'Reading Neon and the base copy...'
+    Export-Tables $neon '' $schema 'n' $dir
+    Export-Tables $base $app $schema 'b' $dir
+
+    $report = @(Invoke-PsqlFile $supa '' (New-MergeSql $schema $dir $false))
+    ''
+    '  {0,-18} {1,6} {2,8} {3,10} {4,12} {5,12} {6,6}  {7}' -f 'table', 'new', 'changed', 'both-edit', 'gone-in-neon', 'gone-in-supa', 'CLASH', 'newest in Neon (Thai)'
+    $clashes = 0; $toAdd = 0; $toUpd = 0
+    foreach ($r in $report | Where-Object { $_ -like 'R|*' }) {
+      $x = $r -split '\|'
+      $clashes += [int]$x[7]; $toAdd += [int]$x[2]; $toUpd += [int]$x[3]
+      '  {0,-18} {1,6} {2,8} {3,10} {4,12} {5,12} {6,6}  {7}' -f $x[1], $x[2], $x[3], $x[4], $x[5], $x[6], $x[7], $x[8]
+    }
+    ''
+    "Rows to add: $toAdd   rows to update: $toUpd   unique clashes: $clashes"
+    if (-not $Apply) { 'PLAN ONLY - nothing changed. Run again with -Apply to merge.'; return }
+    if ($clashes -gt 0) { 'STOPPED: some new rows clash with rows already in Supabase (e.g. a customer signed up again). Send this screen to Claude.'; return }
+    if ($toAdd + $toUpd -eq 0) { 'Nothing to merge.'; return }
+
+    # สำรอง supabase ก่อนแตะ — ถ้าผลไม่ถูกใจ กู้กลับจากไฟล์นี้ได้
+    $preDir = if (Test-Path 'C:\QVXBackup\daily') { 'C:\QVXBackup\daily' } else { $root }
+    $pre = Join-Path $preDir ('qvx-{0:yyyyMMdd-HHmm}-premerge.dump' -f (Get-Date))
+    $ErrorActionPreference = 'Continue'
+    & "$PgBin\pg_dump.exe" -Fc --no-owner --no-acl --schema=public -f $pre -d $supa 2>&1 | ForEach-Object { '  pg_dump: ' + (Hide "$_") }
+    $ErrorActionPreference = 'Stop'
+    if (-not (Test-Path $pre) -or -not (Get-DumpCreated $pre)) { throw "Safety backup failed ($pre) - not merging" }
+    'Safety backup of Supabase: {0} ({1:N0} KB)' -f $pre, ((Get-Item $pre).Length / 1KB)
+
+    $after = @(Invoke-PsqlFile $supa '' (New-MergeSql $schema $dir $true))
+    $left = 0
+    foreach ($r in $after | Where-Object { $_ -like 'C|*' }) { $x = $r -split '\|'; $left += [int]$x[2]; '  {0,-18} rows now {1,7}' -f $x[1], $x[3] }
+    if ($left -eq 0) { "MERGE OK - added $toAdd, updated $toUpd" } else { "MERGE INCOMPLETE - $left new rows still missing. Send this screen to Claude." }
+  } finally {
+    Remove-Item $dir -Recurse -Force -ErrorAction SilentlyContinue
+  }
   return
 }
 
