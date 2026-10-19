@@ -1,5 +1,15 @@
 # สำรองฐานข้อมูล
 
+> **ตั้งแต่ 19 ต.ค. 2569 ฐานข้อมูลจริงอยู่บน Supabase** (โปรเจกต์ tradepulse, us-east-1) — ดู `docs/DB-SERVER-254.md`
+> - `backup.env` บนคอมเฟิร์สชี้ session pooler ของ Supabase แล้ว (`qvx-db-254.ps1 -Phase backup`)
+>   รอบแรกสำเร็จ 19 ต.ค. 22:32 · 38.6 MB
+> - **เหตุการณ์:** Neon แพ็กเกจฟรีหมดโควตาราว 15–16 ต.ค. pg_dump ล้มทุกคืนจนถึง 19 ต.ค. แต่ไม่มีใครรู้
+>   เพราะทั้งแจ้งเตือนและ heartbeat ส่งผ่านเว็บ ซึ่งล่มไปพร้อมฐานข้อมูล — ช่องโหว่นี้ยังไม่ได้ปิด
+> - สำรองจาก Supabase มี schema ของ Supabase เอง (`auth`, `storage` ฯลฯ) ติดมาด้วย
+>   ข้อมูลเว็บอยู่ใน `public` ทั้งหมด **กู้ด้วย `--schema=public` เสมอ**
+>
+> เนื้อหาด้านล่างเขียนตอนยังใช้ Neon
+
 ฐานข้อมูลจริงอยู่บน **Neon** (`Webpeenot` → `neondb`, AWS โอไฮโอ, Postgres 18.6)
 ข้อมูลลูกค้าทั้งหมดอยู่ที่นั่นที่เดียว และโปรเจกต์อยู่บนบัญชีที่ใช้แผนฟรี
 
@@ -74,7 +84,7 @@ scp oneye@100.107.33.82:'C:/QVXBackup/daily/qvx-*.dump' ./
 
 # 2. กู้เข้าฐานข้อมูลเปล่าเพื่อตรวจก่อนเสมอ — ห้ามกู้ทับ production ตรง ๆ
 PGB=$(brew --prefix postgresql@18)/bin
-$PGB/pg_restore -d "<connection string ของฐานข้อมูลเปล่า>" --no-owner --no-acl qvx-XXXX.dump
+$PGB/pg_restore -d "<connection string ของฐานข้อมูลเปล่า>" --no-owner --no-acl --schema=public qvx-XXXX.dump
 ```
 
 **pg_dump/pg_restore ต้องเป็นเวอร์ชันเดียวกับเซิร์ฟเวอร์ (18.x)** — ตัว 16 ของ Homebrew

@@ -343,7 +343,8 @@ function Restore-Dump([string]$conn, [string]$pass) {
   Write-Host 'Restoring...'
   $ErrorActionPreference = 'Continue'
   $env:PGPASSWORD = $pass
-  $log = & "$PgBin\pg_restore.exe" --no-owner --no-acl -d $conn $pick.File.FullName 2>&1
+  # --schema=public: สำรองจาก Supabase มี schema ของ Supabase เอง (auth, storage ฯลฯ) ติดมาด้วย ข้อมูลเว็บอยู่ใน public ทั้งหมด
+  $log = & "$PgBin\pg_restore.exe" --no-owner --no-acl --schema=public -d $conn $pick.File.FullName 2>&1
   $env:PGPASSWORD = $null
   $errs = @($log | Where-Object { "$_" -match 'error' })
   Write-Host "pg_restore error lines: $($errs.Count)"
