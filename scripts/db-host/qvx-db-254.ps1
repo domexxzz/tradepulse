@@ -5,6 +5,7 @@
 #   powershell -NoProfile -ExecutionPolicy Bypass -File C:\QVXDB\qvx-db-254.ps1 -Phase setup
 #   ... -Phase restore                  กู้ไฟล์ .dump ใหม่สุดใน C:\QVXDB (หรือ -Dump <ไฟล์>)
 #   ... -Phase cloud -Dump <ไฟล์>        เน็ตเป็น CGNAT: กู้ไฟล์สำรองขึ้น Supabase แทน แล้วเตรียมค่าไปใส่ Vercel
+#   ... -Phase backup                   ให้สำรองรายคืน (QVXDatabaseBackup) ดึงจาก Supabase แทน Neon + ลองสำรองทันที
 #   ... -Phase portmap [-CheckOnly]      เปิดพอร์ต 55432 ที่เราเตอร์ผ่าน UPnP + เช็ค CGNAT (ไม่ต้องล็อกอินเราเตอร์)
 #   ... -Phase ddns -Domain <ชื่อ>       ตั้ง DuckDNS อัปเดตทุก 5 นาที (IP เน็ตบ้านเปลี่ยนได้)
 #   ... -Phase url -PublicHost <ชื่อ>.duckdns.org [-PublicPort 55432]
@@ -17,7 +18,7 @@
 #
 # ข้อความเป็นภาษาอังกฤษล้วนตั้งใจ — คอนโซลภาษาไทยของ Windows เป็น cp874
 param(
-  [ValidateSet('setup', 'restore', 'cloud', 'portmap', 'ddns', 'url')][string]$Phase = 'setup',
+  [ValidateSet('setup', 'restore', 'cloud', 'backup', 'portmap', 'ddns', 'url')][string]$Phase = 'setup',
   [string]$Dump,
   [switch]$CheckOnly,
   [switch]$NoTask,
@@ -374,6 +375,15 @@ if ($Phase -eq 'restore') {
   return
 }
 
+function Assert-SupabaseUrl([string]$name, [string]$url, [string]$wantPort) {
+  if ($url -match '\[YOUR-PASSWORD\]') { throw "$name URL still has [YOUR-PASSWORD] - put the database password in" }
+  if ($url -notmatch '^postgres(?:ql)?://[^:/@]+:[^@]+@([^:/@]+):(\d+)/[^?]+$') {
+    throw "$name URL is not postgresql://user:password@host:port/postgres - if the password has symbols like @ # / ? reset it to letters and digits only (Supabase > Project Settings > Database)"
+  }
+  $h = $matches[1]; $p = $matches[2]
+  if (-not $AnyHost -and ($h -notlike '*.pooler.supabase.com' -or $p -ne $wantPort)) { throw "$name URL: host/port is ${h}:$p, expected *.pooler.supabase.com:$wantPort" }
+}
+
 if ($Phase -eq 'cloud') {
   # เน็ตบ้าน 3BB เป็น CGNAT (WAN ของเราเตอร์เป็น 10.x) เว็บบน Vercel ต่อเข้ามาที่เครื่องนี้ไม่ได้
   # จึงกู้ไฟล์สำรองขึ้น Supabase (ฟรี เปิดตลอด ไม่นับชั่วโมงแบบ Neon) จากเครื่องนี้แทน
@@ -383,14 +393,8 @@ if ($Phase -eq 'cloud') {
   $secrets.Add($tx); $secrets.Add($session)
   # หน้า Prisma ของ Supabase แถม ?pgbouncer=true มาด้วย — ตัด query ทิ้งแล้วเติมของเราเอง
   $tx = ($tx -split '\?')[0]; $session = ($session -split '\?')[0]
-  foreach ($c in @(@('Transaction pooler', $tx, '6543'), @('Session pooler', $session, '5432'))) {
-    if ($c[1] -match '\[YOUR-PASSWORD\]') { throw "$($c[0]) URL still has [YOUR-PASSWORD] - put the database password in" }
-    if ($c[1] -notmatch '^postgres(?:ql)?://[^:/@]+:[^@]+@([^:/@]+):(\d+)/[^?]+$') {
-      throw "$($c[0]) URL is not postgresql://user:password@host:port/postgres - if the password has symbols like @ # / ? reset it to letters and digits only (Supabase > Project Settings > Database)"
-    }
-    $h = $matches[1]; $p = $matches[2]
-    if (-not $AnyHost -and ($h -notlike '*.pooler.supabase.com' -or $p -ne $c[2])) { throw "$($c[0]) URL: host/port is ${h}:$p, expected *.pooler.supabase.com:$($c[2])" }
-  }
+  Assert-SupabaseUrl 'Transaction pooler' $tx '6543'
+  Assert-SupabaseUrl 'Session pooler' $session '5432'
   'Transaction pooler login: ' + (One $tx '' 'select current_user')
   'Session pooler login: ' + (One $session '' 'select current_user')
 
@@ -429,6 +433,68 @@ alter default privileges for role postgres in schema public revoke all on functi
   ''
   if ($ok) { 'CLOUD RESTORE OK' } else { 'CLOUD RESTORE HAS DIFFERENCES - send this screen to Claude' }
   "Next: notepad $out   -> copy the two values into Vercel, then delete the file"
+  return
+}
+
+if ($Phase -eq 'backup') {
+  # สำรองรายคืนเดิม (งาน QVXDatabaseBackup ตี 3 → C:\QVXBackup\db-backup.ps1, docs/BACKUP.md) ยังดึงจาก Neon ที่ล็อกอยู่
+  # สำเร็จครั้งสุดท้าย 15 ต.ค. 08:39 · เปลี่ยน DATABASE_URL ใน backup.env ให้ดึงจาก Supabase แล้วสั่งงานรันทันทีหนึ่งรอบ
+  # ใช้ session pooler (5432) — pg_dump ผ่าน transaction pooler (6543) ไม่ได้
+  if (-not $isAdmin) { throw 'Run PowerShell as Administrator' }
+  $bkRoot = 'C:\QVXBackup'
+  $envFile = Join-Path $bkRoot 'backup.env'
+  $job = Join-Path $bkRoot 'db-backup.ps1'
+  $statusFile = Join-Path $bkRoot 'STATUS.txt'
+  if (-not (Test-Path $job)) { throw "Not found: $job (see docs/BACKUP.md)" }
+  'Before - last result: ' + $(if (Test-Path $statusFile) { (Get-Content $statusFile -TotalCount 1) } else { '(no STATUS.txt)' })
+
+  $session = Read-Secret 'Supabase Session pooler URL (port 5432) with the current database password'
+  $secrets.Add($session)
+  $session = ($session -split '\?')[0]
+  Assert-SupabaseUrl 'Session pooler' $session '5432'
+  'Supabase login: ' + (One $session '' 'select current_user')
+
+  # คงค่าอื่นในไฟล์ไว้ (BACKUP_ALERT_SECRET ฯลฯ) เปลี่ยนแค่ DATABASE_URL · PG_BIN ต้องชี้ที่ที่มี pg_dump 18 จริง
+  $lines = if (Test-Path $envFile) { @(Get-Content $envFile) } else { @() }
+  if (Test-Path $envFile) { Copy-Item $envFile "$envFile.before-supabase" -Force; Lock-File "$envFile.before-supabase" }
+  $lines = @($lines | Where-Object { $_ -notmatch '^\s*DATABASE_URL\s*=' }) + "DATABASE_URL=$session"
+  $pgBinNow = ($lines | Where-Object { $_ -match '^\s*PG_BIN\s*=' } | Select-Object -Last 1) -replace '^\s*PG_BIN\s*=\s*', ''
+  if (-not $pgBinNow) { $pgBinNow = 'C:\PostgreSQL18\bin' }
+  if (-not (Test-Path (Join-Path $pgBinNow 'pg_dump.exe'))) {
+    $lines = @($lines | Where-Object { $_ -notmatch '^\s*PG_BIN\s*=' }) + "PG_BIN=$PgBin"
+    "PG_BIN: $pgBinNow has no pg_dump.exe - switched to $PgBin"
+  }
+  [IO.File]::WriteAllLines($envFile, [string[]]$lines, (New-Object Text.UTF8Encoding $false))
+  Lock-File $envFile
+  "backup.env: DATABASE_URL now points at Supabase (old file kept as backup.env.before-supabase, admins only)"
+
+  $task = Get-ScheduledTask -TaskName 'QVXDatabaseBackup' -ErrorAction SilentlyContinue
+  if (-not $task) {
+    $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -ExecutionPolicy Bypass -File $job"
+    $trigger = New-ScheduledTaskTrigger -Daily -At 3am
+    $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Hours 1)
+    Register-ScheduledTask -TaskName 'QVXDatabaseBackup' -Action $action -Trigger $trigger -Settings $settings -User 'SYSTEM' -RunLevel Highest | Out-Null
+    'Task QVXDatabaseBackup: was missing - created (daily 03:00, SYSTEM, runs late if the PC was off)'
+  } elseif ($task.State -eq 'Disabled') {
+    Enable-ScheduledTask -TaskName 'QVXDatabaseBackup' | Out-Null
+    'Task QVXDatabaseBackup: was DISABLED - enabled it'
+  }
+  $info = Get-ScheduledTaskInfo -TaskName 'QVXDatabaseBackup'
+  'Task QVXDatabaseBackup: last run {0:yyyy-MM-dd HH:mm} (result {1}), next run {2:yyyy-MM-dd HH:mm}' -f $info.LastRunTime, $info.LastTaskResult, $info.NextRunTime
+
+  # สั่งผ่านงานตั้งเวลา (รันเป็น SYSTEM แบบเดียวกับตอนตี 3) จะได้รู้ว่าคืนนี้ผ่านจริง ไม่ใช่แค่ผ่านตอนเรารันเอง
+  'Running a backup now through the task (1-3 minutes)...'
+  $before = (Get-Item $statusFile -ErrorAction SilentlyContinue).LastWriteTime
+  Start-ScheduledTask -TaskName 'QVXDatabaseBackup'
+  $until = (Get-Date).AddMinutes(15)
+  do { Start-Sleep -Seconds 5 } while ((Get-ScheduledTask -TaskName 'QVXDatabaseBackup').State -eq 'Running' -and (Get-Date) -lt $until)
+  $after = (Get-Item $statusFile -ErrorAction SilentlyContinue).LastWriteTime
+  $status = if (Test-Path $statusFile) { Get-Content $statusFile -TotalCount 1 } else { '' }
+  "Result: $status"
+  $newest = Get-ChildItem (Join-Path $bkRoot 'daily') -Filter 'qvx-*.dump' | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+  if ($newest) { 'Newest backup: {0}  ({1:N0} KB)' -f $newest.Name, ($newest.Length / 1KB) }
+  $fresh = $newest -and $newest.LastWriteTime -gt (Get-Date).AddMinutes(-20) -and $after -ne $before
+  if ($fresh) { 'BACKUP OK' } else { 'BACKUP DID NOT PRODUCE A NEW FILE - send this screen to Claude'; Get-Content (Join-Path $bkRoot 'backup.log') -Tail 6 }
   return
 }
 
