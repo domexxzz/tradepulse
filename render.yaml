@@ -26,6 +26,8 @@ services:
       - key: NODE_VERSION
         value: "22"
       # เว็บรันเป็นเซิร์ฟเวอร์ตัวเดียวตลอดเวลา ต่อฐานข้อมูลผ่าน internal network ของ Render ตรง ๆ
+      # ค่าชี้ไปที่ "default credential" ของฐาน — สร้าง credential ใหม่ (หมุนรหัส) แล้ว Blueprint sync
+      # ค่านี้จะเปลี่ยนตามเอง (หมุนครั้งแรก 20 ต.ค. 69: qvx → qvx_app เพราะ URL เดิมหลุดในแชท)
       - key: DATABASE_URL
         fromDatabase:
           name: qvx-db
