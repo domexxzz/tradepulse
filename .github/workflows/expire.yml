@@ -1,0 +1,29 @@
+# เคลียร์แพ็กเกจที่หมดอายุ วันละครั้ง (08:00 เวลาไทย) — แทน Vercel Cron เดิมใน vercel.json
+# ย้ายเว็บไป Render แล้ว (ต.ค. 2569) Render ไม่มี cron ในตัวเว็บ จึงให้ GitHub เรียกแทน
+# ใช้ repo secret CRON_SECRET (ค่าเดียวกับบน Render) ส่งเป็น Bearer แบบเดียวกับที่ Vercel Cron เคยส่ง
+name: expire
+
+on:
+  schedule:
+    - cron: "0 1 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  expire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: เรียก /api/cron/expire
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          code=$(curl -s -o out.txt -w "%{http_code}" -m 120 \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "https://quantvisionx.com/api/cron/expire") || true
+          echo "HTTP ${code}"
+          cat out.txt || true
+          echo ""
+          if [ "${code}" != "200" ]; then
+            echo "expire ไม่ตอบ 200"
+            exit 1
+          fi

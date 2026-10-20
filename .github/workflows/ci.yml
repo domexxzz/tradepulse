@@ -114,35 +114,6 @@ jobs:
       - name: ตรวจ lint
         run: npm run lint
 
-  # ดัน production เอง เพราะ Vercel บล็อก deploy ที่ commit author ไม่มีสิทธิ์ในโปรเจกต์
-  # (โปรเจกต์อยู่บัญชีโดม คน merge คือเบส) ก่อนหน้านี้ต้องรันสคริปต์เองหลัง merge ทุกครั้ง
-  # ซึ่งลืมได้ง่าย และลืมไปแล้วจริงกับ #31 — เว็บค้างของเก่าอยู่เงียบ ๆ หลายชั่วโมง
-  #
-  # deployment ที่สร้างจาก token ไม่ผูกกับ commit author จึงไม่โดนบล็อก
-  # ต้องตั้ง repo secret: VERCEL_TOKEN (project token ของ tradepulse)
-  # ถ้าย้ายบัญชี Vercel สำเร็จเมื่อไหร่ ลบ job นี้กับ scripts/deploy-vercel.mjs ทิ้งได้เลย
-  deploy:
-    needs: verify
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    # กัน deploy ซ้อนกันเมื่อ merge ติด ๆ กัน — ปล่อยตัวที่รันอยู่ให้จบก่อน ไม่ cancel
-    concurrency:
-      group: production-deploy
-      cancel-in-progress: false
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: ดันขึ้น production
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: |
-          if [ -z "${VERCEL_TOKEN}" ]; then
-            echo "ยังไม่ได้ตั้ง repo secret VERCEL_TOKEN — ดู scripts/deploy-vercel.mjs"
-            exit 1
-          fi
-          node scripts/deploy-vercel.mjs
+  # deploy: ย้ายจาก Vercel ไป Render แล้ว (ต.ค. 2569 — render.yaml)
+  # Render ดึง commit จาก main เองหลัง CI ผ่าน (autoDeployTrigger: checksPass) ไม่ต้องมี job deploy ที่นี่
+  # ลบ job ที่ดันขึ้น Vercel ทิ้งแล้ว — บัญชี Vercel ถูกพัก ทำให้ CI แดงทุก push
