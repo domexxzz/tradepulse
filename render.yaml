@@ -41,3 +41,10 @@ databases:
     databaseName: qvx
     user: qvx
     postgresMajorVersion: "17"
+    # ต่อจากนอก Render ได้เฉพาะ IP เหล่านี้ (เว็บต่อผ่าน internal network ไม่โดนกฎนี้)
+    # ถ้าไม่ใส่ Blueprint sync จะคืนค่าเป็นเปิดทุก IP · IP บ้านเปลี่ยนแล้วสำรองรายคืนจะล้ม → แก้ตรงนี้
+    ipAllowList:
+      - source: 183.89.14.177/32
+        description: comfirst/server-254 nightly backup (3BB CGNAT)
+      - source: 202.28.41.168/32
+        description: DomeCB PC (maintenance)
