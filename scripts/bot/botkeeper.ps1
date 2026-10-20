@@ -148,8 +148,8 @@ function Poke-Web {
   $h = @{ Authorization = "Bearer $secret" }
   foreach ($path in @("bridge-health", "reconcile")) {
     try {
-      Invoke-RestMethod -Headers $h -TimeoutSec 90 `
-        -Uri "https://quantvisionx.com/api/cron/$path" | Out-Null
+      Invoke-RestMethod -Headers $h -TimeoutSec 90 -DisableKeepAlive `
+        -Uri "$Site/api/cron/$path" | Out-Null
     } catch {
       Note ("poke $path failed: " + $_.Exception.Message)
     }
@@ -171,7 +171,10 @@ function Register-Web($url) {
   if (-not $secret) { return $false }
   $body = @{ secret = $secret; role = $role; url = $url } | ConvertTo-Json -Compress
   try {
-    Invoke-RestMethod -Method Post -TimeoutSec 30 -ContentType "application/json" `
+    # -DisableKeepAlive: เปิดการเชื่อมต่อใหม่ทุกครั้ง ไม่ใช้ตัวเดิมค้างไว้
+    # keeper เรียกเว็บทุกนาที การเชื่อมต่อเก่าเลยไม่เคยหมดอายุ — ย้ายโฮสต์ (Vercel → Render 20 ต.ค. 69)
+    # แล้ว keeper ยังคุยกับ IP ของ Vercel ต่อ ได้ 402 อยู่หลายชั่วโมงทั้งที่ DNS ชี้ Render แล้ว
+    Invoke-RestMethod -Method Post -TimeoutSec 30 -DisableKeepAlive -ContentType "application/json" `
       -Uri "$Site/api/tradingview/register" -Body $body -EA Stop | Out-Null
     return $true
   } catch {
