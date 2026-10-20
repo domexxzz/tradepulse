@@ -1,0 +1,43 @@
+# Render Blueprint — เว็บ QVX + ฐานข้อมูล Postgres ในบัญชีเดียว (ต.ค. 2569)
+#
+# ทำไมย้ายจาก Vercel + Neon/Supabase:
+#   - Neon แพ็กเกจฟรีหมดชั่วโมงเครื่องกลางเดือน (บอทเรียกเว็บทุก ~20 วิ ปลุกฐานข้อมูลทั้งวัน)
+#   - Vercel Hobby เกินโควตาแล้วพักทั้งบัญชี (ทุกโปรเจกต์ใช้โควตาก้อนเดียวกัน) และห้ามใช้เชิงพาณิชย์
+#   Render เปิดเซิร์ฟเวอร์ค้างไว้ ราคาคงที่ตามขนาดเครื่อง ไม่นับจำนวนครั้งที่ถูกเรียก
+#
+# ค่าตั้งค่าของแอป (ความลับ, NEXT_PUBLIC_*) ไม่อยู่ในไฟล์นี้ — ตั้งผ่าน Render API/dashboard
+# NEXT_PUBLIC_* ถูกฝังตอน build ต้องตั้งก่อนแล้ว deploy ใหม่ถึงจะมีผล
+services:
+  - type: web
+    name: qvx-web
+    runtime: node
+    region: singapore
+    plan: starter
+    branch: main
+    autoDeploy: true
+    # ใช้แทน vercel-build: generate client, ทำ migration ที่ค้าง, build
+    buildCommand: npm ci && npx prisma generate && npx prisma migrate deploy && npm run build
+    # next start อ่านพอร์ตจาก $PORT ที่ Render ให้มาเอง
+    startCommand: npm start
+    # /api/health ถามฐานข้อมูลจริง — deploy ใหม่ที่ต่อฐานไม่ได้จะไม่ถูกสลับขึ้นมาแทนตัวเดิม
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # เว็บรันเป็นเซิร์ฟเวอร์ตัวเดียวตลอดเวลา ต่อฐานข้อมูลผ่าน internal network ของ Render ตรง ๆ
+      - key: DATABASE_URL
+        fromDatabase:
+          name: qvx-db
+          property: connectionString
+      - key: DIRECT_URL
+        fromDatabase:
+          name: qvx-db
+          property: connectionString
+
+databases:
+  - name: qvx-db
+    region: singapore
+    plan: basic-256mb
+    databaseName: qvx
+    user: qvx
+    postgresMajorVersion: "17"
