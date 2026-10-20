@@ -1,14 +1,11 @@
 import Link from "next/link";
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
-import { getUserSubscription } from "@/lib/subscription";
-import { rejectionMessage } from "@/lib/broker";
+import { getBrokerApplicationView } from "@/lib/broker";
 import { BROKERS, DEFAULT_BROKER, BROKER_RENEWAL_WINDOW_DAYS } from "@/config/brokers";
-import { BROKER_APPLICATION_STATUS as S } from "@/config/status";
-import { formatThaiDate } from "@/lib/date";
 import { BrokerApplicationForm } from "@/components/account/BrokerApplicationForm";
+import { BrokerApplicationStatus } from "@/components/account/BrokerApplicationStatus";
 import { manualPdf } from "@/config/downloads";
-import { Clock, CheckCircle2, XCircle, ExternalLink, Download } from "lucide-react";
+import { ExternalLink, Download } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -17,17 +14,8 @@ export default async function AccountWisdomPage() {
   const userId = session!.user.id;
   const broker = BROKERS[DEFAULT_BROKER];
 
-  const [user, latest, { isActive, daysLeft, sub }] = await Promise.all([
-    prisma.user.findUnique({ where: { id: userId }, select: { tradingViewUsername: true, email: true } }),
-    prisma.brokerApplication.findFirst({
-      where: { userId, broker: broker.id },
-      orderBy: { createdAt: "desc" },
-    }),
-    getUserSubscription(userId),
-  ]);
-
-  const waiting = latest && (latest.status === S.PENDING || latest.status === S.REVIEWING);
-  const tooEarly = isActive && daysLeft !== null && daysLeft > BROKER_RENEWAL_WINDOW_DAYS;
+  const { user, latest, subscription, waiting, tooEarly } = await getBrokerApplicationView(userId, broker.id);
+  const { isActive, daysLeft, sub } = subscription;
 
   return (
     <div className="max-w-xl space-y-6">
@@ -41,40 +29,7 @@ export default async function AccountWisdomPage() {
 
       {/* สถานะคำขอล่าสุด */}
       {latest && (
-        <div className="card-surface rounded-xl p-5">
-          {waiting && (
-            <p className="flex items-center gap-2 text-sm">
-              <Clock className="h-4 w-4 text-amber-400" />
-              <span className="font-medium">รอทีมงานตรวจสอบ</span>
-              <span className="text-muted">· ส่งเมื่อ {formatThaiDate(latest.createdAt)}</span>
-            </p>
-          )}
-          {latest.status === S.APPROVED && (
-            <p className="flex items-center gap-2 text-sm">
-              <CheckCircle2 className="h-4 w-4 text-up" />
-              <span className="font-medium">ผ่านการตรวจสอบแล้ว</span>
-              {isActive && sub?.currentPeriodEnd && (
-                <span className="text-muted">· ใช้งานได้ถึง {formatThaiDate(sub.currentPeriodEnd)}</span>
-              )}
-            </p>
-          )}
-          {latest.status === S.REJECTED && (
-            <div className="text-sm">
-              <p className="flex items-center gap-2">
-                <XCircle className="h-4 w-4 text-down" />
-                <span className="font-medium">คำขอไม่ผ่าน</span>
-              </p>
-              <p className="mt-1.5 text-muted">{rejectionMessage(latest.rejectionReason, latest.reviewNote)}</p>
-              {/* คำขอต่ออายุไม่ผ่าน ไม่ได้แปลว่าสิทธิ์รอบนี้โดนตัด — บอกให้ชัด ไม่งั้นลูกค้าตกใจ */}
-              {isActive && sub?.currentPeriodEnd && (
-                <p className="mt-1.5 text-muted">
-                  สิทธิ์รอบปัจจุบันยังใช้ได้ถึง {formatThaiDate(sub.currentPeriodEnd)}
-                </p>
-              )}
-            </div>
-          )}
-          <p className="mt-2 text-xs text-muted tnum">เลขบัญชี {latest.tradingAccount}</p>
-        </div>
+        <BrokerApplicationStatus latest={latest} isActive={isActive} periodEnd={sub?.currentPeriodEnd ?? null} />
       )}
 
       {waiting ? null : tooEarly ? (

@@ -254,3 +254,28 @@ export function rejectionMessage(reason: string | null, note: string | null): st
   const base = reason && isRejectionReason(reason) ? BROKER_REJECTION_REASONS[reason] : "ไม่ผ่านการตรวจสอบ";
   return note ? `${base} (${note})` : base;
 }
+
+/**
+ * สถานะคำขอของลูกค้าหนึ่งคน — ใช้ร่วมกันระหว่าง /account/wisdom กับ /activation
+ * สองหน้าต้องตัดสินเหมือนกันว่าจะโชว์ฟอร์ม โชว์ "รอตรวจ" หรือบอกว่ายังขอต่ออายุไม่ได้
+ * ถ้าต่างคนต่างเขียน วันหนึ่งหน้าหนึ่งจะเปิดฟอร์มให้ส่งซ้ำทั้งที่อีกหน้าบอกว่ารอตรวจอยู่
+ */
+export async function getBrokerApplicationView(userId: string, brokerId: string) {
+  const [user, latest, subscription] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { tradingViewUsername: true, email: true } }),
+    prisma.brokerApplication.findFirst({
+      where: { userId, broker: brokerId },
+      orderBy: { createdAt: "desc" },
+    }),
+    getUserSubscription(userId),
+  ]);
+  const { isActive, daysLeft } = subscription;
+
+  return {
+    user,
+    latest,
+    subscription,
+    waiting: Boolean(latest && (latest.status === S.PENDING || latest.status === S.REVIEWING)),
+    tooEarly: isActive && daysLeft !== null && daysLeft > BROKER_RENEWAL_WINDOW_DAYS,
+  };
+}

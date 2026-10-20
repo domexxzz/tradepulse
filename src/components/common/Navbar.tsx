@@ -1,10 +1,17 @@
 "use client";
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { site } from "@/config/site";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
+
+/**
+ * โลโก้พาไปหน้าเปิดใช้งาน (/activation) ไม่ใช่หน้าแรก — เลยต้องมี "หน้าแรก" ในเมนูแทน
+ * ไม่ใส่ใน site.nav เพราะ footer ใช้ชุดเดียวกัน และ footer ไม่ต้องมีลิงก์หน้าแรก
+ */
+const NAV_ITEMS = [{ label: "หน้าแรก", href: "/" }, ...site.nav];
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
@@ -27,7 +34,7 @@ export function Navbar() {
       )}
     >
       <nav className="container-x flex h-16 items-center justify-between" aria-label="เมนูหลัก">
-        <a href="#top" className="flex items-center gap-2" aria-label={`${site.name} หน้าแรก`}>
+        <Link href="/activation" className="flex items-center gap-2" aria-label={`เปิดใช้งาน ${site.name} Indicator`}>
           {/* โลโก้พื้นใส — ข้างในหกเหลี่ยมโปร่ง พื้นเว็บทะลุขึ้นมาเอง
               ไม่ใส่กรอบหรือพื้นหลังทับ เพราะตัวโลโก้มีกรอบหกเหลี่ยมอยู่แล้ว
               alt ว่างเพราะข้อความ "QVX" ข้าง ๆ บอกชื่อแบรนด์อยู่แล้ว
@@ -43,10 +50,10 @@ export function Navbar() {
             className="h-11 w-11"
           />
           <span className="font-display text-[1.05rem] font-semibold tracking-tight">{site.name}</span>
-        </a>
+        </Link>
 
         <div className="hidden items-center gap-7 lg:flex">
-          {site.nav.map((n) => (
+          {NAV_ITEMS.map((n) => (
             <a
               key={n.href}
               href={n.href}
@@ -82,7 +89,7 @@ export function Navbar() {
       {open && (
         <div id="mobile-menu" className="border-t border-border bg-background lg:hidden">
           <div className="container-x flex flex-col gap-1 py-3">
-            {site.nav.map((n) => (
+            {NAV_ITEMS.map((n) => (
               <a
                 key={n.href}
                 href={n.href}

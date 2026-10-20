@@ -34,6 +34,12 @@ export interface Broker {
   brokerMinDepositUSD: number;
   /** เงื่อนไขของ QVX — ฝากถึงเท่านี้ถึงจะรับสิทธิ์ได้ */
   qvxMinDepositUSD: number;
+  /**
+   * โปรโมชันของโบรกที่โชว์ในหน้า /activation — เป็นของโบรก ไม่ใช่ของ QVX เปลี่ยนได้ตลอด
+   * คัดจากคู่มือฉบับทางการ (OPEN_ACCOUNT_NOTES ใน config/open-account.ts) แก้ที่หนึ่งต้องแก้อีกที่ด้วย
+   * ห้ามใส่ตัวเลขที่ไม่มีในคู่มือ เช่น เพดานโบนัส — ไม่มีที่มาให้ตรวจ
+   */
+  promotions: string[];
 }
 
 export const BROKERS: Record<string, Broker> = {
@@ -64,6 +70,11 @@ export const BROKERS: Record<string, Broker> = {
     emailDomains: ["wisdomfinancialservice.com", "wisdomtrade.com"],
     brokerMinDepositUSD: 50,
     qvxMinDepositUSD: 100,
+    promotions: [
+      "โบนัส 20% ของยอดฝาก",
+      "ฝากตั้งแต่ $500 ขึ้นไป รับบัญชีแบบ Free Swap",
+      "ฝากตั้งแต่ $100 ขึ้นไป รับ Rebate $1 ต่อการเทรด 1 Lot",
+    ],
   },
 };
 

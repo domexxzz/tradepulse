@@ -5,6 +5,8 @@ import { AuthError } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { signIn } from "@/auth";
 import { getClientIp, isRateLimited, recordAttempt } from "@/lib/rate-limit";
+import { safeCallbackPath } from "@/lib/safe-redirect";
+import { site } from "@/config/site";
 
 export type AuthState = { error?: string };
 
@@ -47,10 +49,11 @@ export async function registerUser(
     data: { name: parsed.data.name, email, passwordHash },
   });
 
+  // มาจากหน้าที่ต้องล็อกอินก่อน (เช่น /activation) ให้พากลับไปหน้านั้น ไม่ใช่ทิ้งไว้ที่ /account
   await signIn("credentials", {
     email,
     password: parsed.data.password,
-    redirectTo: "/account",
+    redirectTo: safeCallbackPath(formData.get("callbackUrl"), site.url) ?? "/account",
   });
   return {};
 }
@@ -70,7 +73,10 @@ export async function loginUser(
       where: identifier.includes("@") ? { email: identifier } : { username: identifier },
       select: { role: true },
     });
-    const redirectTo = existing?.role === "ADMIN" ? "/admin" : "/account";
+    // callbackUrl มาก่อน — คนที่กดมาจากหน้าที่ต้องล็อกอิน (เช่น /activation) ต้องได้กลับไปหน้านั้น
+    const redirectTo =
+      safeCallbackPath(formData.get("callbackUrl"), site.url) ??
+      (existing?.role === "ADMIN" ? "/admin" : "/account");
     await signIn("credentials", { email: identifier, password, redirectTo });
   } catch (e) {
     if (e instanceof AuthError) {

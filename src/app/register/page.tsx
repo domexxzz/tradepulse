@@ -1,8 +1,9 @@
 "use client";
-import { useActionState } from "react";
+import { Suspense, useActionState } from "react";
 import Link from "next/link";
 import { registerUser, type AuthState } from "@/lib/actions/auth";
 import { Field, SubmitBtn, ErrorBox, AuthShell } from "@/components/auth/AuthUI";
+import { CallbackUrlField } from "@/components/auth/CallbackUrlField";
 
 export default function RegisterPage() {
   const [state, action, pending] = useActionState<AuthState, FormData>(registerUser, {});
@@ -10,6 +11,9 @@ export default function RegisterPage() {
     <AuthShell title="สมัครสมาชิก" subtitle="เริ่มใช้งานอินดิเคเตอร์ QVX">
       <form action={action} className="space-y-4">
         {state.error && <ErrorBox msg={state.error} />}
+        <Suspense fallback={null}>
+          <CallbackUrlField />
+        </Suspense>
         <Field name="name" type="text" label="ชื่อ" placeholder="ชื่อของคุณ" />
         <Field name="email" type="email" label="อีเมล" placeholder="you@example.com" />
         <Field name="password" type="password" label="รหัสผ่าน" placeholder="อย่างน้อย 6 ตัวอักษร" />

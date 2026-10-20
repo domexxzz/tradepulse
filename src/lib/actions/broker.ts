@@ -33,6 +33,7 @@ export async function submitBrokerApplicationAction(
   if (!r.ok) return { error: r.error };
 
   revalidatePath("/account/wisdom");
+  revalidatePath("/activation");
   revalidatePath("/admin/wisdom");
   return { ok: true };
 }
