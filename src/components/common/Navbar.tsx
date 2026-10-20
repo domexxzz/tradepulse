@@ -11,7 +11,12 @@ import { cn } from "@/lib/utils";
  * โลโก้พาไปหน้าเปิดใช้งาน (/activation) ไม่ใช่หน้าแรก — เลยต้องมี "หน้าแรก" ในเมนูแทน
  * ไม่ใส่ใน site.nav เพราะ footer ใช้ชุดเดียวกัน และ footer ไม่ต้องมีลิงก์หน้าแรก
  */
-const NAV_ITEMS = [{ label: "หน้าแรก", href: "/" }, ...site.nav];
+const NAV_ITEMS = [
+  { label: "หน้าแรก", href: "/" },
+  // แท็บไปหน้าเปิดใช้งานผ่านโบรก — ให้เห็นชัดกว่าการรู้ว่าต้องกดโลโก้
+  { label: "เปิดใช้งาน QVX", href: "/activation" },
+  ...site.nav,
+];
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
