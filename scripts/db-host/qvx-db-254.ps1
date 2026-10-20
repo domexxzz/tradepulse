@@ -614,15 +614,21 @@ if ($Phase -eq 'backup') {
   if (-not (Test-Path $job)) { throw "Not found: $job (see docs/BACKUP.md)" }
   'Before - last result: ' + $(if (Test-Path $statusFile) { (Get-Content $statusFile -TotalCount 1) } else { '(no STATUS.txt)' })
 
-  $session = Read-Secret 'Supabase Session pooler URL (port 5432) with the current database password'
+  # ต.ค. 2569 ฐานหลักย้ายไป Render แล้ว (render.yaml) — รับ External Database URL ของ Render
+  # ยังรับ session pooler ของ Supabase อยู่ เผื่อต้องย้อนกลับ
+  $session = Read-Secret 'Database URL - Render: qvx-db > Connections > External Database URL'
   $secrets.Add($session)
-  $session = ($session -split '\?')[0]
-  Assert-SupabaseUrl 'Session pooler' $session '5432'
-  'Supabase login: ' + (One $session '' 'select current_user')
+  $session = ($session.Trim('"') -split '\?')[0]
+  if ($session -notmatch '^postgres(?:ql)?://[^:/@]+:[^@]+@([^:/@]+)(?::(\d+))?/[^?]+$') { throw 'Not a postgresql://user:password@host/db URL' }
+  $dbHost = $matches[1]
+  if ($dbHost -like '*.render.com') { $session += '?sslmode=require' }
+  elseif ($dbHost -like '*.pooler.supabase.com') { Assert-SupabaseUrl 'Session pooler' $session '5432' }
+  elseif (-not $AnyHost) { throw "Host $dbHost is neither Render (*.render.com) nor Supabase" }
+  "Database login ($dbHost): " + (One $session '' 'select current_user')
 
   # คงค่าอื่นในไฟล์ไว้ (BACKUP_ALERT_SECRET ฯลฯ) เปลี่ยนแค่ DATABASE_URL · PG_BIN ต้องชี้ที่ที่มี pg_dump 18 จริง
   $lines = if (Test-Path $envFile) { @(Get-Content $envFile) } else { @() }
-  if (Test-Path $envFile) { Copy-Item $envFile "$envFile.before-supabase" -Force; Lock-File "$envFile.before-supabase" }
+  if (Test-Path $envFile) { Copy-Item $envFile ('{0}.before-{1:yyyyMMdd-HHmm}' -f $envFile, (Get-Date)) -Force; Lock-File ('{0}.before-{1:yyyyMMdd-HHmm}' -f $envFile, (Get-Date)) }
   $lines = @($lines | Where-Object { $_ -notmatch '^\s*DATABASE_URL\s*=' }) + "DATABASE_URL=$session"
   $pgBinNow = ($lines | Where-Object { $_ -match '^\s*PG_BIN\s*=' } | Select-Object -Last 1) -replace '^\s*PG_BIN\s*=\s*', ''
   if (-not $pgBinNow) { $pgBinNow = 'C:\PostgreSQL18\bin' }
@@ -632,7 +638,7 @@ if ($Phase -eq 'backup') {
   }
   [IO.File]::WriteAllLines($envFile, [string[]]$lines, (New-Object Text.UTF8Encoding $false))
   Lock-File $envFile
-  "backup.env: DATABASE_URL now points at Supabase (old file kept as backup.env.before-supabase, admins only)"
+  "backup.env: DATABASE_URL now points at $dbHost (old file kept as backup.env.before-<date>, admins only)"
 
   $task = Get-ScheduledTask -TaskName 'QVXDatabaseBackup' -ErrorAction SilentlyContinue
   if (-not $task) {
