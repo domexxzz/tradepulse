@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 const NAV_ITEMS = [
   { label: "หน้าแรก", href: "/" },
   // แท็บไปหน้าเปิดใช้งานผ่านโบรก — ให้เห็นชัดกว่าการรู้ว่าต้องกดโลโก้
-  { label: "เปิดใช้งาน QVX", href: "/activation" },
+  { label: "เปิดใช้งานผ่าน Wisdom", href: "/activation" },
   ...site.nav,
 ];
 
