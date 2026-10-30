@@ -445,6 +445,8 @@ commit ไฟล์ลง `public/` → push → รอ deploy → บนเค�
 - **idempotency ใช้ `@unique` + จับ P2002** ไม่ใช่ findFirst แล้วค่อย create (race ได้)
 - **login ด้วย username:** `authorize()` กับ `loginUser()` เลือกคอลัมน์จากว่ามี `@` ไหม — **ต้องแก้ทั้งสองที่เสมอ** ช่องกรอกต้องเป็น `type="text"`
 - **ปลดผูก Telegram ล้างแค่ `User.telegramUserId`** ห้ามแตะ `TelegramGrant.telegramUserId` (cron ใช้ตัวนั้นเตะคนออก)
+- **คิวสิทธิ์: "สถานะเดิม" ห้ามใช้เป็นเหตุผลข้ามการส่งมอบ** — `syncTradingViewGrant` เดิมค้นหาเฉพาะ `PENDING/PENDING_REVOKE/REVOKED` คนที่เคยได้อินดิเคเตอร์แล้วเป็น `GRANTED` การต่ออายุจึง `return` เงียบ ๆ (30 ต.ค. 69 · 6 ราย) · `ensureTelegramInvite` เดิมเห็น `ADDED` แล้ว return ทันทีทั้งที่ลูกค้าออกจากกลุ่มไปแล้ว (2 ราย) · **reconcile ไล่เฉพาะ `PENDING` เท่านั้น** แถวที่สถานะ "ดูเรียบร้อย" จึงไม่มีใครมาเก็บเลย
+- **ออกลิงก์เชิญ Telegram ใบใหม่ต้องล้าง `notifiedAt`** รอบกวาดรายวันส่งอีเมลเฉพาะแถวที่ `notifiedAt` ว่าง ไม่ล้าง = ใบใหม่นอนในฐานข้อมูลโดยไม่มีใครส่งให้ลูกค้า
 
 ### ภาพ / สื่อ
 

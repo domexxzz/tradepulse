@@ -122,7 +122,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   if (!authorized(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  let body: { invite?: unknown; setTradingView?: unknown };
+  let body: { invite?: unknown; setTradingView?: unknown; resync?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -130,6 +130,7 @@ export async function POST(req: Request) {
   }
 
   if (body.setTradingView) return setTradingViewUsername(body.setTradingView);
+  if (body.resync) return resyncActiveMembers(body.resync);
 
   const email = typeof body.invite === "string" ? body.invite.trim().toLowerCase() : "";
   if (!email) return NextResponse.json({ error: "ต้องระบุ invite เป็นอีเมลของสมาชิก" }, { status: 400 });
@@ -183,6 +184,86 @@ export async function POST(req: Request) {
     result,
     now: { status: after?.status, hasLink: Boolean(after?.inviteLink), chatId: after?.chatId, currentChatId },
   });
+}
+
+/**
+ * ตั้งวันหมดอายุบน TradingView + ลิงก์กลุ่ม ให้ตรงกับแพ็กเกจของสมาชิกที่ยังใช้งานอยู่
+ *
+ * ทำไมต้องมี: บั๊กต่ออายุทำให้คนที่ต่อ "ก่อน" หมดอายุไม่ถูกสั่งต่อสิทธิ์เลย
+ * (syncTradingViewGrant หาคิวสถานะ GRANTED ไม่เจอแล้ว return เงียบ ๆ)
+ * แก้โค้ดแล้วก็แก้แต่รอบถัดไป — คนที่ต่ออายุไปแล้วยังค้างอยู่ที่วันหมดอายุเดิม
+ * และไม่มีคิวไหนหยิบพวกเขาขึ้นมาอีก เพราะ reconcile ไล่เฉพาะ PENDING
+ *
+ * ตัวนี้คือรอบซ่อมย้อนหลัง สั่งซ้ำได้ไม่เสียหาย: การเพิ่มสิทธิ์คือการ "ตั้งวันหมดอายุ"
+ * ไม่ใช่การบวกวันเพิ่ม สั่งสองครั้งจึงได้วันเดียวกัน
+ *
+ *   { "resync": true }                        → สมาชิกที่ยังใช้งานอยู่ทุกคน
+ *   { "resync": ["a@b.com", "c@d.com"] }      → เฉพาะรายที่ระบุ
+ *   { "resync": { "dry": true } }             → ดูว่าจะแตะใครบ้าง ไม่สั่งอะไรเลย
+ */
+async function resyncActiveMembers(input: unknown) {
+  const emails =
+    Array.isArray(input)
+      ? input.filter((e): e is string => typeof e === "string").map((e) => e.trim().toLowerCase())
+      : [];
+  const dry = typeof input === "object" && input !== null && (input as { dry?: unknown }).dry === true;
+
+  const subs = await prisma.subscription.findMany({
+    where: {
+      status: { in: ACTIVE_STATUSES },
+      currentPeriodEnd: { gte: new Date() },
+      ...(emails.length ? { user: { email: { in: emails, mode: "insensitive" as const } } } : {}),
+    },
+    // เรียงตามวันหมดอายุใกล้สุดก่อน คนที่เสี่ยงถูกตัดสิทธิ์วันนี้ต้องได้คิวแรก
+    orderBy: { currentPeriodEnd: "asc" },
+    take: 200,
+    select: {
+      userId: true,
+      currentPeriodEnd: true,
+      user: { select: { email: true, name: true, tradingViewUsername: true } },
+    },
+  });
+
+  const touched: { member: string; email: string | null; tradingView: string | null; until: string | null; indicator: string }[] = [];
+
+  for (const s of subs) {
+    const row = {
+      member: s.user.name ?? s.user.email ?? s.userId,
+      email: s.user.email,
+      tradingView: s.user.tradingViewUsername,
+      until: s.currentPeriodEnd ? formatThaiDate(s.currentPeriodEnd) : null,
+      indicator: "",
+    };
+
+    if (!s.user.tradingViewUsername) {
+      row.indicator = "ข้าม — ยังไม่กรอก username";
+      touched.push(row);
+      continue;
+    }
+    if (dry) {
+      row.indicator = "จะสั่งบอทต่ออายุให้";
+      touched.push(row);
+      continue;
+    }
+
+    try {
+      await syncTradingViewGrant(s.userId);
+      await ensureTelegramInvite(s.userId);
+      row.indicator = "สั่งบอทแล้ว รอผลยืนยัน";
+    } catch (e) {
+      row.indicator = `สั่งไม่ได้: ${e instanceof Error ? e.message : "ไม่ทราบ"}`;
+    }
+    touched.push(row);
+  }
+
+  const dispatched = touched.filter((t) => t.indicator.startsWith("สั่งบอทแล้ว")).length;
+  if (!dry && dispatched > 0) {
+    await sendAdminAlert(
+      `🔁 สั่งตั้งวันหมดอายุใหม่ให้สมาชิก ${dispatched} ราย\nรอบซ่อมย้อนหลังของบั๊กต่ออายุ — ผลจริงตามมาทาง callback`
+    ).catch(() => {});
+  }
+
+  return NextResponse.json({ ok: true, dry, total: touched.length, dispatched, members: touched });
 }
 
 /**
