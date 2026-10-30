@@ -73,9 +73,7 @@ export interface ReconcileResult {
  * เงื่อนไข "แพ็กเกจยังใช้งานอยู่" สำคัญมาก — ไม่งั้นคิวเก่าของคนที่หมดอายุไปแล้ว
  * จะถูกปลุกขึ้นมาให้สิทธิ์ใหม่เรื่อย ๆ
  */
-async function retryPendingGrants(cutoff: Date): Promise<number> {
-  const queue = await bridgeQueueDepth();
-  const waitMinutes = queue === 0 ? IDLE_REDISPATCH_MINUTES : REDISPATCH_MINUTES;
+async function retryPendingGrants(cutoff: Date, waitMinutes: number): Promise<number> {
   const redispatchCutoff = new Date(Date.now() - waitMinutes * 60_000);
   const notInFlight = {
     OR: [{ lastDispatchedAt: null }, { lastDispatchedAt: { lt: redispatchCutoff } }],
@@ -121,9 +119,30 @@ async function retryPendingGrants(cutoff: Date): Promise<number> {
  * คิวถอนสิทธิ์ที่ค้าง: PENDING_REVOKE คือตอนหมดอายุแล้วบอทถอนไม่สำเร็จ
  * ปล่อยไว้แปลว่าคนที่หมดอายุยังใช้อินดิเคเตอร์ได้ฟรี
  */
-async function retryPendingRevokes(cutoff: Date): Promise<number> {
+async function retryPendingRevokes(cutoff: Date, waitMinutes: number): Promise<number> {
+  /**
+   * คิวถอนต้องมีเวลารอและเพดานเลิกลอง "เหมือนคิวให้สิทธิ์" — ของเดิมไม่มีทั้งคู่
+   *
+   * ของเดิมหยิบ PENDING_REVOKE 15 แถวที่เก่าสุดทุกรอบ cron (ทุก 10 นาที) โดยไม่ดูว่า
+   * เพิ่งสั่งไปหรือยัง และบอทเกือบทุกครั้งตอบ queued = true (รับงานเข้าคิว ยังไม่ทำ)
+   * แถวจึงคาสถานะ PENDING_REVOKE แล้วถูกหยิบซ้ำรอบหน้า — **ชุดเดิมทั้ง 15 คน วนไม่จบ**
+   *
+   * ผลลัพธ์จริงที่วัดได้ 30 ต.ค. 69: คิวบอทบวม 370+ งาน (≈ 90 งานขยะต่อชั่วโมง)
+   * บอททำได้ทีละคน 60-120 วินาที ลูกค้าที่เพิ่งจ่ายเงินจึงต้องต่อคิวหลังงานขยะ 6+ ชั่วโมง
+   * — เป็นสาเหตุที่คำสั่งซ่อม 7 รายของวันนั้นไม่มีใครได้ผลกลับมาเลยใน 22 นาที
+   *
+   * บั๊กตัวเดียวกันนี้เคยเกิดกับ "คิวให้สิทธิ์" แล้วแก้ไปตั้งแต่ 30 ก.ย. / 10 ต.ค. 69
+   * ด้วย lastDispatchedAt + failCount + MAX_FAILS แต่ไม่มีใครย้อนกลับมาแก้ฝั่งถอน
+   */
+  const redispatchCutoff = new Date(Date.now() - waitMinutes * 60_000);
+
   const stuck = await prisma.accessGrant.findMany({
-    where: { status: "PENDING_REVOKE", createdAt: { lt: cutoff } },
+    where: {
+      status: "PENDING_REVOKE",
+      createdAt: { lt: cutoff },
+      failCount: { lt: MAX_FAILS },
+      OR: [{ lastDispatchedAt: null }, { lastDispatchedAt: { lt: redispatchCutoff } }],
+    },
     select: { id: true, user: { select: { tradingViewUsername: true } } },
     orderBy: { createdAt: "asc" },
     take: MAX_PER_RUN,
@@ -134,15 +153,40 @@ async function retryPendingRevokes(cutoff: Date): Promise<number> {
     const username = grant.user.tradingViewUsername;
     if (!username) continue;
     try {
+      // จดก่อนยิงเสมอ ไม่ใช่เฉพาะตอนสำเร็จ — งานที่ล้มเหลวต้องมีเวลาให้เทียบด้วย
+      // ไม่งั้นมันจะกลายเป็น "ไม่เคยสั่ง" ในสายตารอบหน้าแล้ววนซ้ำทันที
+      await prisma.accessGrant
+        .update({ where: { id: grant.id }, data: { lastDispatchedAt: new Date() } })
+        .catch(() => {});
+
       const res = await revokeTradingViewAccess(username);
       if (res.ok) {
         await prisma.accessGrant.update({
           where: { id: grant.id },
           data: res.queued
             ? { note: "สั่งบอทถอนสิทธิ์ซ้ำแล้ว รอผลยืนยัน" }
-            : { status: "REVOKED", revokedAt: new Date(), note: "ถอนสิทธิ์อัตโนมัติ (ไล่งานค้าง)" },
+            : {
+                status: "REVOKED",
+                revokedAt: new Date(),
+                note: "ถอนสิทธิ์อัตโนมัติ (ไล่งานค้าง)",
+                failCount: 0,
+                lastFailReason: null,
+              },
         });
         done += 1;
+      } else {
+        /**
+         * นับเฉพาะตอนบอท "ปฏิเสธงาน" — ติดต่อบอทไม่ได้คือปัญหาของท่อ ไม่ใช่ของงาน
+         * (กฎเดียวกับฝั่งให้สิทธิ์ใน syncTradingViewGrant)
+         */
+        await prisma.accessGrant.update({
+          where: { id: grant.id },
+          data: {
+            note: `บอทถอนสิทธิ์ไม่สำเร็จ: ${res.reason ?? "ไม่ทราบสาเหตุ"}`,
+            ...(res.unreachable ? {} : { failCount: { increment: 1 } }),
+            lastFailReason: res.reason ?? "ไม่ทราบสาเหตุ",
+          },
+        });
       }
     } catch (e) {
       console.error("reconcile: retry revoke failed", grant.id, e);
@@ -209,12 +253,17 @@ export async function runReconcile(): Promise<ReconcileResult> {
     return { ...empty, skipped: "ยังไม่ได้ตั้งค่าบอท TradingView" };
   }
 
+  // ถามความลึกคิวบอทครั้งเดียวแล้วใช้ร่วมกันทั้งสองฝั่ง — เดิมถามเฉพาะฝั่งให้สิทธิ์
+  // ฝั่งถอนจึงไม่เคยรู้ว่าคิวยาวแค่ไหน แล้วสั่งซ้ำทับคิวที่ยังทำไม่เสร็จ
+  const queue = await bridgeQueueDepth().catch(() => null);
+  const waitMinutes = queue === 0 ? IDLE_REDISPATCH_MINUTES : REDISPATCH_MINUTES;
+
   const [grantsRetried, revokesRetried, invitesCreated, waitingForUsername] = await Promise.all([
-    retryPendingGrants(cutoff).catch((e) => {
+    retryPendingGrants(cutoff, waitMinutes).catch((e) => {
       console.error("reconcile: grants step failed", e);
       return 0;
     }),
-    retryPendingRevokes(cutoff).catch((e) => {
+    retryPendingRevokes(cutoff, waitMinutes).catch((e) => {
       console.error("reconcile: revokes step failed", e);
       return 0;
     }),
@@ -283,6 +332,43 @@ export async function inspectReconcile() {
     };
   });
 
+  /**
+   * คิวถอนต้องส่องด้วย — ไม่งั้นมองไม่เห็นว่าอะไรยัดงานเข้าคิวบอท
+   *
+   * ของเดิมส่องเฉพาะคิวให้สิทธิ์ ตอนไล่บั๊ก 30 ต.ค. 69 ตัวนี้จึงรายงานว่า
+   * "จะสั่ง 0 งาน" อย่างมั่นใจ ขณะที่คิวบอทบวมจาก 366 เป็น 394 ใน 45 วินาที
+   * เครื่องมือวินิจฉัยที่มองไม่เห็นครึ่งหนึ่งของระบบ ทำให้เชื่อผิดได้แรงกว่าไม่มีเลย
+   */
+  const revokeRows = (
+    await prisma.accessGrant.findMany({
+      where: { status: "PENDING_REVOKE", createdAt: { lt: cutoff } },
+      select: {
+        failCount: true,
+        lastFailReason: true,
+        lastDispatchedAt: true,
+        user: { select: { email: true, tradingViewUsername: true } },
+      },
+      orderBy: { createdAt: "asc" },
+    })
+  ).map((g) => {
+    const minutesSince = g.lastDispatchedAt ? (now - g.lastDispatchedAt.getTime()) / 60_000 : null;
+    const verdict = !g.user.tradingViewUsername
+      ? "ข้าม — ไม่มี username ให้ถอน"
+      : g.failCount >= MAX_FAILS
+        ? `ข้าม — ล้มเหลวครบ ${MAX_FAILS} ครั้ง ระบบเลิกลองแล้ว รอคนแก้ต้นเหตุ`
+        : minutesSince !== null && minutesSince < waitMinutes
+          ? `ข้าม — เพิ่งสั่งไป ${Math.round(minutesSince)} นาที (ต้องรอ ${waitMinutes} นาที)`
+          : "จะสั่งถอนซ้ำรอบนี้";
+    return {
+      tradingView: g.user.tradingViewUsername,
+      email: g.user.email,
+      failCount: g.failCount,
+      lastFailReason: g.lastFailReason,
+      minutesSinceDispatch: minutesSince === null ? null : Math.round(minutesSince),
+      verdict,
+    };
+  });
+
   // ลูกค้าคนเดียวมีคิวค้างหลายแถว = แต่ละส่วนของระบบอาจหยิบคนละแถว ต้องรู้ไว้
   const perUser = new Map<string, number>();
   for (const g of candidates) perUser.set(g.user.email ?? "?", (perUser.get(g.user.email ?? "?") ?? 0) + 1);
@@ -292,7 +378,11 @@ export async function inspectReconcile() {
     bridgeQueue: queue,
     waitMinutes,
     willDispatch: rows.filter((r) => r.verdict === "จะสั่งซ้ำรอบนี้").length,
+    willRevoke: revokeRows.filter((r) => r.verdict === "จะสั่งถอนซ้ำรอบนี้").length,
+    pendingRevokeTotal: revokeRows.length,
     duplicateQueues,
     grants: rows,
+    // ตัดให้พอเห็นรูปแบบ ไม่งั้น JSON ยาวจนอ่านในเทอร์มินัลไม่ไหวตอนคิวบวม
+    revokes: revokeRows.slice(0, 20),
   };
 }
