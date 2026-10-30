@@ -202,21 +202,73 @@ export async function POST(req: Request) {
  *   { "resync": { "dry": true } }             → ดูว่าจะแตะใครบ้าง ไม่สั่งอะไรเลย
  */
 async function resyncActiveMembers(input: unknown) {
-  const emails =
-    Array.isArray(input)
-      ? input.filter((e): e is string => typeof e === "string").map((e) => e.trim().toLowerCase())
-      : [];
-  const dry = typeof input === "object" && input !== null && (input as { dry?: unknown }).dry === true;
+  const opts = (typeof input === "object" && input !== null && !Array.isArray(input) ? input : {}) as {
+    dry?: unknown;
+    limit?: unknown;
+    who?: unknown;
+  };
+  const dry = opts.dry === true;
+
+  /**
+   * รับได้ทั้งอีเมลและ TradingView username ในรายการเดียวกัน
+   *
+   * ที่แจ้งกันในกลุ่มงานคือ username เป็นหลัก (เพราะเป็นสิ่งที่เห็นในหน้า TradingView)
+   * ถ้ารับแต่อีเมล แอดมินต้องไปเปิดหาอีเมลเองทีละคน ซึ่งคนที่อยู่นอกเพดานรายงาน
+   * 200 แถวจะหาไม่เจอเลย — เป็นสิ่งที่เกิดขึ้นจริงตอนตามซ่อม 30 ต.ค. 69
+   */
+  const list = (Array.isArray(input) ? input : Array.isArray(opts.who) ? opts.who : [])
+    .filter((e): e is string => typeof e === "string")
+    .map((e) => e.trim())
+    .filter(Boolean);
+  const picked = list.length > 0;
+
+  /**
+   * เพดานของรอบ "ทุกคน" — บอททำได้ทีละคน ครั้งละ 60-120 วินาที
+   *
+   * สั่ง 200 คนในรอบเดียวคือคิวยาวเกิน 5 ชั่วโมง และ request นี้หมดเวลากลางทางแน่
+   * โดยไม่มีบันทึกว่าค้างที่ใคร · ที่แย่กว่าคือคิวบอทถูกจองจนลูกค้าใหม่ที่เพิ่งจ่ายเงิน
+   * ต้องรอข้ามคืน (reconcile ใช้ MAX_PER_RUN = 15 ด้วยเหตุผลเดียวกัน)
+   * ค่อย ๆ สั่งเป็นรอบ ๆ แล้วดู remaining ว่าเหลือเท่าไหร่ ปลอดภัยกว่าสั่งทีเดียวจบ
+   */
+  const limit = picked
+    ? Math.min(list.length, 50)
+    : Math.max(1, Math.min(typeof opts.limit === "number" ? opts.limit : 15, 50));
+
+  /**
+   * รอบ "ทุกคน" ข้ามคนที่เพิ่งถูกสั่งไปไม่นาน — ไม่งั้นสั่งซ้ำรอบแล้วรอบเล่าได้แต่คนกลุ่มเดิม
+   * (เรียงตามวันหมดอายุใกล้สุดก่อน คนเดิมจึงขึ้นหัวรายการทุกครั้ง)
+   */
+  const recent = new Date(Date.now() - 30 * 60_000);
+
+  const where = {
+    status: { in: ACTIVE_STATUSES },
+    currentPeriodEnd: { gte: new Date() },
+    ...(picked
+      ? {
+          user: {
+            OR: [
+              { email: { in: list, mode: "insensitive" as const } },
+              { tradingViewUsername: { in: list, mode: "insensitive" as const } },
+            ],
+          },
+        }
+      : {
+          user: {
+            tradingViewUsername: { not: null },
+            accessGrants: {
+              none: { lastDispatchedAt: { gte: recent } },
+            },
+          },
+        }),
+  };
+
+  const matched = await prisma.subscription.count({ where });
 
   const subs = await prisma.subscription.findMany({
-    where: {
-      status: { in: ACTIVE_STATUSES },
-      currentPeriodEnd: { gte: new Date() },
-      ...(emails.length ? { user: { email: { in: emails, mode: "insensitive" as const } } } : {}),
-    },
+    where,
     // เรียงตามวันหมดอายุใกล้สุดก่อน คนที่เสี่ยงถูกตัดสิทธิ์วันนี้ต้องได้คิวแรก
     orderBy: { currentPeriodEnd: "asc" },
-    take: 200,
+    take: limit,
     select: {
       userId: true,
       currentPeriodEnd: true,
@@ -263,7 +315,31 @@ async function resyncActiveMembers(input: unknown) {
     ).catch(() => {});
   }
 
-  return NextResponse.json({ ok: true, dry, total: touched.length, dispatched, members: touched });
+  /** ยังเหลืออีกกี่คนที่รอบนี้ไม่ได้แตะ — สั่งซ้ำได้เรื่อย ๆ จนเหลือ 0 */
+  const remaining = Math.max(0, matched - touched.length);
+
+  const notFound = picked
+    ? list.filter(
+        (q) =>
+          !touched.some(
+            (t) =>
+              t.email?.toLowerCase() === q.toLowerCase() ||
+              t.tradingView?.toLowerCase() === q.toLowerCase()
+          )
+      )
+    : [];
+
+  return NextResponse.json({
+    ok: true,
+    dry,
+    matched,
+    total: touched.length,
+    dispatched,
+    remaining,
+    // ที่ระบุมาแต่หาไม่เจอ = พิมพ์ผิด หรือแพ็กเกจหมดอายุไปแล้ว (ต้องให้ลูกค้าต่อก่อน)
+    ...(notFound.length ? { notFound } : {}),
+    members: touched,
+  });
 }
 
 /**
