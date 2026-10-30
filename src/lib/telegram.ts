@@ -138,8 +138,8 @@ export async function sendAdminAlert(text: string): Promise<AdminAlertResult> {
  */
 export const telegramGroupManaged = Boolean(TOKEN && CHAT_ID);
 
-/** ลิงก์เชิญมีอายุกี่วันก่อนหมดอายุไปเอง */
-const INVITE_DAYS = 7;
+/** ลิงก์เชิญมีอายุกี่วันก่อนหมดอายุไปเอง — ฝั่ง lifecycle ต้องรู้ด้วย เพื่อไม่ส่งลิงก์ที่ตายแล้วให้ลูกค้า */
+export const INVITE_DAYS = 7;
 
 async function callApi<T>(method: string, body: Record<string, unknown>): Promise<T> {
   if (!TOKEN) throw new Error("ยังไม่ได้ตั้ง TELEGRAM_BOT_TOKEN");

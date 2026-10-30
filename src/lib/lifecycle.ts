@@ -22,6 +22,7 @@ import {
   isGroupMember,
   revokeInviteLink,
   currentChatId,
+  INVITE_DAYS,
 } from "@/lib/telegram";
 import { formatTHB } from "@/lib/utils";
 import { salesPaused } from "@/config/site";
@@ -125,6 +126,7 @@ export async function activateMembership(input: ActivateInput): Promise<Activate
   if (input.amountTHB > 0) {
     await lockPromoPriceIfEligible(input.userId);
   }
+  await clearStaleRevokeQueues(input.userId);
   await ensureAccessGrant(input.userId);
   await ensureTelegramInvite(input.userId);
   await ensureDiscordRole(input.userId, input.planCode);
@@ -133,6 +135,41 @@ export async function activateMembership(input: ActivateInput): Promise<Activate
   await notifyActivation(input, until);
 
   return { subscriptionId: sub.id, until, extended: Boolean(canExtendInPlace) };
+}
+
+/**
+ * ยกเลิกคิว "รอถอนสิทธิ์ / รอนำออกจากกลุ่ม" ที่ค้างจากรอบที่หมดอายุ
+ *
+ * หมดอายุแล้วบอทถอนไม่สำเร็จ คิวจะค้างที่ PENDING_REVOKE และ reconcile จะสั่งถอนซ้ำ
+ * ทุกรอบจนสำเร็จ ถ้าลูกค้าต่ออายุระหว่างนั้น เราเพิ่งสั่งเพิ่มสิทธิ์ให้ แล้ว reconcile
+ * รอบถัดไป (ภายใน 10 นาที) จะถอนออกให้เอง — ลูกค้าจ่ายเงินแล้วสิทธิ์หลุดทีหลัง
+ * โดยไม่มีใครเห็นว่าเกิดอะไรขึ้น เพราะทั้งสองฝ่ายทำงาน "ถูก" ตามคิวที่มี
+ *
+ * ฝั่ง Telegram ก็เหมือนกัน PENDING_REMOVE ที่ค้างคือใบสั่งนำคนที่จ่ายเงินแล้วออกจากกลุ่ม
+ * ล้างลิงก์เชิญใบเก่าทิ้งด้วย เพราะลิงก์มีอายุ INVITE_DAYS วัน ใบของรอบก่อนใช้ไม่ได้แล้ว
+ * ถ้าปล่อยไว้ ensureTelegramInvite จะเห็นว่า "มีลิงก์แล้ว" แล้วข้ามการออกใบใหม่
+ */
+async function clearStaleRevokeQueues(userId: string): Promise<void> {
+  try {
+    await prisma.accessGrant.updateMany({
+      where: { userId, status: "PENDING_REVOKE" },
+      data: { status: "PENDING", revokedAt: null, note: "ต่ออายุแล้ว — ยกเลิกคิวถอนสิทธิ์" },
+    });
+    await prisma.telegramGrant.updateMany({
+      where: { userId, status: "PENDING_REMOVE" },
+      data: {
+        status: "PENDING",
+        removedAt: null,
+        inviteLink: null,
+        invitedAt: null,
+        notifiedAt: null,
+        note: "ต่ออายุแล้ว — ยกเลิกคิวนำออกจากกลุ่ม",
+      },
+    });
+  } catch (e) {
+    // ล้มเหลวตรงนี้ห้ามทำให้การเปิดสิทธิ์ล้ม — แย่กว่าเดิมไม่ได้ อย่างมากก็เท่าเดิม
+    console.error("clear stale revoke queues failed:", e);
+  }
 }
 
 /** อีเมลใบเสร็จให้สมาชิก + แจ้งแอดมินใน Telegram (ล้มเหลวไม่กระทบการเปิดสิทธิ์) */
@@ -193,6 +230,22 @@ async function notifyActivation(input: ActivateInput, until: Date) {
  */
 export const ACTIVE_GRANT_STATUSES = ["PENDING", "PENDING_REVOKE", "REVOKED"] as const;
 
+/**
+ * สถานะที่ syncTradingViewGrant หยิบมาสั่งบอทได้ — ต้องมี GRANTED ด้วย
+ *
+ * คนที่เคยได้อินดิเคเตอร์แล้วจะเป็น GRANTED ค้างอยู่ ถ้าไม่รวมสถานะนี้
+ * ตอนต่ออายุ findFirst จะหาคิวไม่เจอแล้ว return เงียบ ๆ บอทไม่เคยได้รับคำสั่งเลย
+ * สิทธิ์บน TradingView จึงยังหมดวันเดิม ลูกค้าจ่ายเงินต่ออายุแล้วถูกตัดสิทธิ์
+ * (เจอจริง 30 ต.ค. 69 — 6 รายต่ออายุแล้วไม่ได้อินดิเคเตอร์)
+ *
+ * บั๊กเดียวกันเคยโดนที่เส้นทางเปลี่ยน username แล้วแก้เฉพาะหน้าด้วยการตั้งคิว
+ * กลับเป็น PENDING ก่อนเรียก (api/cron/delivery) — ตรงนั้นรอด แต่เส้นทางต่ออายุไม่ได้ทำ
+ * แก้ที่ตัว syncTradingViewGrant เลย เส้นทางใหม่ ๆ จะไม่ต้องจำกลเม็ดนี้อีก
+ *
+ * ปลอดภัยต่อการวนซ้ำ: reconcile หยิบเฉพาะ PENDING แถว GRANTED จึงไม่ถูกสั่งซ้ำเอง
+ */
+export const DISPATCHABLE_GRANT_STATUSES = [...ACTIVE_GRANT_STATUSES, "GRANTED"] as const;
+
 export async function syncTradingViewGrant(userId: string, daysOverride?: number): Promise<void> {
   if (!tvAutoGrantEnabled) return;
 
@@ -204,7 +257,7 @@ export async function syncTradingViewGrant(userId: string, daysOverride?: number
     if (!user?.tradingViewUsername) return; // ยังไม่กรอก username — คิวรออยู่แล้ว
 
     const grant = await prisma.accessGrant.findFirst({
-      where: { userId, status: { in: [...ACTIVE_GRANT_STATUSES] } },
+      where: { userId, status: { in: [...DISPATCHABLE_GRANT_STATUSES] } },
       orderBy: { createdAt: "desc" },
     });
     if (!grant) return;
@@ -355,31 +408,68 @@ export async function ensureTelegramInvite(userId: string): Promise<void> {
       orderBy: { createdAt: "desc" },
     });
     if (!grant) return;
-    if (!dropped && (grant.status === "ADDED" || grant.inviteLink)) return;
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { telegramUserId: true },
     });
 
-    if (user?.telegramUserId && (await isGroupMember(user.telegramUserId))) {
-      await prisma.telegramGrant.update({
-        where: { id: grant.id },
-        data: {
-          status: "ADDED",
-          addedAt: new Date(),
-          telegramUserId: user.telegramUserId,
-          note: "ยังอยู่ในกลุ่มจากรอบก่อน",
-        },
-      });
+    /**
+     * ยังอยู่ในกลุ่มจริงหรือไม่ ต้อง "ถามกลุ่ม" ไม่ใช่เชื่อสถานะในฐานข้อมูล
+     *
+     * ของเดิมเห็น status = ADDED แล้ว return ทันที แต่ ADDED ค้างได้ง่ายมาก:
+     * ลูกค้าออกจากกลุ่มเอง หรือถูกนำออกตอนหมดอายุแล้วอัปเดตสถานะไม่ทัน
+     * ตอนต่ออายุจึงไม่มีใครออกลิงก์ใหม่ให้ และ reconcile ก็ไม่หยิบ (มันหยิบเฉพาะ
+     * PENDING ที่ inviteLink ว่าง) ลูกค้ากลุ่มนี้จึงค้างถาวรจนกว่าจะทักมาเอง
+     * (เจอจริง 30 ต.ค. 69 — ต่ออายุแล้วไม่ได้เข้ากลุ่ม 2 ราย)
+     *
+     * isGroupMember ถามไม่ได้ก็ตอบ false อยู่แล้ว อย่างแย่สุดคือออกลิงก์เกินมาใบหนึ่ง
+     * ซึ่งเสียหายน้อยกว่าปล่อยให้คนจ่ายเงินแล้วเข้ากลุ่มไม่ได้
+     */
+    const stillMember =
+      Boolean(user?.telegramUserId) && (await isGroupMember(user!.telegramUserId!));
+
+    if (stillMember) {
+      if (grant.status !== "ADDED" || grant.telegramUserId !== user!.telegramUserId) {
+        await prisma.telegramGrant.update({
+          where: { id: grant.id },
+          data: {
+            status: "ADDED",
+            addedAt: new Date(),
+            telegramUserId: user!.telegramUserId,
+            note: "ยังอยู่ในกลุ่มจากรอบก่อน",
+          },
+        });
+      }
       return;
     }
+
+    /**
+     * ลิงก์เชิญที่ออกไว้มีอายุแค่ INVITE_DAYS วัน ใบของรอบก่อนจึงตายไปแล้ว
+     * ต้องนับว่า "ไม่มีลิงก์" ไม่ใช่ "มีลิงก์แล้วข้ามไป" ไม่งั้นลูกค้าได้ลิงก์ที่กดไม่ได้
+     * ใบที่ยังไม่หมดอายุไม่ต้องออกใหม่ — ออกใหม่ทุกรอบจะทำให้ใบที่ส่งอีเมลไปแล้วใช้ไม่ได้
+     */
+    const linkAlive =
+      Boolean(grant.inviteLink) &&
+      grant.invitedAt !== null &&
+      grant.invitedAt.getTime() > Date.now() - INVITE_DAYS * 24 * 60 * 60 * 1000;
+    if (!dropped && linkAlive) return;
 
     const inviteLink = await createMemberInviteLink(grant.id);
     await prisma.telegramGrant.update({
       where: { id: grant.id },
       // เก็บกลุ่มที่ออกให้ไว้ด้วย รอบหน้าจะได้รู้ว่าลิงก์ใบนี้ของกลุ่มไหน
-      data: { inviteLink, chatId: currentChatId, invitedAt: new Date(), note: "ลิงก์เชิญส่วนตัวพร้อมใช้งาน" },
+      //
+      // ล้าง notifiedAt ทุกครั้งที่ออกใบใหม่ — รอบกวาดรายวันส่งอีเมลเฉพาะแถวที่
+      // notifiedAt ว่าง ถ้าไม่ล้าง ใบใหม่จะนอนอยู่ในฐานข้อมูลโดยไม่มีใครส่งให้ลูกค้า
+      // เพราะระบบจำว่า "ส่งลิงก์ไปแล้ว" ตั้งแต่ใบที่ตายไปแล้วของรอบก่อน
+      data: {
+        inviteLink,
+        chatId: currentChatId,
+        invitedAt: new Date(),
+        notifiedAt: null,
+        note: "ลิงก์เชิญส่วนตัวพร้อมใช้งาน",
+      },
     });
   } catch (e) {
     console.error("telegram invite failed:", e);

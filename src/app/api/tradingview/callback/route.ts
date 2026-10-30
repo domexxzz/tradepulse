@@ -6,7 +6,7 @@ import { sendAdminAlert, sendPhotoToUser } from "@/lib/telegram";
 import { notifyAccessGranted } from "@/lib/access-notify";
 import { sendEmail } from "@/lib/email";
 import { tradingViewNotFoundEmail } from "@/lib/email-templates";
-import { ACTIVE_GRANT_STATUSES } from "@/lib/lifecycle";
+import { DISPATCHABLE_GRANT_STATUSES } from "@/lib/lifecycle";
 import { sendAdminAlertThrottled } from "@/lib/alert-throttle";
 
 export const dynamic = "force-dynamic";
@@ -91,8 +91,12 @@ export async function POST(req: Request) {
   // **ต้องเลือกแถวเดียวกับที่ syncTradingViewGrant สั่งงานไป** ไม่งั้นผลลัพธ์จะไปลง
   // คนละแถวกับที่ตัวนับและเวลารออ่านอยู่ แล้วตัวกันทั้งหมดจะไม่มีผลเลย
   // ของเดิมไม่กรองสถานะ จึงหยิบแถว GRANTED เก่าได้ถ้ามันใหม่กว่าแถว PENDING ที่สั่งไป
+  //
+  // ใช้รายการเดียวกับที่ syncTradingViewGrant ใช้ค้นแถวที่จะสั่ง (รวม GRANTED ด้วย)
+  // ตอนต่ออายุ แถวที่ถูกสั่งคือแถว GRANTED ของรอบก่อน ถ้าตรงนี้ยังตัด GRANTED ออก
+  // มันจะไปหยิบแถว REVOKED เก่าที่ไม่เกี่ยวกัน แล้วเขียนผลลงผิดแถว
   const grant =
-    (await findGrantForCallback(username, ACTIVE_GRANT_STATUSES)) ??
+    (await findGrantForCallback(username, DISPATCHABLE_GRANT_STATUSES)) ??
     (await findGrantForCallback(username, null));
   if (!grant) {
     return NextResponse.json(
