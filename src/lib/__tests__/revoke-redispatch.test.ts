@@ -44,13 +44,26 @@ const { runReconcile, MAX_FAILS } = await import("@/lib/reconcile");
 const MIN = 60_000;
 const user = { tradingViewUsername: "someone" };
 
+interface FakeRevokeRow {
+  id: string;
+  failCount: number;
+  lastDispatchedAt: Date | null;
+  /** ลูกค้ายังมีแพ็กเกจที่ใช้งานอยู่ไหม */
+  active?: boolean;
+}
+
 /** แถวคิวถอนปลอมที่ "เคารพเงื่อนไข where" — ไม่งั้นเทสต์ผ่านทั้งก่อนและหลังแก้ */
-function revokeTable(rows: { id: string; failCount: number; lastDispatchedAt: Date | null }[]) {
+function revokeTable(rows: FakeRevokeRow[]) {
   findMany.mockImplementation(async (args: Record<string, never>) => {
     const w = (args as { where?: Record<string, unknown> }).where ?? {};
     if (w.status !== "PENDING_REVOKE") return [];
+    // โค้ดก่อนแก้ไม่มีด่าน "ห้ามถอนคนที่ยังจ่ายเงินอยู่" เลย
+    const guardsActive = Boolean(
+      (w.user as { subscriptions?: { none?: unknown } } | undefined)?.subscriptions?.none
+    );
     return rows
       .filter((r) => {
+        if (guardsActive && r.active) return false;
         const cap = w.failCount as { lt?: number } | undefined;
         if (cap?.lt !== undefined && r.failCount >= cap.lt) return false;
         const or = w.OR as { lastDispatchedAt: unknown }[] | undefined;
@@ -122,6 +135,19 @@ describe("คิวถอนสิทธิ์ที่ค้าง", () => {
 
     const last = update.mock.calls.at(-1)?.[0] as { data: Record<string, unknown> };
     expect(last.data.failCount).toEqual({ increment: 1 });
+  });
+
+  it("แพ็กเกจยังใช้งานอยู่ ห้ามถอนเด็ดขาด แม้คิวจะสั่งไว้", async () => {
+    /**
+     * คิวถอนเกิดตอนหมดอายุ แต่ลูกค้าต่ออายุทีหลังได้ ถ้าบอทถอนไม่สำเร็จแถวจะค้าง
+     * ข้ามรอบบิล พอเราเพิ่งให้สิทธิ์เขาใหม่ รอบถัดไปจะถอนออกให้เอง
+     * = จ่ายเงินแล้วสิทธิ์หลุดใน 10 นาที (เจอจริงกับ @anupong6914 30 ต.ค. 69)
+     */
+    revokeTable([{ id: "r1", failCount: 0, lastDispatchedAt: null, active: true }]);
+
+    await runReconcile();
+
+    expect(revokeTradingViewAccess).not.toHaveBeenCalled();
   });
 
   it("ติดต่อบอทไม่ได้ = ปัญหาของท่อ ห้ามกินโควตาเลิกลอง", async () => {
