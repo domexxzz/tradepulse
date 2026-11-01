@@ -4,6 +4,7 @@ vi.mock("@/lib/prisma", () => ({ prisma: {} }));
 
 const { KnowledgeIndex } = await import("@/lib/ai/rag");
 const { buildCorpus } = await import("@/lib/ai/corpus");
+const { BROKERS } = await import("@/config/brokers");
 
 const promo = { seats: 300, taken: 12, remaining: 288, active: true, monthlyTHB: 999 };
 const index = new KnowledgeIndex(buildCorpus(promo));
@@ -57,7 +58,7 @@ describe("ข้อมูลที่ดึงสดจากเว็บ", () =
 
   it("เงื่อนไข Wisdom มาจาก config เดียวกับหน้าเว็บ", () => {
     const w = buildCorpus(promo).find((d) => d.id === "wisdom")!;
-    expect(w.text).toContain("100 USD");
+    expect(w.text).toContain(`${BROKERS.wisdom.qvxMinDepositUSD} USD`);
     expect(w.text).toContain("MT5");
   });
 });

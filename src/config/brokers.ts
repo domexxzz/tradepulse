@@ -69,7 +69,7 @@ export const BROKERS: Record<string, Broker> = {
     maxLeverage: "1:1,000",
     emailDomains: ["wisdomfinancialservice.com", "wisdomtrade.com"],
     brokerMinDepositUSD: 50,
-    qvxMinDepositUSD: 100,
+    qvxMinDepositUSD: 300,
     promotions: [
       "โบนัส 20% ของยอดฝาก",
       "ฝากตั้งแต่ $500 ขึ้นไป รับบัญชีแบบ Free Swap",
