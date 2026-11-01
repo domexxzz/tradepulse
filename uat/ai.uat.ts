@@ -6,6 +6,7 @@ import { saveSnapshot, parseSnapshot } from "@/lib/ai/market";
 import { activateMembership } from "@/lib/lifecycle";
 import { getUserSubscription } from "@/lib/subscription";
 import { AI_MONTHLY_LIMIT, AI_USAGE_STATUS as U } from "@/config/ai";
+import { BROKERS } from "@/config/brokers";
 
 /**
  * QVX AI · ชนฐานข้อมูลจริง แต่ใช้โมเดลปลอม (ไม่เรียก OpenAI ไม่เสียเงิน)
@@ -196,7 +197,7 @@ describe("A-3 · บทสนทนา", () => {
     expect(r.sources.some((t) => t.includes("Wisdom"))).toBe(true);
     const system = m.calls[0][0].content;
     expect(system).toContain("ข้อมูลอ้างอิงจากคลังความรู้ QVX");
-    expect(system).toContain("100 USD");
+    expect(system).toContain(`${BROKERS.wisdom.qvxMinDepositUSD} USD`);
   });
 
   it("คำถามว่างหรือยาวเกิน = ปฏิเสธก่อนแตะอะไร", async () => {
