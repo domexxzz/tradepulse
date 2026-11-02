@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import { syncTradingViewGrant, ensureTelegramInvite } from "@/lib/lifecycle";
+import {
+  syncTradingViewGrant,
+  ensureTelegramInvite,
+  healActiveMembersQueuedForRemoval,
+} from "@/lib/lifecycle";
 import { revokeTradingViewAccess, tvAutoGrantEnabled, bridgeQueueDepth } from "@/lib/tradingview";
 import { telegramGroupManaged } from "@/lib/telegram";
 import { ACTIVE_STATUSES } from "@/lib/subscription";
@@ -89,6 +93,8 @@ export interface ReconcileResult {
   invitesCreated: number;
   /** คิวที่รอลูกค้ากรอก username — ไม่ใช่ความผิดพลาดของระบบ แต่ควรรู้จำนวน */
   waitingForUsername: number;
+  /** สิทธิ์ที่ถูกถอนผิดทั้งที่ลูกค้ายังจ่ายเงินอยู่ แล้วคืนให้ในรอบนี้ — ปกติต้องเป็น 0 */
+  healed: number;
   skipped?: string;
 }
 
@@ -290,6 +296,7 @@ export async function runReconcile(): Promise<ReconcileResult> {
     revokesRetried: 0,
     invitesCreated: 0,
     waitingForUsername: 0,
+    healed: 0,
   };
 
   // ไม่ได้ตั้งบอทไว้ = ระบบทำงานแบบแอดมินกดเองอยู่แล้ว ไม่ต้องไล่อะไร
@@ -301,6 +308,21 @@ export async function runReconcile(): Promise<ReconcileResult> {
   // ฝั่งถอนจึงไม่เคยรู้ว่าคิวยาวแค่ไหน แล้วสั่งซ้ำทับคิวที่ยังทำไม่เสร็จ
   const queue = await bridgeQueueDepth().catch(() => null);
   const waitMinutes = queue === 0 ? IDLE_REDISPATCH_MINUTES : REDISPATCH_MINUTES;
+
+  /**
+   * คืนสิทธิ์ที่ถูกถอนผิดก่อนทำอย่างอื่นเสมอ
+   *
+   * เดิมด่านนี้อยู่ในรอบกวาดรายวันที่เดียว ซึ่งแปลว่าลูกค้าที่โดนถอนผิดตอนบ่าย
+   * ต้องรอถึงตีสามกว่าจะได้สิทธิ์คืน reconcile วิ่งทุก 5 นาทีอยู่แล้ว
+   * เอามาเสียบตรงนี้ด้วยทำให้เวลารอกลายเป็นหลักนาที
+   *
+   * ต้องมาก่อน retryPendingRevokes ในรอบเดียวกัน ไม่งั้นใบถอนที่เพิ่งจะถูกล้าง
+   * อาจถูกหยิบไปสั่งในรอบนี้เสียก่อน
+   */
+  const healed = await healActiveMembersQueuedForRemoval().catch((e) => {
+    console.error("reconcile: heal step failed", e);
+    return { grants: 0, telegram: 0, members: [] as string[] };
+  });
 
   const [grantsRetried, revokesRetried, invitesCreated, waitingForUsername] = await Promise.all([
     retryPendingGrants(cutoff, waitMinutes).catch((e) => {
@@ -320,7 +342,7 @@ export async function runReconcile(): Promise<ReconcileResult> {
     countWaitingForUsername(cutoff).catch(() => 0),
   ]);
 
-  return { grantsRetried, revokesRetried, invitesCreated, waitingForUsername };
+  return { grantsRetried, revokesRetried, invitesCreated, waitingForUsername, healed: healed.grants };
 }
 
 /**

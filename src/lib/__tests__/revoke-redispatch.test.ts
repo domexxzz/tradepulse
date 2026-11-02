@@ -36,6 +36,7 @@ vi.mock("@/lib/telegram", () => ({ telegramGroupManaged: false }));
 vi.mock("@/lib/lifecycle", () => ({
   syncTradingViewGrant: vi.fn(),
   ensureTelegramInvite: vi.fn(),
+  healActiveMembersQueuedForRemoval: vi.fn(async () => ({ grants: 0, telegram: 0, members: [] })),
 }));
 vi.mock("@/lib/subscription", () => ({ ACTIVE_STATUSES: ["ACTIVE"] }));
 
