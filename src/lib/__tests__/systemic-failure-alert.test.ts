@@ -76,6 +76,7 @@ describe("จับความล้มเหลวที่เป็นขอ�
 
     const res = await runReconcile();
 
+    expect(res.systemicFound).toBe(1);
     expect(res.systemicAlerts).toBe(1);
     const [key, text] = sendAdminAlertThrottled.mock.calls[0];
     // กันซ้ำต่อ "เหตุผล" ไม่ใช่ต่อใบ — เหตุผลใหม่ต้องดังทันที
@@ -97,6 +98,7 @@ describe("จับความล้มเหลวที่เป็นขอ�
 
     const res = await runReconcile();
 
+    expect(res.systemicFound).toBe(0);
     expect(res.systemicAlerts).toBe(0);
     expect(sendAdminAlertThrottled).not.toHaveBeenCalled();
   });
@@ -109,13 +111,29 @@ describe("จับความล้มเหลวที่เป็นขอ�
 
     const res = await runReconcile();
 
+    expect(res.systemicFound).toBe(0);
     expect(res.systemicAlerts).toBe(0);
     expect(sendAdminAlertThrottled).not.toHaveBeenCalled();
+  });
+
+  it("เจอกลุ่มแต่ส่งแจ้งเตือนไม่ออก = ต้องแยกให้เห็น ไม่ใช่รายงานว่าไม่มีอะไร", async () => {
+    /**
+     * "เจอ 1 กลุ่ม ส่งออกได้ 0" คือข้อมูลคนละชุดกับ "ไม่เจออะไรเลย"
+     * กรณีแรกแปลว่าท่อแจ้งเตือนพัง ซึ่งอันตรายกว่าของที่มันพยายามจะเตือน
+     */
+    stuckRows(["c1", "c2", "c3", "c4", "c5"].map((tv) => ({ tv, reason: DOM_BROKEN })));
+    sendAdminAlertThrottled.mockResolvedValue({ sent: false, suppressed: 3 });
+
+    const res = await runReconcile();
+
+    expect(res.systemicFound).toBe(1);
+    expect(res.systemicAlerts).toBe(0);
   });
 
   it("ไม่มีใครติดเพดาน = ไม่เตือน", async () => {
     const res = await runReconcile();
 
+    expect(res.systemicFound).toBe(0);
     expect(res.systemicAlerts).toBe(0);
     expect(sendAdminAlertThrottled).not.toHaveBeenCalled();
   });
