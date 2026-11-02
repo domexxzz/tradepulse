@@ -110,21 +110,50 @@ interface TelegramReply {
   parameters?: { migrate_to_chat_id?: number };
 }
 
+/**
+ * ยิงซ้ำเมื่อ "ต่อไม่ติด" — ไม่ใช่เมื่อ "Telegram ปฏิเสธ"
+ *
+ * วัดจริงบน production 2 พ.ย. 69: ยิง /api/cron/test-alert 14 ครั้งติดกัน
+ * ได้ fetch failed 10 ครั้ง (~70%) สลับกับคำตอบจริงจาก Telegram
+ * เน็ตขาออกจากเซิร์ฟเวอร์ไป api.telegram.org ไม่นิ่ง ต่อให้ปลายทางถูกแล้ว
+ * แจ้งเตือนก็ยังหายไปเกินครึ่ง — ซึ่งแปลว่าเชื่อความเงียบไม่ได้อยู่ดี
+ *
+ * ยิงซ้ำเฉพาะความล้มเหลวระดับการเชื่อมต่อ (fetch โยน exception)
+ * ส่วนคำตอบที่ Telegram ตอบมาแล้ว เช่น "ถูกเตะออกจากกลุ่ม" หรือ "chat not found"
+ * ยิงซ้ำไปก็ได้คำตอบเดิม และยังเสี่ยงส่งข้อความซ้ำให้ลูกค้าโดยไม่จำเป็น
+ */
+const SEND_ATTEMPTS = 3;
+
 async function postAdminMessage(chatId: string, text: string, topic?: string) {
-  const res = await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
-    method: "POST",
-    // ปลายทางค้างไม่ตอบ ต้องตัดทิ้ง ไม่งั้นฟังก์ชันค้างจนหมดเวลา
-    signal: AbortSignal.timeout(10_000),
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      chat_id: chatId,
-      message_thread_id: topic ? Number(topic) : undefined,
-      text,
-      disable_web_page_preview: true,
-    }),
-  });
-  const data = (await res.json().catch(() => ({}))) as TelegramReply;
-  return { data, status: res.status };
+  let lastError: unknown = null;
+
+  for (let attempt = 1; attempt <= SEND_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+        method: "POST",
+        // ปลายทางค้างไม่ตอบ ต้องตัดทิ้ง ไม่งั้นฟังก์ชันค้างจนหมดเวลา
+        signal: AbortSignal.timeout(10_000),
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          message_thread_id: topic ? Number(topic) : undefined,
+          text,
+          disable_web_page_preview: true,
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as TelegramReply;
+      // ได้คำตอบจาก Telegram แล้ว — จบตรงนี้ ไม่ว่าจะ ok หรือถูกปฏิเสธ
+      return { data, status: res.status };
+    } catch (e) {
+      lastError = e;
+      if (attempt < SEND_ATTEMPTS) {
+        // หน่วงสั้น ๆ แบบเพิ่มขึ้น เผื่อเป็นอาการชั่วคราวของเครือข่าย
+        await new Promise((r) => setTimeout(r, attempt * 400));
+      }
+    }
+  }
+
+  throw lastError;
 }
 
 export async function sendAdminAlert(text: string): Promise<AdminAlertResult> {

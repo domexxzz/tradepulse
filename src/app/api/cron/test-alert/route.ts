@@ -35,8 +35,19 @@ async function run(req: Request) {
     ].join("\n")
   );
 
-  // ok=false พร้อม reason เมื่อยังไม่ได้ตั้งปลายทาง — จะได้รู้สาเหตุทันที
-  return NextResponse.json({ ok: result.sent, ...result });
+  /**
+   * บอกด้วยว่าตอนนี้ยิงเข้าห้องไหน
+   *
+   * chat id ไม่ใช่ความลับ (ใช้ได้เฉพาะคนที่ถือ bot token อยู่แล้ว) แต่เป็นค่าที่
+   * ต้องรู้เวลาห้องถูกอัปเกรดเป็น supergroup แล้วต้องไปแก้ env ให้ตรง
+   * ถ้าไม่คืนออกมา วิธีเดียวที่จะรู้คือเปิด log ของผู้ให้บริการโฮสต์ดู
+   */
+  return NextResponse.json({
+    ok: result.sent,
+    ...result,
+    chatIdInUse: result.movedTo ?? process.env.TELEGRAM_ADMIN_CHAT_ID ?? null,
+    configuredChatId: process.env.TELEGRAM_ADMIN_CHAT_ID ?? null,
+  });
 }
 
 export const GET = run;
