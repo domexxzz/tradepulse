@@ -74,19 +74,30 @@ export async function bridgeUrls(now = Date.now()): Promise<Record<BridgeRole, s
  * งานที่หายไปกับคิวจะค้างจนพ้นเวลากันสั่งซ้ำ ซึ่งลูกค้าต้องรอฟรี ๆ
  */
 export async function bridgeQueueDepth(): Promise<number | null> {
-  const { primary } = await bridgeUrls();
-  if (!primary) return null;
-  try {
-    const res = await fetch(`${primary}/health`, {
-      signal: AbortSignal.timeout(8_000),
-      cache: "no-store",
-    });
-    if (!res.ok) return null;
-    const data = (await res.json()) as { queue?: unknown };
-    return typeof data.queue === "number" ? data.queue : null;
-  } catch {
-    return null;
+  /**
+   * ถามตัวสำรองด้วย ไม่ใช่ถามแต่ตัวหลัก
+   *
+   * ของเดิมถามเฉพาะ primary พอตัวหลักหลุด (ซึ่งเกิดบ่อย — คอมเฟิร์สหลุด Tailscale
+   * ไป 17 วันเมื่อ ต.ค. 69) ค่าจะเป็น null ตลอด reconcile จึงเข้าใจว่า "คิวไม่ว่าง"
+   * แล้วใช้เวลารอแบบเต็ม 30 นาทีทุกครั้ง ทั้งที่ตัวสำรองว่างอยู่
+   * ลูกค้าที่ควรได้สิทธิ์ใน 10 นาทีเลยรอ 30 นาที โดยไม่มีอะไรผิดพลาดให้เห็น
+   *
+   * ยิงที่ไหนก็ตามที่ตอบก่อน — งานถูกส่งไปตามลำดับเดียวกันอยู่แล้ว (ดู bridgeTargets)
+   */
+  for (const base of await bridgeTargets()) {
+    try {
+      const res = await fetch(`${base}/health`, {
+        signal: AbortSignal.timeout(8_000),
+        cache: "no-store",
+      });
+      if (!res.ok) continue;
+      const data = (await res.json()) as { queue?: unknown };
+      if (typeof data.queue === "number") return data.queue;
+    } catch {
+      // ตัวนี้ไม่ตอบ ลองตัวถัดไป
+    }
   }
+  return null;
 }
 
 /** รายชื่อบริดจ์ตามลำดับที่จะลอง (หลักก่อน แล้วค่อยสำรอง) */
