@@ -80,6 +80,34 @@ describe("แจ้งเตือนแอดมินเมื่อห้อ�
     expect(chatIdOfCall(0)).toBe(NEW_CHAT);
   });
 
+  it("ต่อไม่ติดชั่วคราว = ยิงซ้ำจนได้ ไม่ใช่ยอมแพ้ตั้งแต่ครั้งแรก", async () => {
+    /**
+     * วัดจริงบน production 2 พ.ย. 69: ยิงทดสอบ 14 ครั้งติดกัน ได้ fetch failed 10 ครั้ง
+     * เน็ตขาออกไป api.telegram.org ไม่นิ่ง ต่อให้ปลายทางถูกแล้วแจ้งเตือนก็หายเกินครึ่ง
+     */
+    fetchMock
+      .mockRejectedValueOnce(new TypeError("fetch failed"))
+      .mockRejectedValueOnce(new TypeError("fetch failed"))
+      .mockResolvedValueOnce({ status: 200, json: async () => ({ ok: true }) });
+
+    const { sendAdminAlert } = await import("@/lib/telegram");
+    const res = await sendAdminAlert("บริดจ์ล่ม");
+
+    expect(res.sent).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("ต่อไม่ติดทุกครั้ง = ยอมแพ้แล้วบอกเหตุผล ไม่ใช่วนไม่จบ", async () => {
+    fetchMock.mockRejectedValue(new TypeError("fetch failed"));
+
+    const { sendAdminAlert } = await import("@/lib/telegram");
+    const res = await sendAdminAlert("บริดจ์ล่ม");
+
+    expect(res.sent).toBe(false);
+    expect(res.reason).toContain("fetch failed");
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
   it("ปฏิเสธด้วยเหตุผลอื่น = ห้ามลองซ้ำมั่ว ต้องคืนเหตุผลตรง ๆ", async () => {
     fetchMock.mockResolvedValueOnce({
       status: 403,
