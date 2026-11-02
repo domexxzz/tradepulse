@@ -96,7 +96,9 @@ export interface ReconcileResult {
   waitingForUsername: number;
   /** สิทธิ์ที่ถูกถอนผิดทั้งที่ลูกค้ายังจ่ายเงินอยู่ แล้วคืนให้ในรอบนี้ — ปกติต้องเป็น 0 */
   healed: number;
-  /** กลุ่มความล้มเหลวที่กว้างพอจะถือว่าพังทั้งระบบ แล้วเตือนไปในรอบนี้ */
+  /** กลุ่มความล้มเหลวที่กว้างพอจะถือว่าพังทั้งระบบ — เจอกี่กลุ่ม */
+  systemicFound: number;
+  /** ในนั้นส่งแจ้งเตือนออกไปได้จริงกี่กลุ่ม — เจอแต่ส่งไม่ออก = ท่อแจ้งเตือนพัง */
   systemicAlerts: number;
   skipped?: string;
 }
@@ -300,6 +302,7 @@ export async function runReconcile(): Promise<ReconcileResult> {
     invitesCreated: 0,
     waitingForUsername: 0,
     healed: 0,
+    systemicFound: 0,
     systemicAlerts: 0,
   };
 
@@ -347,9 +350,9 @@ export async function runReconcile(): Promise<ReconcileResult> {
   ]);
 
   // ดูภาพรวมหลังสั่งงานรอบนี้เสร็จ — ตัวเลขจะได้รวมผลล่าสุดด้วย
-  const systemicAlerts = await reportSystemicFailures().catch((e) => {
+  const systemic = await reportSystemicFailures().catch((e) => {
     console.error("reconcile: systemic check failed", e);
-    return 0;
+    return { found: 0, sent: 0 };
   });
 
   return {
@@ -358,7 +361,8 @@ export async function runReconcile(): Promise<ReconcileResult> {
     invitesCreated,
     waitingForUsername,
     healed: healed.grants,
-    systemicAlerts,
+    systemicFound: systemic.found,
+    systemicAlerts: systemic.sent,
   };
 }
 
@@ -386,7 +390,21 @@ const SYSTEMIC_FAIL_MEMBERS = 5;
  * ใช้ตัวกันซ้ำ 6 ชม. ต่อ "เหตุผล" ไม่ใช่ต่อใบ — เหตุผลใหม่โผล่เมื่อไหร่ดังทันที
  * ซึ่งเป็นพฤติกรรมที่ต้องการพอดี เพราะเหตุผลใหม่ = ของใหม่ที่เพิ่งพัง
  */
-async function reportSystemicFailures(): Promise<number> {
+export interface SystemicGroup {
+  reason: string;
+  members: number;
+  grants: number;
+  revokes: number;
+  sample: string[];
+}
+
+/**
+ * หากลุ่มความล้มเหลวที่กว้างพอจะถือว่าเป็นของส่วนกลาง — อ่านอย่างเดียว ไม่ส่งอะไร
+ *
+ * แยกจากตัวส่งแจ้งเตือนโดยตั้งใจ เครื่องมือวินิจฉัยต้องส่องได้โดยไม่ต้องยิงของจริง
+ * ไม่งั้นวิธีเดียวที่จะรู้ว่าด่านนี้ทำงานไหม คือรอให้มันเด้งเข้ากลุ่มแอดมิน
+ */
+export async function findSystemicFailures(): Promise<SystemicGroup[]> {
   const stuck = await prisma.accessGrant.findMany({
     where: {
       status: { in: ["PENDING", "PENDING_REVOKE"] },
@@ -396,7 +414,6 @@ async function reportSystemicFailures(): Promise<number> {
     select: {
       status: true,
       lastFailReason: true,
-      failCount: true,
       user: { select: { email: true, tradingViewUsername: true } },
     },
     take: 500,
@@ -410,34 +427,46 @@ async function reportSystemicFailures(): Promise<number> {
     else byReason.set(key, [g]);
   }
 
-  let alerted = 0;
-  for (const [reason, rows] of byReason) {
-    if (rows.length < SYSTEMIC_FAIL_MEMBERS) continue;
+  return Array.from(byReason.entries())
+    .filter(([, rows]) => rows.length >= SYSTEMIC_FAIL_MEMBERS)
+    .map(([reason, rows]) => ({
+      reason,
+      members: rows.length,
+      grants: rows.filter((r) => r.status === "PENDING").length,
+      revokes: rows.filter((r) => r.status === "PENDING_REVOKE").length,
+      sample: rows.slice(0, 5).map((r) => r.user.tradingViewUsername ?? r.user.email ?? "-"),
+    }))
+    .sort((a, b) => b.members - a.members);
+}
 
-    const who = rows
-      .slice(0, 5)
-      .map((r) => r.user.tradingViewUsername ?? r.user.email ?? "-")
-      .join(", ");
-    const grants = rows.filter((r) => r.status === "PENDING").length;
-    const revokes = rows.length - grants;
+/**
+ * เตือนกลุ่มที่พบ แล้วบอกว่าส่งออกไปได้จริงกี่กลุ่ม
+ *
+ * คืน sent แยกจาก found โดยตั้งใจ — "เจอ 3 กลุ่ม ส่งออกได้ 0" คือข้อมูลคนละชุด
+ * กับ "ไม่เจออะไรเลย" และเป็นข้อมูลที่ต้องเห็น เพราะกรณีแรกแปลว่าท่อแจ้งเตือนพัง
+ * ซึ่งอันตรายกว่าของที่มันพยายามจะเตือนเสียอีก
+ */
+async function reportSystemicFailures(): Promise<{ found: number; sent: number }> {
+  const groups = await findSystemicFailures();
+  let sent = 0;
 
+  for (const g of groups) {
     const text =
-      `🔴 ส่งมอบล้มเหลวเป็นวงกว้าง ${rows.length} ราย — เหตุผลเดียวกันทุกคน\n` +
-      `"${reason}"\n` +
-      `แยกเป็น: ให้สิทธิ์ค้าง ${grants} · ถอนสิทธิ์ค้าง ${revokes}\n` +
-      `ตัวอย่าง: ${who}\n\n` +
+      `🔴 ส่งมอบล้มเหลวเป็นวงกว้าง ${g.members} ราย — เหตุผลเดียวกันทุกคน\n` +
+      `"${g.reason}"\n` +
+      `แยกเป็น: ให้สิทธิ์ค้าง ${g.grants} · ถอนสิทธิ์ค้าง ${g.revokes}\n` +
+      `ตัวอย่าง: ${g.sample.join(", ")}\n\n` +
       `หลายคนพังด้วยข้อความเดียวกัน = ต้นเหตุอยู่ที่ส่วนกลาง ไม่ใช่ที่ลูกค้า\n` +
       `เช็กตามลำดับ: บอทยัง login TradingView อยู่ไหม · selector ในกล่อง` +
       `จัดการการเข้าถึงเปลี่ยนหรือยัง (ดู bot_out.log) · บริดจ์ตัวไหนรับงานอยู่`;
 
-    // คิวล้มเหลวทั้งวงยังไงก็ต้องมีคนมาดู ปล่อยให้ตัวกันซ้ำคุมความถี่พอ
-    const res = await sendAdminAlertThrottled(`systemic-fail:${reason}`, text).catch((e) => {
+    const res = await sendAdminAlertThrottled(`systemic-fail:${g.reason}`, text).catch((e) => {
       console.error("reconcile: systemic alert failed", e);
       return null;
     });
-    if (res?.sent) alerted += 1;
+    if (res?.sent) sent += 1;
   }
-  return alerted;
+  return { found: groups.length, sent };
 }
 
 /**
@@ -566,6 +595,8 @@ export async function inspectReconcile() {
     willDispatch: rows.filter((r) => r.verdict.startsWith("จะสั่ง")).length,
     willRevoke: revokeRows.filter((r) => r.verdict.startsWith("จะสั่ง")).length,
     pendingRevokeTotal: revokeRows.length,
+    /** กลุ่มความล้มเหลวที่กว้างพอจะถือว่าเป็นของส่วนกลาง — ส่องได้โดยไม่ต้องยิงแจ้งเตือน */
+    systemicGroups: await findSystemicFailures(),
     /** คิวถอนที่ค้างอยู่บนคนที่ยังจ่ายเงินอยู่ = ระเบิดเวลา ต้องเป็น 0 */
     revokeOnActiveMember: revokeRows.filter((r) => r.verdict.startsWith("ข้าม — แพ็กเกจยังใช้งานอยู่")).length,
     duplicateQueues,
