@@ -61,15 +61,36 @@ function revokeTable(rows: FakeRevokeRow[]) {
     const guardsActive = Boolean(
       (w.user as { subscriptions?: { none?: unknown } } | undefined)?.subscriptions?.none
     );
+    /**
+     * ตีความ where เท่าที่ reconcile ใช้จริง: AND / OR / failCount.lt / lastDispatchedAt
+     * ต้องรองรับ AND ด้วย ไม่งั้นพอโค้ดจริงเปลี่ยนมาใช้ AND ตัวกรองจะเงียบ ๆ
+     * ปล่อยผ่านทุกแถว แล้วเทสต์จะพังโดยที่โค้ดจริงไม่ได้ผิด
+     */
+    const matches = (r: FakeRevokeRow, cond: Record<string, unknown>): boolean => {
+      if (Array.isArray(cond.AND) && !(cond.AND as Record<string, unknown>[]).every((c) => matches(r, c))) {
+        return false;
+      }
+      if (Array.isArray(cond.OR) && !(cond.OR as Record<string, unknown>[]).some((c) => matches(r, c))) {
+        return false;
+      }
+      if (cond.failCount !== undefined) {
+        const lt = (cond.failCount as { lt?: number }).lt;
+        if (lt !== undefined && r.failCount >= lt) return false;
+      }
+      if ("lastDispatchedAt" in cond) {
+        const v = cond.lastDispatchedAt as { lt?: Date } | null;
+        if (v === null) return r.lastDispatchedAt === null;
+        if (v?.lt !== undefined) {
+          return r.lastDispatchedAt !== null && r.lastDispatchedAt < v.lt;
+        }
+      }
+      return true;
+    };
+
     return rows
       .filter((r) => {
         if (guardsActive && r.active) return false;
-        const cap = w.failCount as { lt?: number } | undefined;
-        if (cap?.lt !== undefined && r.failCount >= cap.lt) return false;
-        const or = w.OR as { lastDispatchedAt: unknown }[] | undefined;
-        if (!or) return true; // โค้ดก่อนแก้ไม่มีเงื่อนไขนี้เลย
-        const lt = (or[1]?.lastDispatchedAt as { lt?: Date } | undefined)?.lt;
-        return r.lastDispatchedAt === null || (lt !== undefined && r.lastDispatchedAt < lt);
+        return matches(r, w);
       })
       .map((r) => ({ id: r.id, user }));
   });
@@ -111,6 +132,31 @@ describe("คิวถอนสิทธิ์ที่ค้าง", () => {
 
   it("ล้มเหลวครบเพดานแล้ว ต้องเลิกลอง ไม่ใช่วนกินคิวบอทต่อ", async () => {
     revokeTable([{ id: "r1", failCount: MAX_FAILS, lastDispatchedAt: null }]);
+
+    await runReconcile();
+
+    expect(revokeTradingViewAccess).not.toHaveBeenCalled();
+  });
+
+  it("เลยเพดานแล้วแต่ผ่านไปเกินวัน ต้องกลับมาลองอีกครั้ง — ไม่ใช่ตายถาวร", async () => {
+    /**
+     * เพดานมีไว้กันวงวนทุก 5 นาที ไม่ได้มีไว้ตัดสินว่างานนี้เป็นไปไม่ได้ตลอดกาล
+     * 2 พ.ย. 69 บอทถอนพังทั้งระบบ ทุกแถวกินโควตาครบในวันเดียว พอซ่อมบอทเสร็จ
+     * ไม่มีแถวไหนได้ลองอีกเลย คิวถอน 101 รายตายสนิทโดยไม่มีใครรู้ว่าต้องไปปลุก
+     */
+    revokeTable([
+      { id: "r1", failCount: MAX_FAILS + 40, lastDispatchedAt: new Date(Date.now() - 25 * 60 * MIN) },
+    ]);
+
+    await runReconcile();
+
+    expect(revokeTradingViewAccess).toHaveBeenCalledWith("someone");
+  });
+
+  it("เลยเพดานแล้วและเพิ่งลองไปไม่กี่ชั่วโมง ต้องยังพักอยู่", async () => {
+    revokeTable([
+      { id: "r1", failCount: MAX_FAILS + 40, lastDispatchedAt: new Date(Date.now() - 3 * 60 * MIN) },
+    ]);
 
     await runReconcile();
 
