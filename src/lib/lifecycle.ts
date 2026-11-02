@@ -194,10 +194,55 @@ export async function healActiveMembersQueuedForRemoval(): Promise<{
   const paying = { some: { status: { in: ACTIVE_STATUSES }, currentPeriodEnd: { gt: now } } };
 
   try {
-    const wrong = await prisma.accessGrant.findMany({
+    /**
+     * 1) คิวถอนที่ยังไม่ได้ทำ — ล้างทุกใบ ไม่มีข้อยกเว้น
+     *
+     * ใบถอนที่จ่อคนที่ยังจ่ายเงินอยู่คือระเบิดเวลา ต่อให้วันนี้มีด่านกันไม่ให้สั่ง
+     * ก็ยังรอวันที่ใครสักคนเพิ่มทางสั่งใหม่ที่ไม่ผ่านด่าน แล้วมันจะทำงานทันที
+     */
+    const queued = await prisma.accessGrant.findMany({
       where: { status: "PENDING_REVOKE", user: { subscriptions: paying } },
       select: { id: true, userId: true, user: { select: { email: true, tradingViewUsername: true } } },
     });
+
+    /**
+     * 2) ถอนไปแล้วจริง ทั้งที่ยังจ่ายเงินอยู่ — คืนให้เฉพาะคนที่ไม่มีใบอื่นรองรับ
+     *
+     * ด่านที่ reconcile กันได้แค่ "งานที่ยังไม่สั่ง" งานที่นั่งอยู่ในคิวบอทแล้ว
+     * เรียกคืนไม่ได้ ลูกค้าที่ต่ออายุระหว่างที่ใบถอนรออยู่ในคิวจึงยังหลุดได้อยู่ดี
+     * (เจอจริง 2 พ.ย. 69: p_f123 จ่ายถึง 30 พ.ย. ต่ออายุตอนใบถอนค้างคิวอยู่
+     *  บอทถอนตามใบนั้นตอน 15:50 — ด่านทำงานถูก แต่ช้าไปหนึ่งก้าว)
+     *
+     * "ไม่มีใบอื่นรองรับ" สำคัญ ไม่งั้นใบ REVOKED ของรอบบิลเก่าจะถูกปลุกขึ้นมา
+     * ทุกวัน ทั้งที่รอบปัจจุบันเรียบร้อยดีอยู่แล้ว
+     */
+    const covered = new Set(
+      (
+        await prisma.accessGrant.findMany({
+          where: { status: { in: ["PENDING", "GRANTED"] }, user: { subscriptions: paying } },
+          select: { userId: true },
+        })
+      ).map((g) => g.userId)
+    );
+    for (const g of queued) covered.add(g.userId);
+
+    const orphaned = (
+      await prisma.accessGrant.findMany({
+        where: {
+          status: "REVOKED",
+          user: { subscriptions: paying, tradingViewUsername: { not: null } },
+        },
+        orderBy: { createdAt: "desc" },
+        select: { id: true, userId: true, user: { select: { email: true, tradingViewUsername: true } } },
+      })
+    ).filter((g) => {
+      if (covered.has(g.userId)) return false;
+      covered.add(g.userId); // คนเดียวกันมีหลายใบ คืนแค่ใบล่าสุดใบเดียว
+      return true;
+    });
+
+    const wrong = [...queued, ...orphaned];
+
     const wrongTelegram = await prisma.telegramGrant.findMany({
       where: { status: "PENDING_REMOVE", user: { subscriptions: paying } },
       select: { id: true },
@@ -214,7 +259,7 @@ export async function healActiveMembersQueuedForRemoval(): Promise<{
           failCount: 0,
           lastFailReason: null,
           lastDispatchedAt: null,
-          note: "แพ็กเกจยังใช้งานอยู่ — ยกเลิกคิวถอนที่ตั้งผิด",
+          note: "แพ็กเกจยังใช้งานอยู่ — คืนสิทธิ์ที่ถูกถอนผิด",
         },
       });
     }

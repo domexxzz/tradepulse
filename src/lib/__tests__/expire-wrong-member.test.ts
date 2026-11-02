@@ -90,12 +90,38 @@ const lastGrantData = () =>
   (grantUpdateMany.mock.calls.at(-1)?.[0] as { data: Record<string, unknown> } | undefined)?.data ??
   {};
 
+/**
+ * ตาราง accessGrant ปลอมที่ตอบตาม where จริง — healer ยิง findMany สามครั้ง
+ * (คิวถอน · ใบที่ยังดูแลอยู่ · ใบที่ถอนไปแล้ว) ถ้าตอบชุดเดียวทุกครั้ง
+ * เทสต์จะผ่านแม้ตรรกะการกรองจะผิด
+ */
+interface FakeGrant {
+  id: string;
+  userId: string;
+  status: string;
+  tv?: string;
+}
+function grantTable(rows: FakeGrant[]) {
+  grantFindMany.mockImplementation(async (args: Record<string, never>) => {
+    const w = (args as { where?: { status?: unknown } }).where ?? {};
+    const st = w.status as string | { in?: string[] } | undefined;
+    const wanted = typeof st === "string" ? [st] : (st?.in ?? []);
+    return rows
+      .filter((r) => wanted.includes(r.status))
+      .map((r) => ({
+        id: r.id,
+        userId: r.userId,
+        user: { email: `${r.userId}@x.c`, tradingViewUsername: r.tv ?? "someone" },
+      }));
+  });
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   subUpdate.mockResolvedValue({});
   grantUpdateMany.mockResolvedValue({ count: 1 });
   tgUpdateMany.mockResolvedValue({ count: 1 });
-  grantFindMany.mockResolvedValue([]);
+  grantTable([]);
   tgFindMany.mockResolvedValue([]);
   grantFindFirst.mockResolvedValue(null);
   userFindUnique.mockResolvedValue({
@@ -137,9 +163,7 @@ describe("ปิดแพ็กเกจที่หมดอายุ", () => {
 
 describe("ซ่อมคิวถอนที่จ่อคนที่ยังจ่ายเงินอยู่", () => {
   it("คืนคิวให้สิทธิ์ + ล้างตัวนับความล้มเหลวของรอบถอน", async () => {
-    grantFindMany.mockResolvedValue([
-      { id: "g1", userId: "u1", user: { email: "a@b.c", tradingViewUsername: "glaiisarins" } },
-    ]);
+    grantTable([{ id: "g1", userId: "u1", status: "PENDING_REVOKE", tv: "glaiisarins" }]);
     tgFindMany.mockResolvedValue([{ id: "t1" }]);
 
     const res = await healActiveMembersQueuedForRemoval();
@@ -154,6 +178,32 @@ describe("ซ่อมคิวถอนที่จ่อคนที่ยั�
     // ไม่ล้างตัวนับ = ชนเพดาน MAX_FAILS ทันที แล้วไม่มีใครสั่งเพิ่มสิทธิ์ให้เลย
     expect(data.failCount).toBe(0);
     expect(data.lastFailReason).toBeNull();
+  });
+
+  it("ถอนไปแล้วจริงทั้งที่ยังจ่ายเงินอยู่ = คืนสิทธิ์ให้ด้วย", async () => {
+    /**
+     * ด่านที่ reconcile กันได้แค่งานที่ยังไม่สั่ง งานที่นั่งอยู่ในคิวบอทแล้วเรียกคืนไม่ได้
+     * p_f123 จ่ายถึง 30 พ.ย. ต่ออายุตอนใบถอนค้างคิวอยู่ บอทถอนตามใบนั้นตอน 15:50
+     */
+    grantTable([{ id: "g9", userId: "u9", status: "REVOKED", tv: "p_f123" }]);
+
+    const res = await healActiveMembersQueuedForRemoval();
+
+    expect(res.grants).toBe(1);
+    expect(res.members).toEqual(["p_f123"]);
+    expect(grantUpdateMany.mock.calls[0][0].data.status).toBe("PENDING");
+  });
+
+  it("ถอนไปแล้วแต่มีใบใหม่ดูแลอยู่ = ห้ามปลุกใบเก่าขึ้นมา", async () => {
+    grantTable([
+      { id: "old", userId: "u9", status: "REVOKED", tv: "p_f123" },
+      { id: "new", userId: "u9", status: "GRANTED", tv: "p_f123" },
+    ]);
+
+    const res = await healActiveMembersQueuedForRemoval();
+
+    expect(res.grants).toBe(0);
+    expect(grantUpdateMany).not.toHaveBeenCalled();
   });
 
   it("ไม่มีคิวที่ตั้งผิด = ไม่แตะอะไรเลย (ห้ามซ่อมมั่ว)", async () => {
