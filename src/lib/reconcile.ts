@@ -100,6 +100,8 @@ export interface ReconcileResult {
   systemicFound: number;
   /** ในนั้นส่งแจ้งเตือนออกไปได้จริงกี่กลุ่ม — เจอแต่ส่งไม่ออก = ท่อแจ้งเตือนพัง */
   systemicAlerts: number;
+  /** ถ้าไม่ได้ส่ง เพราะอะไร — "โดนกันซ้ำ" กับ "ส่งไม่ออก" เป็นคนละเรื่อง */
+  systemicNotSent?: string[];
   skipped?: string;
 }
 
@@ -352,7 +354,7 @@ export async function runReconcile(): Promise<ReconcileResult> {
   // ดูภาพรวมหลังสั่งงานรอบนี้เสร็จ — ตัวเลขจะได้รวมผลล่าสุดด้วย
   const systemic = await reportSystemicFailures().catch((e) => {
     console.error("reconcile: systemic check failed", e);
-    return { found: 0, sent: 0 };
+    return { found: 0, sent: 0, reasons: [] as string[] };
   });
 
   return {
@@ -363,6 +365,7 @@ export async function runReconcile(): Promise<ReconcileResult> {
     healed: healed.grants,
     systemicFound: systemic.found,
     systemicAlerts: systemic.sent,
+    ...(systemic.reasons.length > 0 ? { systemicNotSent: systemic.reasons } : {}),
   };
 }
 
@@ -446,9 +449,22 @@ export async function findSystemicFailures(): Promise<SystemicGroup[]> {
  * กับ "ไม่เจออะไรเลย" และเป็นข้อมูลที่ต้องเห็น เพราะกรณีแรกแปลว่าท่อแจ้งเตือนพัง
  * ซึ่งอันตรายกว่าของที่มันพยายามจะเตือนเสียอีก
  */
-async function reportSystemicFailures(): Promise<{ found: number; sent: number }> {
+async function reportSystemicFailures(): Promise<{
+  found: number;
+  sent: number;
+  reasons: string[];
+}> {
   const groups = await findSystemicFailures();
   let sent = 0;
+  /**
+   * เก็บเหตุผลที่ "ไม่ได้ส่ง" ไว้ด้วย
+   *
+   * ส่งไม่ออกกับโดนกันซ้ำให้ตัวเลขเดียวกันคือ 0 แต่เป็นคนละเรื่องกันสิ้นเชิง
+   * อันแรกคือท่อแจ้งเตือนพัง อันหลังคือระบบทำงานถูกต้อง
+   * ถ้าไม่บอกออกมา วิธีเดียวที่จะรู้คือไปเปิดห้องแอดมินดูด้วยตาเอง
+   * ซึ่งแปลว่าเครื่องมือวินิจฉัยต้องพึ่งคน — ผิดตั้งแต่ต้น
+   */
+  const reasons: string[] = [];
 
   for (const g of groups) {
     const text =
@@ -462,11 +478,12 @@ async function reportSystemicFailures(): Promise<{ found: number; sent: number }
 
     const res = await sendAdminAlertThrottled(`systemic-fail:${g.reason}`, text).catch((e) => {
       console.error("reconcile: systemic alert failed", e);
-      return null;
+      return { sent: false, suppressed: 0, reason: e instanceof Error ? e.message : "unknown" };
     });
-    if (res?.sent) sent += 1;
+    if (res.sent) sent += 1;
+    else reasons.push(res.reason ?? "ไม่ได้บอกเหตุผล");
   }
-  return { found: groups.length, sent };
+  return { found: groups.length, sent, reasons };
 }
 
 /**
