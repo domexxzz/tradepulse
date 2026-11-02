@@ -6,6 +6,7 @@ import {
 } from "@/lib/lifecycle";
 import { revokeTradingViewAccess, tvAutoGrantEnabled, bridgeQueueDepth } from "@/lib/tradingview";
 import { telegramGroupManaged } from "@/lib/telegram";
+import { sendAdminAlertThrottled } from "@/lib/alert-throttle";
 import { ACTIVE_STATUSES } from "@/lib/subscription";
 
 /**
@@ -95,6 +96,8 @@ export interface ReconcileResult {
   waitingForUsername: number;
   /** สิทธิ์ที่ถูกถอนผิดทั้งที่ลูกค้ายังจ่ายเงินอยู่ แล้วคืนให้ในรอบนี้ — ปกติต้องเป็น 0 */
   healed: number;
+  /** กลุ่มความล้มเหลวที่กว้างพอจะถือว่าพังทั้งระบบ แล้วเตือนไปในรอบนี้ */
+  systemicAlerts: number;
   skipped?: string;
 }
 
@@ -297,6 +300,7 @@ export async function runReconcile(): Promise<ReconcileResult> {
     invitesCreated: 0,
     waitingForUsername: 0,
     healed: 0,
+    systemicAlerts: 0,
   };
 
   // ไม่ได้ตั้งบอทไว้ = ระบบทำงานแบบแอดมินกดเองอยู่แล้ว ไม่ต้องไล่อะไร
@@ -342,7 +346,98 @@ export async function runReconcile(): Promise<ReconcileResult> {
     countWaitingForUsername(cutoff).catch(() => 0),
   ]);
 
-  return { grantsRetried, revokesRetried, invitesCreated, waitingForUsername, healed: healed.grants };
+  // ดูภาพรวมหลังสั่งงานรอบนี้เสร็จ — ตัวเลขจะได้รวมผลล่าสุดด้วย
+  const systemicAlerts = await reportSystemicFailures().catch((e) => {
+    console.error("reconcile: systemic check failed", e);
+    return 0;
+  });
+
+  return {
+    grantsRetried,
+    revokesRetried,
+    invitesCreated,
+    waitingForUsername,
+    healed: healed.grants,
+    systemicAlerts,
+  };
+}
+
+/**
+ * กี่คนที่ติดเพดานด้วย "เหตุผลเดียวกัน" ถึงจะถือว่าพังทั้งระบบ ไม่ใช่พังรายคน
+ *
+ * ชื่อ TradingView ที่ไม่มีอยู่จริงกระทบคนเดียว และข้อความจะมีชื่อคนนั้นอยู่ด้วย
+ * จึงไม่มีวันจับกลุ่มกับใคร ส่วนของที่พังระดับระบบ — บอทล็อกเอาต์, TradingView
+ * เปลี่ยน DOM, บริดจ์ตอบ error เหมือนกันหมด — จะได้ข้อความเดียวกันเป๊ะทุกคน
+ */
+const SYSTEMIC_FAIL_MEMBERS = 5;
+
+/**
+ * บอกเมื่อ "การส่งมอบกำลังล้มเหลวเป็นวงกว้าง" ไม่ใช่รอให้ลูกค้ามาโวย
+ *
+ * ช่องโหว่ที่เจอ 2 พ.ย. 69: TradingView เปลี่ยน data-qa-id ของช่องค้นหา
+ * บอทถอนสิทธิ์ล้มเหลว 330 งานรวดภายในวันเดียว และ **ไม่มีการแจ้งเตือนใดที่ดังพอ**
+ * เพราะแต่ละใบล้มเหลวแยกกัน ตัวกันสแปมกลบข้อความซ้ำทิ้ง (ซึ่งถูกของมัน)
+ * แต่ไม่มีใครรวมตัวเลขแล้วถามว่า "ทำไมทุกใบถึงพังพร้อมกัน"
+ * กว่าจะรู้ก็ตอนแอดมินทักมาว่าลูกค้าเข้าไม่ได้ — 13 วันหลังของจริงเริ่มพัง
+ *
+ * ตัวนี้ดูภาพรวมแทนการดูทีละใบ: ถ้ามีสมาชิกหลายคนติดเพดานด้วยข้อความเดียวกัน
+ * แปลว่าต้นเหตุเป็นของส่วนกลาง ไม่ใช่เรื่องของลูกค้ารายไหน
+ *
+ * ใช้ตัวกันซ้ำ 6 ชม. ต่อ "เหตุผล" ไม่ใช่ต่อใบ — เหตุผลใหม่โผล่เมื่อไหร่ดังทันที
+ * ซึ่งเป็นพฤติกรรมที่ต้องการพอดี เพราะเหตุผลใหม่ = ของใหม่ที่เพิ่งพัง
+ */
+async function reportSystemicFailures(): Promise<number> {
+  const stuck = await prisma.accessGrant.findMany({
+    where: {
+      status: { in: ["PENDING", "PENDING_REVOKE"] },
+      failCount: { gte: MAX_FAILS },
+      lastFailReason: { not: null },
+    },
+    select: {
+      status: true,
+      lastFailReason: true,
+      failCount: true,
+      user: { select: { email: true, tradingViewUsername: true } },
+    },
+    take: 500,
+  });
+
+  const byReason = new Map<string, typeof stuck>();
+  for (const g of stuck) {
+    const key = g.lastFailReason ?? "";
+    const list = byReason.get(key);
+    if (list) list.push(g);
+    else byReason.set(key, [g]);
+  }
+
+  let alerted = 0;
+  for (const [reason, rows] of byReason) {
+    if (rows.length < SYSTEMIC_FAIL_MEMBERS) continue;
+
+    const who = rows
+      .slice(0, 5)
+      .map((r) => r.user.tradingViewUsername ?? r.user.email ?? "-")
+      .join(", ");
+    const grants = rows.filter((r) => r.status === "PENDING").length;
+    const revokes = rows.length - grants;
+
+    const text =
+      `🔴 ส่งมอบล้มเหลวเป็นวงกว้าง ${rows.length} ราย — เหตุผลเดียวกันทุกคน\n` +
+      `"${reason}"\n` +
+      `แยกเป็น: ให้สิทธิ์ค้าง ${grants} · ถอนสิทธิ์ค้าง ${revokes}\n` +
+      `ตัวอย่าง: ${who}\n\n` +
+      `หลายคนพังด้วยข้อความเดียวกัน = ต้นเหตุอยู่ที่ส่วนกลาง ไม่ใช่ที่ลูกค้า\n` +
+      `เช็กตามลำดับ: บอทยัง login TradingView อยู่ไหม · selector ในกล่อง` +
+      `จัดการการเข้าถึงเปลี่ยนหรือยัง (ดู bot_out.log) · บริดจ์ตัวไหนรับงานอยู่`;
+
+    // คิวล้มเหลวทั้งวงยังไงก็ต้องมีคนมาดู ปล่อยให้ตัวกันซ้ำคุมความถี่พอ
+    const res = await sendAdminAlertThrottled(`systemic-fail:${reason}`, text).catch((e) => {
+      console.error("reconcile: systemic alert failed", e);
+      return null;
+    });
+    if (res?.sent) alerted += 1;
+  }
+  return alerted;
 }
 
 /**
