@@ -90,8 +90,10 @@ export interface ReconcileResult {
   grantsRetried: number;
   /** คิวถอนสิทธิ์ที่ค้างแล้วสั่งซ้ำ */
   revokesRetried: number;
-  /** ลิงก์เชิญ Telegram ที่สร้างย้อนหลังให้ */
+  /** ลิงก์เชิญ Telegram ที่สร้างย้อนหลังให้ — นับเฉพาะที่ได้ลิงก์จริง */
   invitesCreated: number;
+  /** ใบเก่าที่ไม่มีลิงก์และมีใบใหม่คุมอยู่แล้ว — ปิดทิ้งไปกี่ใบ ปกติควรเป็น 0 */
+  invitesStale: number;
   /** คิวที่รอลูกค้ากรอก username — ไม่ใช่ความผิดพลาดของระบบ แต่ควรรู้จำนวน */
   waitingForUsername: number;
   /** สิทธิ์ที่ถูกถอนผิดทั้งที่ลูกค้ายังจ่ายเงินอยู่ แล้วคืนให้ในรอบนี้ — ปกติต้องเป็น 0 */
@@ -256,7 +258,7 @@ async function retryPendingRevokes(cutoff: Date, waitMinutes: number): Promise<n
  * ลิงก์เชิญ Telegram ที่ยังไม่ได้สร้าง — เกิดเมื่อ Telegram ล่มตอนเปิดสิทธิ์
  * ลูกค้าจ่ายเงินแล้วแต่ไม่มีลิงก์เข้ากลุ่ม จึงต้องตามสร้างให้
  */
-async function backfillTelegramInvites(cutoff: Date): Promise<number> {
+async function backfillTelegramInvites(cutoff: Date): Promise<{ created: number; stale: number }> {
   const missing = await prisma.telegramGrant.findMany({
     where: {
       status: "PENDING",
@@ -272,16 +274,59 @@ async function backfillTelegramInvites(cutoff: Date): Promise<number> {
     take: MAX_PER_RUN,
   });
 
-  let done = 0;
+  let created = 0;
+  let stale = 0;
   for (const grant of missing) {
     try {
       await ensureTelegramInvite(grant.userId);
-      done += 1;
+
+      /**
+       * นับเฉพาะที่ "ได้ลิงก์จริง" ไม่ใช่ "เรียกแล้วไม่ throw"
+       *
+       * ensureTelegramInvite กลืน error ไว้ข้างในทั้งหมด (ตั้งใจ — ล้มที่ Telegram
+       * ไม่ควรลากการเปิดสิทธิ์ร่วงไปด้วย) ตัวที่เรียกจึงแยกไม่ออกเลยว่าสำเร็จหรือไม่
+       * ของเดิมนับว่าสำเร็จทุกครั้ง ตัวเลขที่รายงานจึงเป็นเท็จโดยสมบูรณ์
+       * นี่คือบั๊กตัวเดียวกับที่เคยทำให้ failCount พัง — "สั่งไปแล้ว" ไม่ใช่ "สำเร็จแล้ว"
+       */
+      const after = await prisma.telegramGrant.findUnique({
+        where: { id: grant.id },
+        select: { inviteLink: true },
+      });
+      if (after?.inviteLink) {
+        created += 1;
+        continue;
+      }
+
+      /**
+       * ไม่ได้ลิงก์ แต่เจ้าของมีใบอื่นที่ใช้งานได้อยู่แล้ว = ใบนี้เป็นของตกค้าง
+       *
+       * ตัวเลือกแถวกับตัวซ่อมมองคนละใบ: ที่นี่เลือก "ใบที่ไม่มีลิงก์"
+       * แต่ ensureTelegramInvite ทำงานกับ "ใบล่าสุด" ของผู้ใช้คนนั้นเสมอ
+       * ถ้าใบล่าสุดมีลิงก์ที่ยังไม่หมดอายุ มันจะ return ทันทีโดยไม่แตะใบเก่า
+       * ใบเก่าจึงถูกหยิบซ้ำทุก 5 นาทีตลอดไป พร้อมรายงานว่า "สร้างลิงก์ 1 ใบ" ทุกครั้ง
+       * (เห็นจริงบน production 2 พ.ย. 69 — invitesCreated = 1 ทุกรอบติดกันเป็นชั่วโมง
+       *  ทั้งที่สมาชิกทั้ง 190 คนมีลิงก์หรืออยู่ในกลุ่มครบแล้ว)
+       */
+      const covered = await prisma.telegramGrant.findFirst({
+        where: {
+          userId: grant.userId,
+          id: { not: grant.id },
+          OR: [{ status: "ADDED" }, { inviteLink: { not: null } }],
+        },
+        select: { id: true },
+      });
+      if (covered) {
+        await prisma.telegramGrant.update({
+          where: { id: grant.id },
+          data: { status: "SUPERSEDED", note: "มีใบที่ใช้งานได้อยู่แล้ว — ปิดใบเก่าที่ไม่มีลิงก์" },
+        });
+        stale += 1;
+      }
     } catch (e) {
       console.error("reconcile: backfill invite failed", grant.id, e);
     }
   }
-  return done;
+  return { created, stale };
 }
 
 /** คิวที่รอลูกค้ากรอก username — ระบบทำอะไรต่อไม่ได้จนกว่าจะมีชื่อ */
@@ -302,6 +347,7 @@ export async function runReconcile(): Promise<ReconcileResult> {
     grantsRetried: 0,
     revokesRetried: 0,
     invitesCreated: 0,
+    invitesStale: 0,
     waitingForUsername: 0,
     healed: 0,
     systemicFound: 0,
@@ -333,7 +379,7 @@ export async function runReconcile(): Promise<ReconcileResult> {
     return { grants: 0, telegram: 0, members: [] as string[] };
   });
 
-  const [grantsRetried, revokesRetried, invitesCreated, waitingForUsername] = await Promise.all([
+  const [grantsRetried, revokesRetried, invites, waitingForUsername] = await Promise.all([
     retryPendingGrants(cutoff, waitMinutes).catch((e) => {
       console.error("reconcile: grants step failed", e);
       return 0;
@@ -345,9 +391,9 @@ export async function runReconcile(): Promise<ReconcileResult> {
     telegramGroupManaged
       ? backfillTelegramInvites(cutoff).catch((e) => {
           console.error("reconcile: invites step failed", e);
-          return 0;
+          return { created: 0, stale: 0 };
         })
-      : Promise.resolve(0),
+      : Promise.resolve({ created: 0, stale: 0 }),
     countWaitingForUsername(cutoff).catch(() => 0),
   ]);
 
@@ -360,7 +406,8 @@ export async function runReconcile(): Promise<ReconcileResult> {
   return {
     grantsRetried,
     revokesRetried,
-    invitesCreated,
+    invitesCreated: invites.created,
+    invitesStale: invites.stale,
     waitingForUsername,
     healed: healed.grants,
     systemicFound: systemic.found,
