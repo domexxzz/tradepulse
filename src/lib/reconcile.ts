@@ -142,6 +142,24 @@ async function retryPendingRevokes(cutoff: Date, waitMinutes: number): Promise<n
       createdAt: { lt: cutoff },
       failCount: { lt: MAX_FAILS },
       OR: [{ lastDispatchedAt: null }, { lastDispatchedAt: { lt: redispatchCutoff } }],
+      /**
+       * ห้ามถอนสิทธิ์คนที่แพ็กเกจยังใช้งานอยู่ — ไม่ว่าคิวจะบอกอะไรก็ตาม
+       *
+       * คิวถอนเกิดตอนหมดอายุ แต่ลูกค้าต่ออายุทีหลังได้ และถ้าบอทถอนไม่สำเร็จ
+       * แถวนั้นจะค้างเป็น PENDING_REVOKE ข้ามรอบบิลไปเรื่อย ๆ
+       * พอเราเพิ่งสั่งให้สิทธิ์เขาใหม่ reconcile รอบถัดไปจะถอนออกให้เอง
+       * = ลูกค้าจ่ายเงินแล้วสิทธิ์หลุดภายใน 10 นาที โดยไม่มีใครเห็นว่าเกิดอะไรขึ้น
+       *
+       * เจอจริง 30 ต.ค. 69: @anupong6914 ที่เพิ่งซ่อมสิทธิ์ให้ ยังมีคิวถอนค้างอยู่
+       * (รอดเพราะ failCount 14 เกินเพดานพอดี ไม่ใช่เพราะระบบตั้งใจกัน)
+       *
+       * ฝั่งให้สิทธิ์เช็ก "แพ็กเกจยังใช้งานอยู่" มาตั้งแต่แรก ฝั่งถอนไม่เคยเช็ก
+       */
+      user: {
+        subscriptions: {
+          none: { status: { in: ACTIVE_STATUSES }, currentPeriodEnd: { gt: new Date() } },
+        },
+      },
     },
     select: { id: true, user: { select: { tradingViewUsername: true } } },
     orderBy: { createdAt: "asc" },
@@ -346,13 +364,25 @@ export async function inspectReconcile() {
         failCount: true,
         lastFailReason: true,
         lastDispatchedAt: true,
-        user: { select: { email: true, tradingViewUsername: true } },
+        user: {
+          select: {
+            email: true,
+            tradingViewUsername: true,
+            subscriptions: {
+              where: { status: { in: ACTIVE_STATUSES }, currentPeriodEnd: { gt: new Date() } },
+              select: { id: true },
+              take: 1,
+            },
+          },
+        },
       },
       orderBy: { createdAt: "asc" },
     })
   ).map((g) => {
     const minutesSince = g.lastDispatchedAt ? (now - g.lastDispatchedAt.getTime()) / 60_000 : null;
-    const verdict = !g.user.tradingViewUsername
+    const verdict = g.user.subscriptions.length > 0
+      ? "ข้าม — แพ็กเกจยังใช้งานอยู่ ห้ามถอน (คิวค้างจากรอบก่อน)"
+      : !g.user.tradingViewUsername
       ? "ข้าม — ไม่มี username ให้ถอน"
       : g.failCount >= MAX_FAILS
         ? `ข้าม — ล้มเหลวครบ ${MAX_FAILS} ครั้ง ระบบเลิกลองแล้ว รอคนแก้ต้นเหตุ`
@@ -380,6 +410,8 @@ export async function inspectReconcile() {
     willDispatch: rows.filter((r) => r.verdict === "จะสั่งซ้ำรอบนี้").length,
     willRevoke: revokeRows.filter((r) => r.verdict === "จะสั่งถอนซ้ำรอบนี้").length,
     pendingRevokeTotal: revokeRows.length,
+    /** คิวถอนที่ค้างอยู่บนคนที่ยังจ่ายเงินอยู่ = ระเบิดเวลา ต้องเป็น 0 */
+    revokeOnActiveMember: revokeRows.filter((r) => r.verdict.startsWith("ข้าม — แพ็กเกจยังใช้งานอยู่")).length,
     duplicateQueues,
     grants: rows,
     // ตัดให้พอเห็นรูปแบบ ไม่งั้น JSON ยาวจนอ่านในเทอร์มินัลไม่ไหวตอนคิวบวม
