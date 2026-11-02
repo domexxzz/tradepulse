@@ -33,12 +33,33 @@ export interface UserSubscription {
   expiringSoon: boolean;
 }
 
-/** ดึงแพ็กเกจล่าสุดของผู้ใช้ พร้อมสรุปว่าใช้งานได้อยู่ไหมและเหลือกี่วัน */
+/**
+ * ดึงแพ็กเกจที่ใช้ตัดสินสิทธิ์ของผู้ใช้ พร้อมสรุปว่าใช้งานได้อยู่ไหมและเหลือกี่วัน
+ *
+ * เอา "แถวที่ยังใช้งานได้และหมดอายุไกลที่สุด" ก่อนเสมอ ค่อยตกมาที่แถวล่าสุด
+ *
+ * ของเดิมเอาแถวล่าสุดตาม createdAt อย่างเดียว ซึ่งถูกเฉพาะตอนที่ผู้ใช้มีแถวเดียว
+ * คนที่ปล่อยให้หลุดแล้วค่อยต่ออายุจะมีสองแถว (ของเดิมที่หมดแล้ว + ของใหม่)
+ * พอแถวไหนก็ตามที่ไม่ใช่ของใหม่กลายเป็นแถวล่าสุด — เช่นแอดมินแถมวันให้ทีหลัง
+ * บนแถวเก่า — ระบบจะตอบว่า "หมดอายุแล้ว" ทั้งที่ลูกค้าจ่ายเงินอยู่
+ * เลือกจากของจริงที่ยังใช้ได้ ปลอดภัยกว่าเลือกจากลำดับเวลาที่สร้างแถว
+ */
 export async function getUserSubscription(userId: string): Promise<UserSubscription> {
-  const sub = await prisma.subscription.findFirst({
-    where: { userId },
-    orderBy: { createdAt: "desc" },
+  const live = await prisma.subscription.findFirst({
+    where: {
+      userId,
+      status: { in: ACTIVE_STATUSES },
+      currentPeriodEnd: { gt: new Date() },
+    },
+    orderBy: { currentPeriodEnd: "desc" },
   });
+
+  const sub =
+    live ??
+    (await prisma.subscription.findFirst({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+    }));
 
   const isActive = isSubscriptionActive(sub);
   const daysLeft = sub?.currentPeriodEnd ? daysUntil(sub.currentPeriodEnd) : null;

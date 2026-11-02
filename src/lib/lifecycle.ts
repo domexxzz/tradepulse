@@ -172,6 +172,89 @@ async function clearStaleRevokeQueues(userId: string): Promise<void> {
   }
 }
 
+/**
+ * ซ่อมคิวถอนที่จ่อคนที่ยังจ่ายเงินอยู่ — ด่านสุดท้ายที่ไม่พึ่งว่าใครเขียนถูก
+ *
+ * clearStaleRevokeQueues ล้างคิวให้ "ตอนต่ออายุ" ซึ่งช่วยได้เฉพาะความเสียหาย
+ * ที่เกิดก่อนหน้านั้น ถ้ามีทางไหนก็ตามมาตั้งคิวถอนทีหลัง (เช่นรอบกวาดรายวัน
+ * หยิบแถวแพ็กเกจเก่าที่ค้าง) ลูกค้าก็หลุดอยู่ดี และไม่มีใครรู้จนกว่าจะโวย
+ *
+ * ตัวนี้ไม่สนว่าคิวมาจากไหน ถามข้อเดียว: "คนนี้ยังจ่ายเงินอยู่ไหม"
+ * ถ้าใช่ คิวถอนที่มีอยู่คือของผิด ล้างทิ้งแล้วส่งกลับเข้าคิวให้สิทธิ์
+ *
+ * เป็นด่านกันแบบโครงสร้าง ไม่ใช่การแก้ที่ต้นเหตุรายกรณี — ต้นเหตุแก้แล้ว
+ * ที่ expireSubscription แต่ด่านนี้ต้องอยู่ เพราะต้นเหตุหน้าใหม่จะมีอีก
+ */
+export async function healActiveMembersQueuedForRemoval(): Promise<{
+  grants: number;
+  telegram: number;
+  members: string[];
+}> {
+  const now = new Date();
+  const paying = { some: { status: { in: ACTIVE_STATUSES }, currentPeriodEnd: { gt: now } } };
+
+  try {
+    const wrong = await prisma.accessGrant.findMany({
+      where: { status: "PENDING_REVOKE", user: { subscriptions: paying } },
+      select: { id: true, userId: true, user: { select: { email: true, tradingViewUsername: true } } },
+    });
+    const wrongTelegram = await prisma.telegramGrant.findMany({
+      where: { status: "PENDING_REMOVE", user: { subscriptions: paying } },
+      select: { id: true },
+    });
+
+    if (wrong.length > 0) {
+      await prisma.accessGrant.updateMany({
+        where: { id: { in: wrong.map((g) => g.id) } },
+        data: {
+          status: "PENDING",
+          revokedAt: null,
+          // ตัวนับความล้มเหลวเป็นของรอบถอน ไม่ใช่ของรอบให้สิทธิ์ที่กำลังจะเริ่ม
+          // ไม่ล้างก็จะชนเพดาน MAX_FAILS ทันทีแล้วไม่มีใครสั่งเพิ่มสิทธิ์ให้เลย
+          failCount: 0,
+          lastFailReason: null,
+          lastDispatchedAt: null,
+          note: "แพ็กเกจยังใช้งานอยู่ — ยกเลิกคิวถอนที่ตั้งผิด",
+        },
+      });
+    }
+    if (wrongTelegram.length > 0) {
+      await prisma.telegramGrant.updateMany({
+        where: { id: { in: wrongTelegram.map((g) => g.id) } },
+        data: {
+          status: "PENDING",
+          removedAt: null,
+          inviteLink: null,
+          invitedAt: null,
+          notifiedAt: null,
+          note: "แพ็กเกจยังใช้งานอยู่ — ยกเลิกคิวนำออกที่ตั้งผิด",
+        },
+      });
+    }
+
+    // สั่งส่งมอบกลับให้ทันที ไม่ต้องรอ reconcile รอบหน้า — คนกลุ่มนี้ถูกถอน
+    // ทั้งที่จ่ายเงินอยู่ ทุกนาทีที่รอคือเวลาที่ลูกค้าเปิดอินดิเคเตอร์ไม่ได้
+    // ล้มเหลวทีละคนห้ามลากคนอื่นร่วง — reconcile เก็บตกให้อยู่แล้ว
+    for (const userId of Array.from(new Set(wrong.map((g) => g.userId)))) {
+      await syncTradingViewGrant(userId).catch((e) =>
+        console.error("heal: regrant failed for", userId, e)
+      );
+      await ensureTelegramInvite(userId).catch((e) =>
+        console.error("heal: telegram invite failed for", userId, e)
+      );
+    }
+
+    return {
+      grants: wrong.length,
+      telegram: wrongTelegram.length,
+      members: wrong.map((g) => g.user.tradingViewUsername ?? g.user.email ?? g.userId),
+    };
+  } catch (e) {
+    console.error("heal active members failed:", e);
+    return { grants: 0, telegram: 0, members: [] };
+  }
+}
+
 /** อีเมลใบเสร็จให้สมาชิก + แจ้งแอดมินใน Telegram (ล้มเหลวไม่กระทบการเปิดสิทธิ์) */
 async function notifyActivation(input: ActivateInput, until: Date) {
   try {
@@ -487,6 +570,38 @@ export async function ensureTelegramInvite(userId: string): Promise<void> {
 export async function expireSubscription(sub: Subscription): Promise<void> {
   const now = new Date();
 
+  /**
+   * ยังมีแพ็กเกจอื่นที่ใช้งานได้อยู่ = ปิดแค่แถวนี้ ห้ามแตะสิทธิ์ของคน
+   *
+   * ฟังก์ชันนี้รับมาเป็น "แถวแพ็กเกจ" แต่ไปปิดสิทธิ์ "ระดับผู้ใช้" สองระดับนี้
+   * ไม่ตรงกัน และไม่ตรงแบบที่ไม่มีใครเห็นจนกว่าลูกค้าจะโวย
+   *
+   * ลูกค้าที่ปล่อยให้หลุดไปก่อนแล้วค่อยต่ออายุ — แม้ช้าไปชั่วโมงเดียว —
+   * activateMembership จะเปิด "แถวใหม่" ไม่ใช่ต่อในแถวเดิม (เพราะแถวเดิมไม่ active แล้ว)
+   * แถวเก่าจึงค้างเป็น ACTIVE ที่เลยวันหมดอายุ รอบกวาดวันถัดไปหยิบแถวเก่ามาปิด
+   * แล้วถอนสิทธิ์ของคนทั้งชุด ทั้งที่แพ็กเกจใหม่ยังอยู่
+   * = จ่ายเงินแล้วโดนถอนภายใน 24 ชม. โดยทุกขั้นตอน "ทำถูก" ตามข้อมูลที่ตัวเองเห็น
+   *
+   * เจอจริง 2 พ.ย. 69: glaiisarins จ่ายถึง 2 ธ.ค. แต่ถูกสั่งถอน 2 ใบตอน 14:45
+   * รอดเพราะบอทถอนพังอยู่พอดี ไม่ใช่เพราะระบบกันไว้
+   */
+  const otherLivePackage = await prisma.subscription.findFirst({
+    where: {
+      userId: sub.userId,
+      id: { not: sub.id },
+      status: { in: ACTIVE_STATUSES },
+      currentPeriodEnd: { gt: now },
+    },
+    select: { id: true },
+  });
+  if (otherLivePackage) {
+    await prisma.subscription.update({
+      where: { id: sub.id },
+      data: { status: "EXPIRED", expiredAt: now },
+    });
+    return;
+  }
+
   await prisma.subscription.update({
     where: { id: sub.id },
     data: { status: "EXPIRED", expiredAt: now },
@@ -625,6 +740,8 @@ export interface MaintenanceResult {
   stuck: number;
   /** ส่งไม่สำเร็จเพราะอะไรบ้าง — บอกว่าต้องไปแก้ที่บอทหรือที่ระบบอีเมล */
   reasons: Record<string, number>;
+  /** คิวถอนที่จ่อคนที่ยังจ่ายเงินอยู่ และถูกยกเลิกคืนให้ในรอบนี้ — ปกติต้องเป็น 0 */
+  healed: { grants: number; telegram: number; members: string[] };
   checkedAt: string;
 }
 
@@ -674,16 +791,35 @@ export async function runMembershipMaintenance(): Promise<MaintenanceResult> {
     }
   }
 
+  /**
+   * ซ่อมคิวถอนที่ตั้งผิดก่อนทำอย่างอื่น
+   *
+   * ต้องอยู่ "หลัง" รอบปิดสิทธิ์ข้างบน เพราะรอบนั้นเป็นที่ที่ตั้งคิวถอน
+   * ซ่อมก่อนก็จะถูกตั้งผิดซ้ำในรอบเดียวกัน
+   */
+  const healed = await healActiveMembersQueuedForRemoval();
+
   const invite = await inviteMissedMembers();
   const tv = await remindMissingTradingView();
 
-  if (due.length > 0 || reminded > 0 || invite.sent > 0 || invite.stuck.length > 0 || tv.sent > 0 || tv.pending > 0) {
+  if (
+    due.length > 0 ||
+    reminded > 0 ||
+    invite.sent > 0 ||
+    invite.stuck.length > 0 ||
+    tv.sent > 0 ||
+    tv.pending > 0 ||
+    healed.grants > 0
+  ) {
     await sendAdminAlert(
       `🕐 งานประจำวันสมาชิก
 ปิดสิทธิ์ (หมดอายุ): ${due.length} ราย
 เตือนใกล้หมดอายุ: ${reminded} ราย
 ยังไม่กรอกชื่อ TradingView: ${tv.pending} ราย (ทวงรอบนี้ ${tv.sent})
 ส่งลิงก์กลุ่มที่ตกหล่น: ${invite.sent} ราย` +
+        (healed.grants > 0
+          ? `\n🛟 ยกเลิกคิวถอนที่จ่อคนที่ยังจ่ายเงินอยู่ ${healed.grants} ราย แล้วสั่งคืนสิทธิ์ให้ (${healed.members.join(", ")})`
+          : "") +
         (invite.stuck.length > 0
           ? `\n⚠️ ส่งลิงก์ไม่สำเร็จ ${invite.stuck.length} ราย (${describeReasons(invite.reasons)})\nดูที่ /admin/telegram`
           : "") +
@@ -699,6 +835,7 @@ export async function runMembershipMaintenance(): Promise<MaintenanceResult> {
     invited: invite.sent,
     stuck: invite.stuck.length,
     reasons: invite.reasons,
+    healed,
     checkedAt: now.toISOString(),
   };
 }
