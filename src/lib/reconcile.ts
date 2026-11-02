@@ -55,6 +55,31 @@ export const MAX_FAILS = 5;
 /** เพดานต่อรอบ — cron วิ่งถี่อยู่แล้ว ค่อย ๆ เก็บดีกว่าหมดเวลากลางทาง */
 const MAX_PER_RUN = 15;
 
+/**
+ * เลยเพดาน MAX_FAILS แล้วยังลองได้ — แต่วันละครั้ง
+ *
+ * MAX_FAILS มีไว้กัน "วงวนทุก 5 นาที" ไม่ได้มีไว้ตัดสินว่างานนี้เป็นไปไม่ได้ตลอดกาล
+ * แต่โค้ดเดิมแปลว่าอย่างหลัง ซึ่งพังหนักเวลาต้นเหตุเป็นเรื่องของระบบ ไม่ใช่ของรายคน
+ *
+ * เจอจริง 2 พ.ย. 69: TradingView เปลี่ยน data-qa-id ของช่องค้นหา บอทถอนสิทธิ์
+ * ล้มเหลว 330 งานรวดในวันเดียว ทุกแถวกินโควตาจนครบ พอซ่อมบอทเสร็จก็ไม่มีแถวไหน
+ * ได้ลองอีกเลย — คิวถอน 101 รายตายสนิท คนที่หมดอายุใช้อินดิเคเตอร์ฟรีต่อไป
+ * จนกว่าจะมีคนมานั่งกดเอง ซึ่งไม่มีใครรู้ด้วยซ้ำว่าต้องไปกด
+ *
+ * วันละครั้งไม่ใช่สแปม (ของเดิมที่ไม่มีเพดานเลยคือ ~288 ครั้ง/วัน) แต่พอให้ระบบ
+ * ฟื้นเองได้เมื่อต้นเหตุหายไป ส่วนงานที่ไม่มีวันสำเร็จจริง ๆ เช่นชื่อ TradingView
+ * ที่ไม่มีอยู่ ก็เสียแค่วันละงานเดียว แลกกับการไม่ต้องมีคนคอยปลุกระบบ
+ */
+const GIVE_UP_RETRY_HOURS = 24;
+
+/** ยังอยู่ในโควตาความล้มเหลว หรือเลยมาแล้วแต่ถึงรอบลองประจำวัน */
+function withinFailBudget(now: number) {
+  const dailyRetryCutoff = new Date(now - GIVE_UP_RETRY_HOURS * 3_600_000);
+  return {
+    OR: [{ failCount: { lt: MAX_FAILS } }, { lastDispatchedAt: { lt: dailyRetryCutoff } }],
+  };
+}
+
 export interface ReconcileResult {
   /** คิวให้สิทธิ์ที่สั่งบอทซ้ำ */
   grantsRetried: number;
@@ -83,9 +108,8 @@ async function retryPendingGrants(cutoff: Date, waitMinutes: number): Promise<nu
     where: {
       status: "PENDING",
       createdAt: { lt: cutoff },
-      // ล้มเหลวติดกันหลายครั้งแล้ว = ไม่หยิบมาวนอีก รอคนมาแก้ต้นเหตุ
-      failCount: { lt: MAX_FAILS },
-      ...notInFlight,
+      // ล้มเหลวติดกันหลายครั้ง = พักไว้ แล้วกลับมาลองวันละครั้ง (ดู withinFailBudget)
+      AND: [notInFlight, withinFailBudget(Date.now())],
       user: {
         tradingViewUsername: { not: null },
         subscriptions: {
@@ -140,8 +164,10 @@ async function retryPendingRevokes(cutoff: Date, waitMinutes: number): Promise<n
     where: {
       status: "PENDING_REVOKE",
       createdAt: { lt: cutoff },
-      failCount: { lt: MAX_FAILS },
-      OR: [{ lastDispatchedAt: null }, { lastDispatchedAt: { lt: redispatchCutoff } }],
+      AND: [
+        { OR: [{ lastDispatchedAt: null }, { lastDispatchedAt: { lt: redispatchCutoff } }] },
+        withinFailBudget(Date.now()),
+      ],
       /**
        * ห้ามถอนสิทธิ์คนที่แพ็กเกจยังใช้งานอยู่ — ไม่ว่าคิวจะบอกอะไรก็ตาม
        *
@@ -332,14 +358,29 @@ export async function inspectReconcile() {
     orderBy: { createdAt: "asc" },
   });
 
+  /**
+   * คำตัดสินต้องเดินตามเงื่อนไข where จริง ไม่ใช่เดินตามที่เราจำว่าเขียนไว้
+   * เครื่องมือวินิจฉัยที่บอกไม่ตรงกับของจริง ทำให้เชื่อผิดได้แรงกว่าไม่มีเลย
+   */
+  const verdictFor = (failCount: number, minutesSince: number | null): string => {
+    const hoursSince = minutesSince === null ? null : minutesSince / 60;
+    if (failCount >= MAX_FAILS) {
+      if (hoursSince === null) return `ข้าม — ล้มเหลวครบ ${MAX_FAILS} ครั้ง และยังไม่เคยสั่ง`;
+      if (hoursSince < GIVE_UP_RETRY_HOURS) {
+        const left = Math.ceil(GIVE_UP_RETRY_HOURS - hoursSince);
+        return `พัก — ล้มเหลวครบ ${MAX_FAILS} ครั้ง จะลองใหม่ในอีก ~${left} ชม.`;
+      }
+      return "จะสั่งซ้ำรอบนี้ (รอบลองประจำวัน)";
+    }
+    if (minutesSince !== null && minutesSince < waitMinutes) {
+      return `ข้าม — เพิ่งสั่งไป ${Math.round(minutesSince)} นาที (ต้องรอ ${waitMinutes} นาที)`;
+    }
+    return "จะสั่งซ้ำรอบนี้";
+  };
+
   const rows = candidates.map((g) => {
     const minutesSince = g.lastDispatchedAt ? (now - g.lastDispatchedAt.getTime()) / 60_000 : null;
-    const reason =
-      g.failCount >= MAX_FAILS
-        ? `ข้าม — ล้มเหลวครบ ${MAX_FAILS} ครั้ง ระบบเลิกลองแล้ว รอคนแก้ต้นเหตุ`
-        : minutesSince !== null && minutesSince < waitMinutes
-          ? `ข้าม — เพิ่งสั่งไป ${Math.round(minutesSince)} นาที (ต้องรอ ${waitMinutes} นาที)`
-          : "จะสั่งซ้ำรอบนี้";
+    const reason = verdictFor(g.failCount, minutesSince);
     return {
       tradingView: g.user.tradingViewUsername,
       email: g.user.email,
@@ -384,11 +425,7 @@ export async function inspectReconcile() {
       ? "ข้าม — แพ็กเกจยังใช้งานอยู่ ห้ามถอน (คิวค้างจากรอบก่อน)"
       : !g.user.tradingViewUsername
       ? "ข้าม — ไม่มี username ให้ถอน"
-      : g.failCount >= MAX_FAILS
-        ? `ข้าม — ล้มเหลวครบ ${MAX_FAILS} ครั้ง ระบบเลิกลองแล้ว รอคนแก้ต้นเหตุ`
-        : minutesSince !== null && minutesSince < waitMinutes
-          ? `ข้าม — เพิ่งสั่งไป ${Math.round(minutesSince)} นาที (ต้องรอ ${waitMinutes} นาที)`
-          : "จะสั่งถอนซ้ำรอบนี้";
+      : verdictFor(g.failCount, minutesSince).replace("จะสั่งซ้ำ", "จะสั่งถอนซ้ำ");
     return {
       tradingView: g.user.tradingViewUsername,
       email: g.user.email,
@@ -407,8 +444,10 @@ export async function inspectReconcile() {
   return {
     bridgeQueue: queue,
     waitMinutes,
-    willDispatch: rows.filter((r) => r.verdict === "จะสั่งซ้ำรอบนี้").length,
-    willRevoke: revokeRows.filter((r) => r.verdict === "จะสั่งถอนซ้ำรอบนี้").length,
+    // นับด้วย startsWith เพราะคำตัดสินมีวงเล็บต่อท้ายได้ (เช่น "รอบลองประจำวัน")
+    // เทียบสตริงเป๊ะ ๆ เคยทำให้ตัวนับเป็น 0 ทั้งที่กำลังจะสั่งงานจริง
+    willDispatch: rows.filter((r) => r.verdict.startsWith("จะสั่ง")).length,
+    willRevoke: revokeRows.filter((r) => r.verdict.startsWith("จะสั่ง")).length,
     pendingRevokeTotal: revokeRows.length,
     /** คิวถอนที่ค้างอยู่บนคนที่ยังจ่ายเงินอยู่ = ระเบิดเวลา ต้องเป็น 0 */
     revokeOnActiveMember: revokeRows.filter((r) => r.verdict.startsWith("ข้าม — แพ็กเกจยังใช้งานอยู่")).length,
