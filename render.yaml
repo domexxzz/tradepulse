@@ -46,8 +46,19 @@ databases:
     postgresMajorVersion: "17"
     # ต่อจากนอก Render ได้เฉพาะ IP เหล่านี้ (เว็บต่อผ่าน internal network ไม่โดนกฎนี้)
     # ถ้าไม่ใส่ Blueprint sync จะคืนค่าเป็นเปิดทุก IP · IP บ้านเปลี่ยนแล้วสำรองรายคืนจะล้ม → แก้ตรงนี้
+    #
+    # อาการเวลา IP ไม่ตรง: TCP ต่อติด (Test-NetConnection ผ่าน) แต่ psql/pg_dump ตอบ
+    # "SSL connection has been closed unexpectedly" — ไม่ใช่ข้อความเรื่องรหัสผ่าน
+    # ทำให้ไล่ผิดทางไปที่ credential ได้ง่ายมาก ตัวหน้าด่านตัดทิ้งก่อนถึงชั้นยืนยันตัวตน
+    #
+    # เจอจริง: สำรองฐานข้อมูลล้มทุกคืนตั้งแต่ 21 ต.ค. ถึง 2 พ.ย. 69 (12 วัน) เพราะ IP
+    # ของคอมเฟิร์สเปลี่ยนจาก 183.89.14.177 เป็น 183.89.0.8 และไม่มีใครรู้ เพราะ
+    # แจ้งเตือนแอดมินก็ตายอยู่พอดี (ห้อง Telegram ย้ายเป็น supergroup)
+    #
+    # 3BB เป็น CGNAT — IP จะเปลี่ยนอีกแน่นอน ตัวสคริปต์สำรองแนบ IP ปัจจุบันไปใน
+    # ข้อความแจ้งเตือนแล้ว รอบหน้าจะได้รู้ทันทีว่าต้องเอาเลขอะไรมาใส่ตรงนี้
     ipAllowList:
-      - source: 183.89.14.177/32
-        description: comfirst/server-254 nightly backup (3BB CGNAT)
+      - source: 183.89.0.8/32
+        description: comfirst/server-254 nightly backup (3BB CGNAT, อัปเดต 2 พ.ย. 69)
       - source: 202.28.41.168/32
         description: DomeCB PC (maintenance)

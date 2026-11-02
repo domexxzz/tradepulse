@@ -39,6 +39,32 @@ async function run(req: Request) {
     .map((s) => s.trim())
     .filter(Boolean);
 
+  /**
+   * ค่าตัวอย่างที่ลืมแก้ อันตรายกว่าค่าว่าง
+   *
+   * ค่าว่างมีข้อความบอกอยู่แล้วว่า "ยังไม่ได้ตั้ง" แต่ค่าตัวอย่างอย่าง boss@example.com
+   * ดูเหมือนตั้งค่าเรียบร้อย ระบบจะพยายามส่งแล้วได้ resend 422 กลับมา
+   * ซึ่งอ่านแล้วเหมือนปัญหาของผู้ให้บริการอีเมล ไม่ใช่ปัญหาของค่าที่เราตั้งเอง
+   * (เจอจริง 2 พ.ย. 69 — ADMIN_EMAILS บน production เป็น boss@example.com)
+   *
+   * ADMIN_EMAILS ยังใช้เลื่อนขั้นเป็นแอดมินตอนล็อกอินด้วย ตั้งผิดไว้แปลว่า
+   * ตั้งแอดมินคนใหม่ไม่ได้เลยจนกว่าจะแก้ — เงียบอีกจุดที่ไม่มีอะไรฟ้อง
+   */
+  const placeholders = to.filter((a) => /@(example\.(com|org|net)|test|localhost)$/i.test(a));
+  if (placeholders.length > 0) {
+    return NextResponse.json(
+      {
+        ok: false,
+        reason:
+          `ADMIN_EMAILS ยังเป็นค่าตัวอย่าง (${placeholders.join(", ")}) — ไม่ใช่อีเมลจริง ` +
+          `แก้เป็นอีเมลของเจ้าของก่อน ไม่งั้นแจ้งเตือนทางอีเมลไม่ถึงใคร และตั้งแอดมินคนใหม่ไม่ได้`,
+        config,
+        adminEmails: to,
+      },
+      { status: 400 },
+    );
+  }
+
   if (to.length === 0) {
     return NextResponse.json(
       { ok: false, reason: "ยังไม่ได้ตั้ง ADMIN_EMAILS — ไม่รู้จะส่งหาใคร", config },
