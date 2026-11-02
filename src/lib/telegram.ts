@@ -79,6 +79,11 @@ export interface AdminAlertResult {
   sent: boolean;
   /** เหตุผลที่ส่งไม่ได้ — ใช้ตอนดีบัก/ยิงทดสอบ */
   reason?: string;
+  /**
+   * ห้องถูกอัปเกรดเป็น supergroup แล้วเราย้ายตามให้ — นี่คือ id ใหม่ที่ต้องเอาไปใส่ env
+   * มีค่าแปลว่าตอนนี้เสียงเตือนดังอยู่ได้ด้วยทางเลี่ยงในหน่วยความจำ ยังไม่ได้แก้จริง
+   */
+  movedTo?: string;
 }
 
 /**
@@ -89,31 +94,81 @@ export interface AdminAlertResult {
  * เคยเจอมาแล้วว่าไม่ได้ตั้ง TELEGRAM_ADMIN_CHAT_ID แล้วเงียบไปเฉย ๆ
  * กว่าจะรู้ก็ตอนบริดจ์ล่มจริงแล้วไม่มีใครได้รับแจ้ง
  */
+/**
+ * ห้องที่ถูกอัปเกรดเป็น supergroup แล้ว — จำ id ใหม่ไว้ในหน่วยความจำของ process
+ *
+ * ไม่ได้เขียนลงฐานข้อมูลโดยตั้งใจ: นี่คือทางเลี่ยงชั่วคราวให้เสียงเตือนดังต่อได้
+ * ไม่ใช่ที่เก็บค่าตั้งค่าถาวร ของจริงต้องไปแก้ env แล้ว deploy
+ * (เก็บในหน่วยความจำแปลว่า instance ใหม่จะลองของเดิมก่อนแล้วย้ายตามเองอีกครั้ง
+ *  ซึ่งเสียแค่ request เดียว แต่แลกกับการไม่มีค่าตั้งค่าซ่อนอยู่สองที่)
+ */
+let migratedAdminChat: string | null = null;
+
+interface TelegramReply {
+  ok?: boolean;
+  description?: string;
+  parameters?: { migrate_to_chat_id?: number };
+}
+
+async function postAdminMessage(chatId: string, text: string, topic?: string) {
+  const res = await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+    method: "POST",
+    // ปลายทางค้างไม่ตอบ ต้องตัดทิ้ง ไม่งั้นฟังก์ชันค้างจนหมดเวลา
+    signal: AbortSignal.timeout(10_000),
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      chat_id: chatId,
+      message_thread_id: topic ? Number(topic) : undefined,
+      text,
+      disable_web_page_preview: true,
+    }),
+  });
+  const data = (await res.json().catch(() => ({}))) as TelegramReply;
+  return { data, status: res.status };
+}
+
 export async function sendAdminAlert(text: string): Promise<AdminAlertResult> {
-  const adminChat = process.env.TELEGRAM_ADMIN_CHAT_ID;
   const adminTopic = process.env.TELEGRAM_ADMIN_TOPIC_ID;
+  const configured = process.env.TELEGRAM_ADMIN_CHAT_ID;
   if (!TOKEN) return { sent: false, reason: "ยังไม่ได้ตั้ง TELEGRAM_BOT_TOKEN" };
-  if (!adminChat) return { sent: false, reason: "ยังไม่ได้ตั้ง TELEGRAM_ADMIN_CHAT_ID (ปลายทางแจ้งเตือน)" };
+  if (!configured) return { sent: false, reason: "ยังไม่ได้ตั้ง TELEGRAM_ADMIN_CHAT_ID (ปลายทางแจ้งเตือน)" };
+
+  const adminChat = migratedAdminChat ?? configured;
+
   try {
-    const res = await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
-      method: "POST",
-      // ปลายทางค้างไม่ตอบ ต้องตัดทิ้ง ไม่งั้นฟังก์ชันค้างจนหมดเวลา
-      signal: AbortSignal.timeout(10_000),
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        chat_id: adminChat,
-        message_thread_id: adminTopic ? Number(adminTopic) : undefined,
-        text,
-        disable_web_page_preview: true,
-      }),
-    });
-    const data = (await res.json().catch(() => ({}))) as { ok?: boolean; description?: string };
+    let { data, status } = await postAdminMessage(adminChat, text, adminTopic);
+
+    /**
+     * ห้องถูกอัปเกรดเป็น supergroup = Telegram เปลี่ยน chat id ใหม่ทั้งก้อน
+     *
+     * ค่าเดิมใช้ไม่ได้อีกเลย และทุกการแจ้งเตือนจะตายเงียบทันทีที่มีใครกดอัปเกรด
+     * หรือตอนที่กลุ่มโตจนเกินโควตาแล้ว Telegram อัปเกรดให้เอง — ซึ่งไม่มีใครตั้งใจทำ
+     * และไม่มีอะไรฟ้องเลยนอกจากข้อความนี้ที่ไม่มีใครเห็น
+     *
+     * เจอจริง 2 พ.ย. 69: แจ้งเตือนแอดมินทุกชนิดส่งไม่ออกมานาน — บริดจ์ล่ม สลิปใหม่
+     * งานค้าง สำรองฐานข้อมูลพัง และตัวจับความล้มเหลวเป็นวงที่เพิ่งใส่เข้าไปวันเดียวกัน
+     * ระบบเฝ้าระวังทั้งชุดตายไปโดยไม่มีใครรู้ เพราะตัวที่ควรบอกคือตัวที่ตาย
+     *
+     * Telegram บอก id ใหม่มาให้ใน parameters.migrate_to_chat_id อยู่แล้ว
+     * ของเดิมอ่านแค่ description แล้วทิ้งคำตอบที่อยู่ในมือ — ยิงซ้ำด้วย id ใหม่เลย
+     * เสียงเตือนต้องดังก่อน ค่อยไปแก้ env ทีหลัง
+     */
+    const movedTo = data.parameters?.migrate_to_chat_id;
+    if (!data.ok && movedTo) {
+      migratedAdminChat = String(movedTo);
+      console.error(
+        `sendAdminAlert: ห้องแอดมินถูกอัปเกรดเป็น supergroup แล้ว — ` +
+          `ย้ายไป ${migratedAdminChat} ให้ชั่วคราว ต้องแก้ env TELEGRAM_ADMIN_CHAT_ID เป็นค่านี้`
+      );
+      ({ data, status } = await postAdminMessage(migratedAdminChat, text, adminTopic));
+    }
+
     if (!data.ok) {
-      const reason = data.description ?? `HTTP ${res.status}`;
+      const reason = data.description ?? `HTTP ${status}`;
       console.error("sendAdminAlert: telegram ปฏิเสธ:", reason);
       return { sent: false, reason };
     }
-    return { sent: true };
+    return { sent: true, ...(movedTo ? { movedTo: String(movedTo) } : {}) };
   } catch (e) {
     const reason = e instanceof Error ? e.message : "unknown";
     console.error("sendAdminAlert: ส่งไม่สำเร็จ:", reason);
