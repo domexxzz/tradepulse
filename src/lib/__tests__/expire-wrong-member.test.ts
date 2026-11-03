@@ -105,12 +105,14 @@ function grantTable(rows: FakeGrant[]) {
   grantFindMany.mockImplementation(async (args: Record<string, never>) => {
     const w = (args as { where?: { status?: unknown } }).where ?? {};
     const st = w.status as string | { in?: string[] } | undefined;
-    const wanted = typeof st === "string" ? [st] : (st?.in ?? []);
+    // ไม่ระบุ status = ถามหา "ใบทั้งหมดของคนที่ยังจ่ายเงินอยู่" (ตัวซ่อมใช้หาใบล่าสุด)
+    const wanted = st === undefined ? null : typeof st === "string" ? [st] : (st?.in ?? []);
     return rows
-      .filter((r) => wanted.includes(r.status))
+      .filter((r) => wanted === null || wanted.includes(r.status))
       .map((r) => ({
         id: r.id,
         userId: r.userId,
+        status: r.status,
         user: { email: `${r.userId}@x.c`, tradingViewUsername: r.tv ?? "someone" },
       }));
   });
@@ -194,16 +196,34 @@ describe("ซ่อมคิวถอนที่จ่อคนที่ยั�
     expect(grantUpdateMany.mock.calls[0][0].data.status).toBe("PENDING");
   });
 
-  it("ถอนไปแล้วแต่มีใบใหม่ดูแลอยู่ = ห้ามปลุกใบเก่าขึ้นมา", async () => {
+  it("ใบล่าสุดยังใช้งานได้ = ไม่ต้องซ่อม (ใบเก่าที่ถอนไปแล้วไม่ใช่ปัญหา)", async () => {
+    // grantTable คืนตามลำดับที่ใส่ และตัวซ่อมถือว่าใบแรกคือใบล่าสุด (orderBy createdAt desc)
     grantTable([
-      { id: "old", userId: "u9", status: "REVOKED", tv: "p_f123" },
       { id: "new", userId: "u9", status: "GRANTED", tv: "p_f123" },
+      { id: "old", userId: "u9", status: "REVOKED", tv: "p_f123" },
     ]);
 
     const res = await healActiveMembersQueuedForRemoval();
 
     expect(res.grants).toBe(0);
     expect(grantUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it("ใบล่าสุดถูกถอน ทั้งที่มีใบ GRANTED เก่าอยู่ = ต้องซ่อม", async () => {
+    /**
+     * ใบเก่าของรอบบิลก่อนไม่ได้ให้สิทธิ์อะไรกับใครแล้ว ถ้าใบล่าสุดถูกถอน
+     * ลูกค้าก็เข้าไม่ได้จริง ๆ — ของเดิมข้ามเคสนี้ไป
+     * (p_f123 จ่ายถึง 30 พ.ย. แต่เข้าไม่ได้ทั้งวัน 3 พ.ย. 69)
+     */
+    grantTable([
+      { id: "new", userId: "u9", status: "REVOKED", tv: "p_f123" },
+      { id: "old", userId: "u9", status: "GRANTED", tv: "p_f123" },
+    ]);
+
+    const res = await healActiveMembersQueuedForRemoval();
+
+    expect(res.grants).toBe(1);
+    expect(grantUpdateMany.mock.calls[0][0].data.status).toBe("PENDING");
   });
 
   it("ไม่มีคิวที่ตั้งผิด = ไม่แตะอะไรเลย (ห้ามซ่อมมั่ว)", async () => {

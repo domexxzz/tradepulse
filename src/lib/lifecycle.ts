@@ -216,30 +216,34 @@ export async function healActiveMembersQueuedForRemoval(): Promise<{
      * "ไม่มีใบอื่นรองรับ" สำคัญ ไม่งั้นใบ REVOKED ของรอบบิลเก่าจะถูกปลุกขึ้นมา
      * ทุกวัน ทั้งที่รอบปัจจุบันเรียบร้อยดีอยู่แล้ว
      */
-    const covered = new Set(
-      (
-        await prisma.accessGrant.findMany({
-          where: { status: { in: ["PENDING", "GRANTED"] }, user: { subscriptions: paying } },
-          select: { userId: true },
-        })
-      ).map((g) => g.userId)
-    );
-    for (const g of queued) covered.add(g.userId);
-
-    const orphaned = (
-      await prisma.accessGrant.findMany({
-        where: {
-          status: "REVOKED",
-          user: { subscriptions: paying, tradingViewUsername: { not: null } },
-        },
-        orderBy: { createdAt: "desc" },
-        select: { id: true, userId: true, user: { select: { email: true, tradingViewUsername: true } } },
-      })
-    ).filter((g) => {
-      if (covered.has(g.userId)) return false;
-      covered.add(g.userId); // คนเดียวกันมีหลายใบ คืนแค่ใบล่าสุดใบเดียว
-      return true;
+    /**
+     * ดูจาก "ใบล่าสุดของแต่ละคน" ไม่ใช่ "มีใบ PENDING/GRANTED ใบไหนก็ได้ไหม"
+     *
+     * ของเดิมข้ามคนที่มีใบ GRANTED ใบเก่าค้างอยู่ ซึ่งผิด — ใบเก่าของรอบบิลก่อน
+     * ไม่ได้ให้สิทธิ์อะไรกับใครแล้ว ถ้าใบล่าสุดถูกถอนไป ลูกค้าก็เข้าไม่ได้จริง ๆ
+     * (เจอจริง 3 พ.ย. 69: p_f123 จ่ายถึง 30 พ.ย. ใบล่าสุดเป็น REVOKED
+     *  แต่ตัวซ่อมข้ามไปเพราะเจอใบ GRANTED เก่าของรอบก่อน — ลูกค้าเข้าไม่ได้ทั้งวัน)
+     *
+     * สถานะที่ "จริง" ของลูกค้าคือใบล่าสุดเสมอ อย่าถามว่าเคยมีใบดีไหม
+     */
+    const recent = await prisma.accessGrant.findMany({
+      where: { user: { subscriptions: paying, tradingViewUsername: { not: null } } },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        userId: true,
+        status: true,
+        user: { select: { email: true, tradingViewUsername: true } },
+      },
+      take: 1000,
     });
+    const newestOf = new Map<string, (typeof recent)[number]>();
+    for (const g of recent) if (!newestOf.has(g.userId)) newestOf.set(g.userId, g);
+
+    const alreadyQueued = new Set(queued.map((g) => g.userId));
+    const orphaned = Array.from(newestOf.values()).filter(
+      (g) => g.status === "REVOKED" && !alreadyQueued.has(g.userId)
+    );
 
     const wrong = [...queued, ...orphaned];
 
