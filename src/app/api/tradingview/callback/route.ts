@@ -6,7 +6,8 @@ import { sendAdminAlert, sendPhotoToUser } from "@/lib/telegram";
 import { notifyAccessGranted } from "@/lib/access-notify";
 import { sendEmail } from "@/lib/email";
 import { tradingViewNotFoundEmail } from "@/lib/email-templates";
-import { DISPATCHABLE_GRANT_STATUSES } from "@/lib/lifecycle";
+import { DISPATCHABLE_GRANT_STATUSES, grantDaysFor, grantUntilFrom } from "@/lib/lifecycle";
+import { getUserSubscription } from "@/lib/subscription";
 import { sendAdminAlertThrottled } from "@/lib/alert-throttle";
 
 export const dynamic = "force-dynamic";
@@ -159,6 +160,13 @@ TradingView: @${username}
     return NextResponse.json({ ok: true, handled: "failure", failCount: fails });
   }
 
+  // ต้องรู้วันหมดอายุของแพ็กเกจเพื่อจดว่าให้สิทธิ์ TradingView ไว้ถึงวันไหน
+  // ถามไม่ได้ก็ไม่ใช่เหตุให้ล้มทั้งคำขอ — ปล่อยเป็น null แล้วตัวไล่ซ่อมจะสั่งซ้ำให้เอง
+  const { sub, isActive } =
+    action === "grant"
+      ? await getUserSubscription(grant.userId).catch(() => ({ sub: null, isActive: false }))
+      : { sub: null, isActive: false };
+
   await prisma.accessGrant.update({
     where: { id: grant.id },
     data:
@@ -167,6 +175,18 @@ TradingView: @${username}
         ? {
             status: "GRANTED",
             grantedAt: now,
+            /**
+             * จดวันหมดอายุฝั่ง TradingView ไว้ด้วย
+             *
+             * บอทรับเป็นจำนวนวันตอนสั่ง แล้วไปตั้งวันหมดอายุบนนั้นเอง ฝั่งเราไม่เคยจด
+             * จึงตอบไม่ได้ว่าการต่ออายุไปถึงปลายทางหรือยัง แถวที่ยัง GRANTED
+             * แต่สิทธิ์จริงหมดไปแล้วจะไม่มีใครสั่งซ้ำ เพราะ reconcile มองแค่ PENDING
+             * (เจอจริง 3 พ.ย. 69 — ลูกค้าต่ออายุตอนบอทออฟไลน์ แล้วล็อกโดยหน้าแอดมิน
+             *  ขึ้นว่า "เพิ่มแล้ว" ทุกอย่างดูปกติ)
+             *
+             * ใช้สูตรเดียวกับตอนสั่ง (grantDaysFor) ไม่ใช่เขียนซ้ำให้บังเอิญเหมือนกัน
+             */
+            grantedUntil: grantUntilFrom(grantDaysFor(sub, isActive)),
             revokedAt: null,
             note: "ให้สิทธิ์อัตโนมัติโดยบอท",
             failCount: 0,
