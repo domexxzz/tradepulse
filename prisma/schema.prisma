@@ -170,6 +170,16 @@ model AccessGrant {
   tradingViewUsername String?
   note                String?
   grantedAt           DateTime?
+  /**
+   * ให้สิทธิ์บน TradingView ไว้ถึงวันไหน (ไม่ใช่ "ให้เมื่อไหร่")
+   *
+   * บอทรับเป็นจำนวนวันแล้วไปตั้งวันหมดอายุบน TradingView เอง ฝั่งเราจึงต้องจดไว้
+   * ไม่งั้นตอบไม่ได้ว่าสิทธิ์จริงของลูกค้าจะดับวันไหน และไม่รู้ว่าการต่ออายุ
+   * ถูกส่งไปถึงปลายทางแล้วหรือยัง
+   *
+   * NULL = ไม่รู้ ให้ถือว่าต้องสั่งซ้ำหนึ่งรอบเพื่อให้ฐานข้อมูลกับ TradingView ตรงกัน
+   */
+  grantedUntil        DateTime?
   revokedAt           DateTime?
   createdAt           DateTime      @default(now())
   /**

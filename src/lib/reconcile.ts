@@ -98,6 +98,8 @@ export interface ReconcileResult {
   waitingForUsername: number;
   /** สิทธิ์ที่ถูกถอนผิดทั้งที่ลูกค้ายังจ่ายเงินอยู่ แล้วคืนให้ในรอบนี้ — ปกติต้องเป็น 0 */
   healed: number;
+  /** สั่งซ้ำให้วันหมดอายุบน TradingView ตรงกับที่ลูกค้าจ่าย — กี่รายในรอบนี้ */
+  resynced: number;
   /** กลุ่มความล้มเหลวที่กว้างพอจะถือว่าพังทั้งระบบ — เจอกี่กลุ่ม */
   systemicFound: number;
   /** ในนั้นส่งแจ้งเตือนออกไปได้จริงกี่กลุ่ม — เจอแต่ส่งไม่ออก = ท่อแจ้งเตือนพัง */
@@ -329,6 +331,96 @@ async function backfillTelegramInvites(cutoff: Date): Promise<{ created: number;
   return { created, stale };
 }
 
+/**
+ * สูงสุดกี่คนต่อรอบสำหรับงาน "ไล่ให้ TradingView ตรงกับที่ลูกค้าจ่าย"
+ *
+ * น้อยกว่าคิวปกติมาก และทำเฉพาะตอนบอทว่างจริง ๆ เพราะงานนี้ไม่ด่วนเท่าคนที่
+ * เพิ่งจ่ายเงินแล้วนั่งรออยู่ คนกลุ่มนั้นต้องได้คิวก่อนเสมอ
+ */
+const MAX_RESYNC_PER_RUN = 5;
+
+/** ยอมให้คลาดกันได้เท่านี้ ก่อนถือว่า "ให้สิทธิ์ไว้สั้นกว่าที่ลูกค้าจ่าย" */
+const RESYNC_TOLERANCE_HOURS = 36;
+
+/**
+ * ไล่ให้วันหมดอายุบน TradingView ตรงกับที่ลูกค้าจ่ายมาจริง
+ *
+ * ช่องโหว่ที่ปิด: reconcile เดิมมองแค่แถว PENDING แถวที่เป็น GRANTED แล้วถือว่าจบ
+ * แต่ "GRANTED" บอกแค่ว่าเคยให้สำเร็จ ไม่ได้บอกว่าให้ถึงวันไหน
+ *
+ * ลูกค้าต่ออายุตอนบอทติดต่อไม่ได้ → คำสั่งต่อวันไปไม่ถึง TradingView → แถวยัง GRANTED
+ * → ไม่มีใครสั่งซ้ำ → สิทธิ์จริงดับตามวันเดิม ขณะที่หน้าแอดมินขึ้นว่า "เพิ่มแล้ว"
+ * ลูกค้าจ่ายเงินแล้วใช้ไม่ได้ และระบบไม่มีทางรู้ตัวเองเลย
+ * (เจอจริง 3 พ.ย. 69 — phongth_wang · p_f123 · Puchan07 ตอนคอมเฟิร์สออฟไลน์ 7 ชม.
+ *  ทั้งสามคนฐานข้อมูลบอกว่าเรียบร้อย ต้องให้ลูกค้าทักมาเองถึงรู้)
+ *
+ * grantedUntil เป็น NULL แปลว่าไม่รู้ (แถวเก่าก่อนมีคอลัมน์นี้) ให้สั่งซ้ำหนึ่งรอบ
+ * เพื่อให้สองฝั่งตรงกัน บอทรับคำสั่งเพิ่มซ้ำได้อยู่แล้ว (เป็น "เพิ่มและต่ออายุ")
+ */
+async function resyncOutOfDateGrants(waitMinutes: number, queue: number | null): Promise<number> {
+  // ทำเฉพาะตอนบอทว่าง — คนที่เพิ่งจ่ายเงินแล้วรออยู่ต้องได้คิวก่อน
+  if (queue !== 0) return 0;
+
+  const now = new Date();
+  const redispatchCutoff = new Date(now.getTime() - waitMinutes * 60_000);
+
+  const rows = await prisma.accessGrant.findMany({
+    where: {
+      status: "GRANTED",
+      AND: [
+        { OR: [{ lastDispatchedAt: null }, { lastDispatchedAt: { lt: redispatchCutoff } }] },
+        withinFailBudget(now.getTime()),
+      ],
+      user: {
+        tradingViewUsername: { not: null },
+        subscriptions: { some: { status: { in: ACTIVE_STATUSES }, currentPeriodEnd: { gt: now } } },
+      },
+    },
+    select: {
+      id: true,
+      userId: true,
+      grantedUntil: true,
+      user: {
+        select: {
+          subscriptions: {
+            where: { status: { in: ACTIVE_STATUSES }, currentPeriodEnd: { gt: now } },
+            select: { currentPeriodEnd: true },
+            orderBy: { currentPeriodEnd: "desc" },
+            take: 1,
+          },
+        },
+      },
+    },
+    orderBy: { grantedAt: "asc" },
+    take: MAX_RESYNC_PER_RUN * 4,
+  });
+
+  const tolerance = RESYNC_TOLERANCE_HOURS * 3_600_000;
+  const behind = rows
+    .filter((g) => {
+      const paidUntil = g.user.subscriptions[0]?.currentPeriodEnd;
+      if (!paidUntil) return false;
+      if (g.grantedUntil === null) return true; // ไม่รู้ = ต้องทำให้รู้
+      return g.grantedUntil.getTime() + tolerance < paidUntil.getTime();
+    })
+    .slice(0, MAX_RESYNC_PER_RUN);
+
+  let done = 0;
+  for (const g of behind) {
+    try {
+      await prisma.accessGrant.update({
+        where: { id: g.id },
+        data: { lastDispatchedAt: new Date() },
+      });
+      await syncTradingViewGrant(g.userId);
+      done += 1;
+    } catch (e) {
+      console.error("reconcile: resync grant failed", g.id, e);
+    }
+  }
+  return done;
+}
+
 /** คิวที่รอลูกค้ากรอก username — ระบบทำอะไรต่อไม่ได้จนกว่าจะมีชื่อ */
 function countWaitingForUsername(cutoff: Date) {
   return prisma.accessGrant.count({
@@ -350,6 +442,7 @@ export async function runReconcile(): Promise<ReconcileResult> {
     invitesStale: 0,
     waitingForUsername: 0,
     healed: 0,
+    resynced: 0,
     systemicFound: 0,
     systemicAlerts: 0,
   };
@@ -397,6 +490,12 @@ export async function runReconcile(): Promise<ReconcileResult> {
     countWaitingForUsername(cutoff).catch(() => 0),
   ]);
 
+  // ไล่ให้ TradingView ตรงกับที่ลูกค้าจ่าย — ทำหลังคิวปกติ และเฉพาะตอนบอทว่าง
+  const resynced = await resyncOutOfDateGrants(waitMinutes, queue).catch((e) => {
+    console.error("reconcile: resync step failed", e);
+    return 0;
+  });
+
   // ดูภาพรวมหลังสั่งงานรอบนี้เสร็จ — ตัวเลขจะได้รวมผลล่าสุดด้วย
   const systemic = await reportSystemicFailures().catch((e) => {
     console.error("reconcile: systemic check failed", e);
@@ -410,6 +509,7 @@ export async function runReconcile(): Promise<ReconcileResult> {
     invitesStale: invites.stale,
     waitingForUsername,
     healed: healed.grants,
+    resynced,
     systemicFound: systemic.found,
     systemicAlerts: systemic.sent,
     ...(systemic.reasons.length > 0 ? { systemicNotSent: systemic.reasons } : {}),

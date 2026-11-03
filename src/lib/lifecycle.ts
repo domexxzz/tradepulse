@@ -374,6 +374,27 @@ export const ACTIVE_GRANT_STATUSES = ["PENDING", "PENDING_REVOKE", "REVOKED"] as
  */
 export const DISPATCHABLE_GRANT_STATUSES = [...ACTIVE_GRANT_STATUSES, "GRANTED"] as const;
 
+/**
+ * ให้สิทธิ์บน TradingView ถึงวันไหน — สูตรเดียวใช้ทั้งตอนสั่งและตอนรับผลกลับ
+ *
+ * ต้องเป็นสูตรเดียวกันจริง ๆ ไม่ใช่สองที่ที่บังเอิญเขียนเหมือนกัน ไม่งั้นค่าที่เราจด
+ * กับวันหมดอายุจริงบน TradingView จะเพี้ยนกันทีละนิดจนตัวไล่ซ่อมสั่งซ้ำไม่จบ
+ */
+export function grantDaysFor(
+  sub: { currentPeriodEnd: Date | null } | null,
+  isActive: boolean,
+  daysOverride?: number
+): number {
+  if (daysOverride && daysOverride > 0) return daysOverride;
+  if (isActive && sub?.currentPeriodEnd) return Math.max(1, daysUntil(sub.currentPeriodEnd));
+  return DEFAULT_GRANT_DAYS;
+}
+
+/** วันหมดอายุที่ "ตั้งใจจะให้" จากจำนวนวันที่ส่งให้บอท */
+export function grantUntilFrom(days: number, from: Date = new Date()): Date {
+  return new Date(from.getTime() + days * 24 * 60 * 60 * 1000);
+}
+
 export async function syncTradingViewGrant(userId: string, daysOverride?: number): Promise<void> {
   if (!tvAutoGrantEnabled) return;
 
@@ -394,12 +415,7 @@ export async function syncTradingViewGrant(userId: string, daysOverride?: number
     const { sub, isActive } = await getUserSubscription(userId);
     // แอดมินเลือกจำนวนวันเองได้ (daysOverride) — ไม่งั้นยึดตามวันหมดอายุแพ็กเกจ
     // ไม่มีแพ็กเกจให้ยึดก็ยังต้องส่งจำนวนวันไป ห้ามปล่อยให้บอทเพิ่มแบบไม่มีวันหมดอายุ
-    const days =
-      daysOverride && daysOverride > 0
-        ? daysOverride
-        : isActive && sub?.currentPeriodEnd
-          ? Math.max(1, daysUntil(sub.currentPeriodEnd))
-          : DEFAULT_GRANT_DAYS;
+    const days = grantDaysFor(sub, isActive, daysOverride);
 
     /**
      * จดเวลาที่สั่งก่อนยิงเสมอ ไม่ใช่เฉพาะตอนสำเร็จ
@@ -442,6 +458,9 @@ export async function syncTradingViewGrant(userId: string, daysOverride?: number
             : {
                 status: "GRANTED",
                 grantedAt: new Date(),
+                // จดว่าให้ถึงวันไหน ไม่ใช่แค่ว่าให้แล้ว — ตัวไล่ซ่อมใช้ค่านี้
+                // ตัดสินว่าการต่ออายุไปถึง TradingView จริงหรือยัง
+                grantedUntil: grantUntilFrom(days),
                 revokedAt: null,
                 note: "ให้สิทธิ์อัตโนมัติโดยบอท",
                 failCount: 0,
