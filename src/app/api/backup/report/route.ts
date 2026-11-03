@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { sendAdminAlert } from "@/lib/telegram";
-import { recordHeartbeat } from "@/lib/heartbeat";
+import { recordHeartbeat, attemptKey } from "@/lib/heartbeat";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +58,16 @@ export async function POST(req: Request) {
     await recordHeartbeat("db-backup", `${host}${message ? ` · ${message}` : ""}`);
     return NextResponse.json({ ok: true, recorded: true });
   }
+
+  /**
+   * ล้มเหลวก็ต้องบันทึกว่า "ถูกเรียกแล้ว" ไม่ใช่บันทึกเฉพาะตอนสำเร็จ
+   *
+   * ของเดิมบันทึกเฉพาะตอนสำเร็จ ตัวเฝ้างานที่เงียบหายจึงแยกไม่ออกระหว่าง
+   * "ไม่ได้รันเลย" กับ "รันทุกคืนแล้วพังทุกคืน" แล้วไปสรุปผิดเป็นอย่างแรก
+   * ส่งคนไปเช็กว่าเปิดเครื่องไว้ไหม ทั้งที่ปัญหาจริงอยู่คนละเรื่อง
+   * (เจอจริง 3 พ.ย. 69 — เสียเวลาไปสองสัปดาห์เพราะข้อความนี้)
+   */
+  await recordHeartbeat(attemptKey("db-backup"), clamp(message || "ล้มเหลว", 300)).catch(() => {});
 
   const res = await sendAdminAlert(`🔴 สำรองฐานข้อมูล QVX ล้มเหลว\n${message}\nเครื่อง: ${host}`);
   return NextResponse.json({ ok: res.sent, reason: res.reason }, { status: res.sent ? 200 : 502 });
