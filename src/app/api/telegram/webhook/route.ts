@@ -54,6 +54,40 @@ const ok = (handled: string) => NextResponse.json({ ok: true, handled });
  * ยอมเสียเหตุการณ์เดียวดีกว่าปล่อยให้ท่อตัน — คนที่ตกหล่นยังมีงานกวาด
  * (inviteMissedMembers) กับรายงานประจำวันคอยจับอยู่แล้ว
  */
+/**
+ * บัญชี Telegram นี้ติดอยู่กับสมาชิกคนอื่นไหม — และถ้าติด ควรปล่อยผ่านหรือบล็อก
+ *
+ * กติกา "หนึ่ง Telegram ต่อหนึ่งสมาชิก" มีไว้กันคนแชร์บัญชีกันใช้ ซึ่งถูกต้อง
+ * แต่มันเหมารวมเคสที่ไม่ใช่การแชร์เลย: ลูกค้าคนเดิมที่เคยสมัครไว้ด้วยอีเมลอื่น
+ * แล้วบัญชีเก่านั้นหมดอายุไปนานแล้ว พอกลับมาต่ออายุด้วยบัญชีใหม่ จะถูกปฏิเสธ
+ * ทั้งที่ไม่มีใครได้สิทธิ์ซ้ำซ้อนเลยสักคน
+ * (เจอจริง 3 พ.ย. 69 — @Mo_kham_99 ต่ออายุแล้วเข้ากลุ่มไม่ได้)
+ *
+ * เส้นแบ่งที่ถูกคือ "อีกบัญชียังจ่ายเงินอยู่ไหม" ไม่ใช่ "มีอีกบัญชีไหม"
+ *   · อีกบัญชียัง active = แชร์กันจริง ต้องบล็อก
+ *   · อีกบัญชีหมดอายุแล้ว = ของเก่าที่ถูกทิ้ง ย้ายการผูกมาที่คนที่จ่ายเงินอยู่
+ *
+ * และไม่ว่าทางไหน ต้องบอกแอดมินด้วยว่า "ชนกับบัญชีไหน" — ของเดิมบอกแค่ว่าชน
+ * แอดมินเลยตามแก้ต่อไม่ได้ ต้องไปไล่หาในฐานข้อมูลเอง
+ */
+async function resolveTelegramConflict(telegramUserId: string, ownerId: string) {
+  const taken = await prisma.user.findFirst({
+    where: { telegramUserId, NOT: { id: ownerId } },
+    select: { id: true, email: true, name: true },
+  });
+  if (!taken) return { blocked: false as const, other: null };
+
+  const { isActive } = await getUserSubscription(taken.id);
+  if (isActive) return { blocked: true as const, other: taken };
+
+  // บัญชีเก่าไม่มีแพ็กเกจแล้ว — ปลดการผูกออกแล้วให้คนที่จ่ายเงินอยู่ใช้ต่อ
+  await prisma.user.update({
+    where: { id: taken.id },
+    data: { telegramUserId: null, telegramUsername: null },
+  });
+  return { blocked: false as const, other: taken };
+}
+
 export async function POST(req: Request) {
   try {
     return await handleUpdate(req);
@@ -156,11 +190,17 @@ async function handleUpdate(req: Request) {
   if (!isActive) return deny("แพ็กเกจหมดอายุหรือยังไม่เปิดใช้งาน");
 
   // บัญชี Telegram หนึ่งอันผูกได้กับสมาชิกคนเดียว (กันแชร์บัญชีกันใช้)
-  const taken = await prisma.user.findFirst({
-    where: { telegramUserId, NOT: { id: grant.userId } },
-    select: { id: true },
-  });
-  if (taken) return deny("บัญชี Telegram นี้ถูกใช้กับสมาชิกรายอื่นแล้ว");
+  // แต่บล็อกเฉพาะตอนอีกบัญชี "ยังจ่ายเงินอยู่" — ดู resolveTelegramConflict
+  const conflict = await resolveTelegramConflict(telegramUserId, grant.userId);
+  if (conflict.blocked) {
+    await sendAdminAlert(
+      `🚫 ปฏิเสธการผูกบัญชี Telegram ซ้ำ (อีกบัญชียังใช้งานอยู่)\n` +
+        `ผู้ขอเข้า: ${grant.user?.name ?? grant.user?.email ?? grant.userId}\n` +
+        `ชนกับ: ${conflict.other?.email ?? conflict.other?.id}\n` +
+        `Telegram: ${telegramUserId}`
+    ).catch(() => {});
+    return deny("บัญชี Telegram นี้ถูกใช้กับสมาชิกรายอื่นแล้ว");
+  }
 
   /**
    * Telegram ปฏิเสธคำขอได้หลายเหตุ และเกือบทั้งหมดแก้เองไม่ได้
@@ -268,21 +308,27 @@ async function handleStart(message: IncomingMessage) {
   }
 
   // บัญชี Telegram หนึ่งอันผูกได้กับสมาชิกคนเดียว — กติกาเดียวกับตอนขอเข้ากลุ่ม
-  const taken = await prisma.user.findFirst({
-    where: { telegramUserId, NOT: { id: grant.userId } },
-    select: { id: true },
-  });
-  if (taken) {
+  const conflict = await resolveTelegramConflict(telegramUserId, grant.userId);
+  if (conflict.blocked) {
     await sendMessageToUser(
       telegramUserId,
-      "บัญชี Telegram นี้ถูกใช้กับสมาชิกรายอื่นแล้ว"
+      "บัญชี Telegram นี้ถูกใช้กับสมาชิกรายอื่นที่ยังใช้งานอยู่ กรุณาติดต่อแอดมิน"
     );
     await sendAdminAlert(
-      `🚫 ปฏิเสธการผูกบัญชี Telegram ซ้ำ\n` +
+      `🚫 ปฏิเสธการผูกบัญชี Telegram ซ้ำ (อีกบัญชียังใช้งานอยู่)\n` +
         `สมาชิก: ${grant.user.name ?? grant.user.email}\n` +
+        `ชนกับ: ${conflict.other?.email ?? conflict.other?.id}\n` +
         `Telegram: ${from.username ? `@${from.username}` : telegramUserId}`
     );
     return ok("บัญชีซ้ำ");
+  }
+  if (conflict.other) {
+    await sendAdminAlert(
+      `🔁 ย้ายการผูก Telegram มาที่บัญชีที่จ่ายเงินอยู่\n` +
+        `สมาชิก: ${grant.user.name ?? grant.user.email}\n` +
+        `ปลดจากบัญชีเก่าที่หมดอายุ: ${conflict.other.email ?? conflict.other.id}\n` +
+        `Telegram: ${from.username ? `@${from.username}` : telegramUserId}`
+    ).catch(() => {});
   }
 
   await prisma.user.update({
