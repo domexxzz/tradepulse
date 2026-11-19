@@ -16,6 +16,9 @@ const update = vi.fn();
 const count = vi.fn();
 const revokeTradingViewAccess = vi.fn();
 const bridgeQueueDepth = vi.fn();
+/** ระบุชนิดให้ชัด ไม่งั้น vi.fn อนุมานเป็น never[] แล้ว mockResolvedValue ใส่ค่าไม่ได้ */
+const userFindMany =
+  vi.fn<(args?: unknown) => Promise<{ tradingViewUsername: string | null }[]>>(async () => []);
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -25,6 +28,7 @@ vi.mock("@/lib/prisma", () => ({
       count: (...a: unknown[]) => count(...a),
     },
     telegramGrant: { findMany: vi.fn(async () => []) },
+    user: { findMany: (args?: unknown) => userFindMany(args) },
   },
 }));
 vi.mock("@/lib/tradingview", () => ({
@@ -205,5 +209,33 @@ describe("คิวถอนสิทธิ์ที่ค้าง", () => {
 
     const last = update.mock.calls.at(-1)?.[0] as { data: Record<string, unknown> };
     expect(last.data).not.toHaveProperty("failCount");
+  });
+});
+
+/**
+ * สิทธิ์จริงบน TradingView ผูกกับ "ชื่อ" ไม่ใช่กับบัญชีในระบบเรา
+ * ลูกค้าสองคนกรอกชื่อเดียวกันได้ (ต่างตัวพิมพ์ก็ยังเป็นชื่อเดียวกันบน TradingView)
+ * ถอนของคนที่หมดอายุ = ดึงสิทธิ์ของคนที่ยังจ่ายเงินออกไปด้วย
+ *
+ * เจอจริง 20 พ.ย. 69: Maypimpisut786 (หมดอายุ) กับ maypimpisut786 (ยังจ่าย)
+ * วนเพิ่ม/ถอนสลับกันทุกไม่กี่นาที บอททำถูกทั้งสองคำสั่ง แต่ผลรวมคือลูกค้าเข้า ๆ ออก ๆ
+ */
+describe("ชื่อ TradingView ที่ใช้ร่วมกัน", () => {
+  it("ยังมีคนจ่ายเงินใช้ชื่อนี้อยู่ = ห้ามถอน", async () => {
+    revokeTable([{ id: "r1", failCount: 0, lastDispatchedAt: null }]);
+    userFindMany.mockResolvedValue([{ tradingViewUsername: "SomeOne" }]);
+
+    await runReconcile();
+
+    expect(revokeTradingViewAccess).not.toHaveBeenCalled();
+  });
+
+  it("ไม่มีใครจ่ายเงินใช้ชื่อนี้ = ถอนได้ตามปกติ", async () => {
+    revokeTable([{ id: "r1", failCount: 0, lastDispatchedAt: null }]);
+    userFindMany.mockResolvedValue([{ tradingViewUsername: "someone-else" }]);
+
+    await runReconcile();
+
+    expect(revokeTradingViewAccess).toHaveBeenCalledWith("someone");
   });
 });
