@@ -16,7 +16,9 @@ const update = vi.fn();
 const count = vi.fn();
 const revokeTradingViewAccess = vi.fn();
 const bridgeQueueDepth = vi.fn();
-const userFindMany = vi.fn(async () => []);
+/** ระบุชนิดให้ชัด ไม่งั้น vi.fn อนุมานเป็น never[] แล้ว mockResolvedValue ใส่ค่าไม่ได้ */
+const userFindMany =
+  vi.fn<(args?: unknown) => Promise<{ tradingViewUsername: string | null }[]>>(async () => []);
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -26,7 +28,7 @@ vi.mock("@/lib/prisma", () => ({
       count: (...a: unknown[]) => count(...a),
     },
     telegramGrant: { findMany: vi.fn(async () => []) },
-    user: { findMany: (...a: unknown[]) => userFindMany(...a) },
+    user: { findMany: (args?: unknown) => userFindMany(args) },
   },
 }));
 vi.mock("@/lib/tradingview", () => ({
