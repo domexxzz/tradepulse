@@ -11,6 +11,14 @@ const health = vi.fn();
 const alert = vi.fn();
 vi.mock("@/lib/tradingview", () => ({ checkBridgeHealth: health }));
 vi.mock("@/lib/telegram", () => ({ sendAdminAlert: alert }));
+vi.mock("@/lib/alert-throttle", () => ({
+  sendAdminAlertThrottled: (key: string, text: string) => {
+    lastKey = key;
+    alert(text);
+    return Promise.resolve({ sent: true, suppressed: 0 });
+  },
+}));
+let lastKey = "";
 
 process.env.CRON_SECRET = "test-secret";
 const { GET } = await import("@/app/api/cron/bridge-health/route");
@@ -63,7 +71,7 @@ describe("bridge-health", () => {
     });
     await call();
     const msg = sent();
-    expect(msg).toContain("เงียบติดต่อกันมาแล้ว 780 นาที");
+    expect(msg).toContain("เงียบติดต่อกันมาเกินครึ่งวัน");
     expect(msg).toContain("keeper.log");
     expect(msg).toContain("chromedriver.exe");
   });
@@ -79,5 +87,41 @@ describe("bridge-health", () => {
     const res = await call();
     expect(res.status).toBe(200);
     expect(sent()).toContain("ค่า URL ไม่ถูกรูปแบบ");
+  });
+});
+
+/**
+ * ตัวกันซ้ำตัดสินจาก "เนื้อข้อความเหมือนเดิมไหม" ถ้าฝังตัวเลขที่เดินตลอด
+ * ทุกข้อความจะต่างกันเสมอ แล้วแจ้งเตือนจะเด้งทุกรอบ cron ตลอดเวลาที่ยังไม่หาย
+ * (เจอจริง 20 พ.ย. 69 — เด้ง 1881, 1888, 1894, 1899, 1906 นาที ไล่กันมา)
+ */
+describe("ข้อความต้องนิ่งพอให้ตัวกันซ้ำทำงาน", () => {
+  it("เงียบนานขึ้นทีละไม่กี่นาที ต้องได้ข้อความเดิม", async () => {
+    const texts: string[] = [];
+    for (const silentMinutes of [1881, 1888, 1894, 1899, 1906]) {
+      alert.mockClear();
+      health.mockResolvedValue({
+        primary: { url: PRIMARY, up: false, silentMinutes },
+        backup: { url: BACKUP, up: true },
+      });
+      await call();
+      texts.push(alert.mock.calls[0][0] as string);
+    }
+    expect(new Set(texts).size).toBe(1);
+  });
+
+  it("ตัวสำรองล่มตามไปด้วย = คนละสถานการณ์ ต้องใช้คีย์คนละอัน", async () => {
+    health.mockResolvedValue({
+      primary: { url: PRIMARY, up: false, silentMinutes: 100 },
+      backup: { url: BACKUP, up: true },
+    });
+    await call();
+    const withBackup = lastKey;
+    health.mockResolvedValue({
+      primary: { url: PRIMARY, up: false, silentMinutes: 100 },
+      backup: { url: BACKUP, up: false },
+    });
+    await call();
+    expect(lastKey).not.toBe(withBackup);
   });
 });
