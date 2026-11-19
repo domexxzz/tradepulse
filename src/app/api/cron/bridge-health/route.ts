@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { checkBridgeHealth } from "@/lib/tradingview";
-import { sendAdminAlert } from "@/lib/telegram";
+import { sendAdminAlertThrottled } from "@/lib/alert-throttle";
 
 export const dynamic = "force-dynamic";
 
@@ -64,10 +64,34 @@ async function run(req: Request) {
   }
 
   // ตัวหลักล่ม — เตือนแอดมิน พร้อมบอกว่าเว็บยิงไปโฮสต์ไหน และต้องกู้เครื่องไหน
-  const silent = health.primary?.silentMinutes;
+  /**
+   * ปัดเป็นชั่วโมง เพื่อไม่ให้ข้อความเปลี่ยนทุกรอบ
+   *
+   * ตัวกันซ้ำตัดสินจาก "เนื้อข้อความเหมือนเดิมไหม" การฝังตัวเลขนาทีที่เดินตลอด
+   * ทำให้ทุกข้อความต่างกันเสมอ ตัวกันซ้ำจึงไม่มีผลเลย และแจ้งเตือนเด้งทุก 6 นาที
+   * ตลอดเวลาที่เครื่องยังไม่กลับมา — 240 ข้อความต่อวันสำหรับเรื่องเดียว
+   * ซึ่งทำให้คนเลิกอ่าน แล้วจะพลาดข้อความที่สำคัญจริง
+   * (เจอจริง 20 พ.ย. 69 — เด้ง 1881, 1888, 1894, 1899, 1906 นาที ไล่กันมา)
+   *
+   * ชั่วโมงหยาบพอให้ข้อความนิ่งเป็นชั่วโมง ๆ แต่ยังบอกความร้ายแรงได้
+   * ส่วน "เกิดซ้ำกี่ครั้งระหว่างที่เงียบไป" ตัวกันซ้ำแนบให้เองอยู่แล้ว
+   */
+  const silentMin = health.primary?.silentMinutes;
+  const silentText =
+    silentMin == null
+      ? null
+      : silentMin < 90
+        ? "เงียบติดต่อกันมาไม่ถึงชั่วโมงครึ่ง"
+        : silentMin < 6 * 60
+          ? "เงียบติดต่อกันมาไม่กี่ชั่วโมง"
+          : silentMin < 24 * 60
+            ? "เงียบติดต่อกันมาเกินครึ่งวัน"
+            : silentMin < 72 * 60
+              ? "เงียบติดต่อกันมาเกินหนึ่งวัน"
+              : "เงียบติดต่อกันมาหลายวัน";
   const lines = [
     `🔴 บริดจ์ TradingView ตัวหลัก (${PRIMARY_NAME}) ติดต่อไม่ได้`,
-    ...(silent ? [`เงียบติดต่อกันมาแล้ว ${silent} นาที`] : []),
+    ...(silentText ? [silentText] : []),
     `เว็บยิงไปที่: ${hostOf(health.primary?.url)}`,
     "",
     "ผลกระทบ: ถ้ามีลูกค้าซื้อตอนนี้ บอทจะเพิ่มสิทธิ์ให้ไม่ได้",
@@ -92,8 +116,16 @@ async function run(req: Request) {
     );
   }
 
+  /**
+   * กันซ้ำต่อ "สถานการณ์" ไม่ใช่ต่อข้อความ
+   *
+   * คีย์บอกว่าตัวไหนล่มบ้าง — ถ้าสถานการณ์แย่ลง (ตัวสำรองล่มตามไปด้วย)
+   * คีย์เปลี่ยน ข้อความใหม่จึงดังทันทีโดยไม่ต้องรอหมดหน้าต่างเวลา
+   * ซึ่งเป็นพฤติกรรมที่ต้องการพอดี เพราะนั่นคือตอนที่ลูกค้าเริ่มกระทบจริง
+   */
+  const situation = `primary-down${backupUp ? "" : backupConfigured ? "+backup-down" : "+no-backup"}`;
   try {
-    await sendAdminAlert(lines.join("\n"));
+    await sendAdminAlertThrottled(`bridge:${situation}`, lines.join("\n"));
   } catch (e) {
     console.error("bridge-health alert failed:", e);
   }
@@ -101,6 +133,8 @@ async function run(req: Request) {
   return NextResponse.json({
     ok: true,
     primaryUp: false,
+    // ตัวเลขละเอียดอยู่ตรงนี้ ไม่ใช่ในข้อความแจ้งเตือน — ใส่ในข้อความแล้วตัวกันซ้ำจะไม่มีผล
+    primarySilentMinutes: silentMin ?? null,
     backupConfigured,
     backupUp,
     alerted: true,
