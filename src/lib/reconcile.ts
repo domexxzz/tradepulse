@@ -209,8 +209,52 @@ async function retryPendingRevokes(cutoff: Date, waitMinutes: number): Promise<n
     take: MAX_PER_RUN,
   });
 
+  /**
+   * ห้ามถอนชื่อที่ยังมีคนจ่ายเงินใช้อยู่ — ต่อให้เจ้าของคิวถอนหมดอายุแล้วก็ตาม
+   *
+   * ด่านข้างบนกันที่ระดับ "คน" (ผู้ใช้คนนี้ยังมีแพ็กเกจไหม) แต่สิทธิ์จริงบน
+   * TradingView ผูกกับ "ชื่อ" ไม่ใช่กับบัญชีในระบบเรา ถ้าลูกค้าสองคนกรอกชื่อ
+   * TradingView เดียวกัน (สะกดต่างตัวพิมพ์ก็ยังเป็นชื่อเดียวกันบน TradingView)
+   * การถอนของคนที่หมดอายุ = ดึงสิทธิ์ของคนที่ยังจ่ายเงินออกไปด้วย
+   *
+   * เจอจริง 20 พ.ย. 69: Maypimpisut786 (หมดอายุ) กับ maypimpisut786 (ยังจ่าย)
+   * และ p_f123 — วนเพิ่ม/ถอนสลับกันทุกไม่กี่นาที บอททำงานถูกทั้งสองคำสั่ง
+   * แต่ผลรวมคือลูกค้าที่จ่ายเงินเข้า ๆ ออก ๆ ตลอดเวลา
+   */
+  const names = Array.from(
+    new Set(
+      stuck
+        .map((g) => g.user.tradingViewUsername?.trim().toLowerCase())
+        .filter((n): n is string => Boolean(n))
+    )
+  );
+  const inUse = new Set<string>();
+  if (names.length > 0) {
+    const payingWithSameName = await prisma.user.findMany({
+      where: {
+        tradingViewUsername: { not: null },
+        subscriptions: {
+          some: { status: { in: ACTIVE_STATUSES }, currentPeriodEnd: { gt: new Date() } },
+        },
+      },
+      select: { tradingViewUsername: true },
+    });
+    for (const u of payingWithSameName) {
+      const n = u.tradingViewUsername?.trim().toLowerCase();
+      if (n && names.includes(n)) inUse.add(n);
+    }
+  }
+  const safe = stuck.filter((g) => {
+    const n = g.user.tradingViewUsername?.trim().toLowerCase();
+    if (n && inUse.has(n)) {
+      console.warn(`reconcile: ไม่ถอน ${n} — ยังมีสมาชิกที่จ่ายเงินใช้ชื่อนี้อยู่`);
+      return false;
+    }
+    return true;
+  });
+
   let done = 0;
-  for (const grant of stuck) {
+  for (const grant of safe) {
     const username = grant.user.tradingViewUsername;
     if (!username) continue;
     try {
