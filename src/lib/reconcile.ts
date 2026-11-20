@@ -90,6 +90,10 @@ export interface ReconcileResult {
   grantsRetried: number;
   /** คิวถอนสิทธิ์ที่ค้างแล้วสั่งซ้ำ */
   revokesRetried: number;
+  /** สั่งถอนชื่อไหนไปบ้างรอบนี้ */
+  revokedNames?: string[];
+  /** ชื่อที่ไม่ถอนเพราะยังมีสมาชิกที่จ่ายเงินใช้อยู่ — ปกติควรว่าง */
+  revokeBlockedSameName?: string[];
   /** ลิงก์เชิญ Telegram ที่สร้างย้อนหลังให้ — นับเฉพาะที่ได้ลิงก์จริง */
   invitesCreated: number;
   /** ใบเก่าที่ไม่มีลิงก์และมีใบใหม่คุมอยู่แล้ว — ปิดทิ้งไปกี่ใบ ปกติควรเป็น 0 */
@@ -160,7 +164,10 @@ async function retryPendingGrants(cutoff: Date, waitMinutes: number): Promise<nu
  * คิวถอนสิทธิ์ที่ค้าง: PENDING_REVOKE คือตอนหมดอายุแล้วบอทถอนไม่สำเร็จ
  * ปล่อยไว้แปลว่าคนที่หมดอายุยังใช้อินดิเคเตอร์ได้ฟรี
  */
-async function retryPendingRevokes(cutoff: Date, waitMinutes: number): Promise<number> {
+async function retryPendingRevokes(
+  cutoff: Date,
+  waitMinutes: number
+): Promise<{ done: number; dispatched: string[]; blockedSameName: string[] }> {
   /**
    * คิวถอนต้องมีเวลารอและเพดานเลิกลอง "เหมือนคิวให้สิทธิ์" — ของเดิมไม่มีทั้งคู่
    *
@@ -244,14 +251,16 @@ async function retryPendingRevokes(cutoff: Date, waitMinutes: number): Promise<n
       if (n && names.includes(n)) inUse.add(n);
     }
   }
+  const blockedSameName: string[] = [];
   const safe = stuck.filter((g) => {
     const n = g.user.tradingViewUsername?.trim().toLowerCase();
     if (n && inUse.has(n)) {
-      console.warn(`reconcile: ไม่ถอน ${n} — ยังมีสมาชิกที่จ่ายเงินใช้ชื่อนี้อยู่`);
+      blockedSameName.push(n);
       return false;
     }
     return true;
   });
+  const dispatched: string[] = [];
 
   let done = 0;
   for (const grant of safe) {
@@ -264,6 +273,7 @@ async function retryPendingRevokes(cutoff: Date, waitMinutes: number): Promise<n
         .update({ where: { id: grant.id }, data: { lastDispatchedAt: new Date() } })
         .catch(() => {});
 
+      dispatched.push(username);
       const res = await revokeTradingViewAccess(username);
       if (res.ok) {
         await prisma.accessGrant.update({
@@ -297,7 +307,7 @@ async function retryPendingRevokes(cutoff: Date, waitMinutes: number): Promise<n
       console.error("reconcile: retry revoke failed", grant.id, e);
     }
   }
-  return done;
+  return { done, dispatched, blockedSameName };
 }
 
 /**
@@ -516,14 +526,14 @@ export async function runReconcile(): Promise<ReconcileResult> {
     return { grants: 0, telegram: 0, members: [] as string[] };
   });
 
-  const [grantsRetried, revokesRetried, invites, waitingForUsername] = await Promise.all([
+  const [grantsRetried, revokeRun, invites, waitingForUsername] = await Promise.all([
     retryPendingGrants(cutoff, waitMinutes).catch((e) => {
       console.error("reconcile: grants step failed", e);
       return 0;
     }),
     retryPendingRevokes(cutoff, waitMinutes).catch((e) => {
       console.error("reconcile: revokes step failed", e);
-      return 0;
+      return { done: 0, dispatched: [] as string[], blockedSameName: [] as string[] };
     }),
     telegramGroupManaged
       ? backfillTelegramInvites(cutoff).catch((e) => {
@@ -548,7 +558,11 @@ export async function runReconcile(): Promise<ReconcileResult> {
 
   return {
     grantsRetried,
-    revokesRetried,
+    revokesRetried: revokeRun.done,
+    // บอกชื่อที่สั่งถอนจริง และชื่อที่ถูกกันเพราะยังมีคนจ่ายเงินใช้อยู่
+    // ตัวเลขเฉย ๆ บอกไม่ได้ว่า "ใคร" ซึ่งเป็นสิ่งเดียวที่ต้องรู้ตอนไล่วงวนเพิ่ม/ถอน
+    ...(revokeRun.dispatched.length > 0 ? { revokedNames: revokeRun.dispatched } : {}),
+    ...(revokeRun.blockedSameName.length > 0 ? { revokeBlockedSameName: revokeRun.blockedSameName } : {}),
     invitesCreated: invites.created,
     invitesStale: invites.stale,
     waitingForUsername,
