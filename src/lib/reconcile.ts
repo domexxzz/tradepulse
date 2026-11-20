@@ -90,10 +90,10 @@ export interface ReconcileResult {
   grantsRetried: number;
   /** คิวถอนสิทธิ์ที่ค้างแล้วสั่งซ้ำ */
   revokesRetried: number;
-  /** สั่งถอนชื่อไหนไปบ้างรอบนี้ */
-  revokedNames?: string[];
-  /** ชื่อที่ไม่ถอนเพราะยังมีสมาชิกที่จ่ายเงินใช้อยู่ — ปกติควรว่าง */
-  revokeBlockedSameName?: string[];
+  /** สั่งถอนชื่อไหนไปบ้างรอบนี้ — แสดงเสมอ ถึงจะว่าง */
+  revokedNames: string[];
+  /** ชื่อที่ไม่ถอนเพราะยังมีสมาชิกที่จ่ายเงินใช้อยู่ — แสดงเสมอ ปกติควรว่าง */
+  revokeBlockedSameName: string[];
   /** ลิงก์เชิญ Telegram ที่สร้างย้อนหลังให้ — นับเฉพาะที่ได้ลิงก์จริง */
   invitesCreated: number;
   /** ใบเก่าที่ไม่มีลิงก์และมีใบใหม่คุมอยู่แล้ว — ปิดทิ้งไปกี่ใบ ปกติควรเป็น 0 */
@@ -495,6 +495,8 @@ export async function runReconcile(): Promise<ReconcileResult> {
     invitesCreated: 0,
     invitesStale: 0,
     waitingForUsername: 0,
+    revokedNames: [],
+    revokeBlockedSameName: [],
     healed: 0,
     resynced: 0,
     systemicFound: 0,
@@ -559,10 +561,15 @@ export async function runReconcile(): Promise<ReconcileResult> {
   return {
     grantsRetried,
     revokesRetried: revokeRun.done,
-    // บอกชื่อที่สั่งถอนจริง และชื่อที่ถูกกันเพราะยังมีคนจ่ายเงินใช้อยู่
-    // ตัวเลขเฉย ๆ บอกไม่ได้ว่า "ใคร" ซึ่งเป็นสิ่งเดียวที่ต้องรู้ตอนไล่วงวนเพิ่ม/ถอน
-    ...(revokeRun.dispatched.length > 0 ? { revokedNames: revokeRun.dispatched } : {}),
-    ...(revokeRun.blockedSameName.length > 0 ? { revokeBlockedSameName: revokeRun.blockedSameName } : {}),
+    /**
+     * แสดงเสมอ ถึงจะว่างก็ตาม
+     *
+     * ของเดิมซ่อนฟิลด์ตอนว่าง ซึ่งทำให้ "ไม่มีใครโดนถอน" กับ "บิลด์เก่ายังรันอยู่"
+     * หน้าตาเหมือนกันเป๊ะ แล้วไล่บั๊กต่อไม่ได้เลย — เสียเวลาไปหนึ่งรอบเต็มเพราะเรื่องนี้
+     * เครื่องมือวินิจฉัยต้องแยก "ไม่มี" ออกจาก "ไม่รู้" ได้เสมอ
+     */
+    revokedNames: revokeRun.dispatched,
+    revokeBlockedSameName: revokeRun.blockedSameName,
     invitesCreated: invites.created,
     invitesStale: invites.stale,
     waitingForUsername,
