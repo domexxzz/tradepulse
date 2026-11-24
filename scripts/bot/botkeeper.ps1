@@ -55,6 +55,51 @@ function Get-Token {
   if ($t) { return $t } else { return $null }
 }
 
+# เลือกตัว python ที่ "นำเข้าโมดูลของบอทได้จริง" ไม่ใช่ตัวแรกที่เจอใน PATH
+#
+# เครื่องบอทมี python หลายเวอร์ชันพร้อมกัน และโปรเจกต์อื่นลงเพิ่มได้ตลอด
+# ตัวที่ลงทีหลังจะถูกแทรกไว้หน้าสุดของ PATH แล้วแย่งคำว่า "python" ไป
+# บริดจ์จึงถูกเปิดด้วยตัวที่ไม่มีโมดูลอะไรเลย ตายทันทีที่ import
+# keeper เห็นว่าตายก็ปลุกใหม่ วนแบบนี้ไปเรื่อย ๆ โดยไม่มีอะไรบอกว่าผิดตรงไหน
+# (เจอจริง 23 พ.ย. 69 - ลง Python 3.13 ทับบนคอมเฟิร์ส บริดจ์ล่ม 46 ชม.
+#  ลูกค้าค้าง 11 ราย keeper เขียน "bridge down -> starting" ทุก 70 วินาทีตลอดสองวัน
+#  ข้อความเตือนบอกแค่ "บริดจ์ติดต่อไม่ได้" ซึ่งชี้ไปทางเครื่องดับ/tunnel หลุด คนละทางกับของจริง)
+#
+# ทดสอบด้วยการ import จริง ไม่ใช่ดูเลขเวอร์ชัน เพราะสิ่งที่ต้องการคือ
+# "ตัวที่มีโมดูลครบ" ส่วนจะเป็นเวอร์ชันไหนไม่สำคัญ
+$script:BridgePython = $null
+function Get-BridgePython {
+  if ($script:BridgePython) { return $script:BridgePython }
+
+  $cands = @()
+  if ($env:QVX_PYTHON) { $cands += $env:QVX_PYTHON }
+  $root = Join-Path $env:LOCALAPPDATA "Programs\Python"
+  if (Test-Path $root) {
+    $cands += (Get-ChildItem $root -Directory -ErrorAction SilentlyContinue |
+               Sort-Object Name -Descending |
+               ForEach-Object { Join-Path $_.FullName "python.exe" })
+  }
+  $cands += "python"
+
+  foreach ($c in $cands) {
+    if (-not $c) { continue }
+    if ($c -ne "python" -and -not (Test-Path $c)) { continue }
+    try {
+      & $c -c "import aiohttp, selenium" 2>$null
+      if ($LASTEXITCODE -eq 0) {
+        if ($c -ne "python") { Note "ใช้ python: $c" }
+        $script:BridgePython = $c
+        return $c
+      }
+    } catch { }
+  }
+
+  # ไม่เจอตัวไหนครบเลย - บอกให้รู้ว่าปลุกไปก็ตาย จะได้ไม่ต้องไปไล่หาที่อื่น
+  Note "หา python ที่มี aiohttp+selenium ไม่เจอเลย - ต้อง pip install ให้ตัวที่ใช้อยู่"
+  $script:BridgePython = "python"
+  return "python"
+}
+
 function Ensure-Bridge {
   if (Get-NetTCPConnection -LocalPort $Port -State Listen -EA SilentlyContinue) { return }
   if ($BridgeTask) {
@@ -68,7 +113,8 @@ function Ensure-Bridge {
   # ตัวหลังจองไฟล์แบบ exclusive ถ้า process เดิมยังถือ handle อยู่จะ throw แล้ว
   # ลูปค้างทั้งตัว ทำให้ watchdog ตายเงียบ ๆ ทั้งที่ยังเห็น process อยู่
   # print() ไป stdout, logging ของ aiohttp ไป stderr จึงต้องเก็บทั้งสองสาย
-  $cmd = "cd /d `"$dir`" && python -u tv_bridge.py >> `"$dir\bot_out.log`" 2>> `"$dir\bot.log`""
+  $py  = Get-BridgePython
+  $cmd = "cd /d `"$dir`" && `"$py`" -u tv_bridge.py >> `"$dir\bot_out.log`" 2>> `"$dir\bot.log`""
   Start-Process "cmd.exe" -ArgumentList "/c", $cmd -WindowStyle Hidden
   Start-Sleep 12
 }
